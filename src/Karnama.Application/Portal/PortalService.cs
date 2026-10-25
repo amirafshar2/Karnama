@@ -18,6 +18,12 @@ public sealed record PortalHomeDto(string ClientName, PortalPackageDto? Package,
 public sealed record PortalMessageDto(Guid Id, string Author, bool FromMe, string Body, DateTimeOffset At);
 public sealed record ApprovalRequest(bool Approve, string? Note);
 public sealed record PortalMessageRequest(string Body);
+public sealed record PortalAccountDto(Guid PlatformId, string PlatformName, string Handle);
+public sealed record PortalPackageHistoryDto(string Name, DateTimeOffset StartsAt, DateTimeOffset EndsAt, Domain.Clients.ClientPackageStatus Status);
+public sealed record PortalProfileDto(string BusinessName, string? Industry, string? ContactName, string? City, IReadOnlyList<PortalAccountDto> Accounts,
+    PortalPackageDto? Package, IReadOnlyList<PortalPackageHistoryDto> History, bool RenewRequestedToday, bool NeedsPassword);
+public sealed record RenewRequest(string? Note);
+public sealed record RenewResultDto(bool AlreadyRequested);
 
 /// <summary>
 /// The client's own panel (docs/PROMPT.md §6.9): package use, orders with progress, approving content, ordering a service.
@@ -153,5 +159,48 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         return Result.Success();
+    }
+
+    /// <summary>PROMPT2 §10.3: the client's profile — business, pages, running package with days and quotas, history.</summary>
+    public async Task<Result<PortalProfileDto>> ProfileAsync(CancellationToken ct)
+    {
+        if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
+        var lang = me.LanguageCode;
+        var now = clock.GetUtcNow();
+        var client = await db.Clients.AsNoTracking().FirstAsync(c => c.Id == clientId, ct);
+        var platforms = (await db.Platforms.IgnoreQueryFilters().AsNoTracking().ToListAsync(ct)).ToDictionary(p => p.Id, p => p.Name.Get(lang));
+        var home = await HomeAsync(ct);
+        var history = await db.ClientPackages.AsNoTracking().Where(p => p.ClientId == clientId).OrderByDescending(p => p.StartsAt).Take(30).ToListAsync(ct);
+        var asked = await db.Notifications.AsNoTracking().AnyAsync(n => n.EventKey == RenewKey(clientId, now), ct);
+        var fullAccess = history.Any(p => p.Status == ClientPackageStatus.Active && p.EndsAt > now && p.Access == Domain.Catalog.PageAccess.FullAccess)
+                         && !await db.ClientCredentials.AnyAsync(c => c.ClientId == clientId && (c.Cipher != null || c.BusinessSuiteAccess), ct);
+        return new PortalProfileDto(client.BusinessName, client.Industry, client.ContactName, client.City,
+            client.Accounts.Select(a => new PortalAccountDto(a.PlatformId, platforms.GetValueOrDefault(a.PlatformId, "—"), a.Handle)).ToList(),
+            home.Value?.Package,
+            history.Select(p => new PortalPackageHistoryDto(p.PackageName.Get(lang), p.StartsAt, p.EndsAt,
+                p.Status == ClientPackageStatus.Active && p.EndsAt <= now ? ClientPackageStatus.Ended : p.Status)).ToList(),
+            asked, fullAccess);
+    }
+
+    private static string RenewKey(Guid clientId, DateTimeOffset now) => $"renew:{clientId:N}:{Attendance.Iran.Today(now):yyyyMMdd}";
+
+    /// <summary>«درخواست تمدید»: tells the managers right away (important); once per day per client.</summary>
+    public async Task<Result<RenewResultDto>> RequestRenewalAsync(RenewRequest r, CancellationToken ct)
+    {
+        if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
+        if (r.Note is { Length: > 500 }) return Error.Validation("portal.noteTooLong", "توضیح حداکثر ۵۰۰ کاراکتر است.");
+        var now = clock.GetUtcNow();
+        var key = RenewKey(clientId, now);
+        if (await db.Notifications.AsNoTracking().AnyAsync(n => n.EventKey == key, ct)) return new RenewResultDto(true);
+        var client = await db.Clients.AsNoTracking().FirstAsync(c => c.Id == clientId, ct);
+        var managers = await notifier.StaffWithAsync(Domain.Identity.Permissions.PackagesAssign, Domain.Identity.PermissionScope.All, ct);
+        var note = string.IsNullOrWhiteSpace(r.Note) ? null : r.Note.Trim();
+        await notifier.NotifyAsync(managers, "package.renewRequested", $"{client.BusinessName} درخواست تمدید پکیج داد", note, "/clients", true, key, ct);
+        // The client's own copy marks "asked today" (and shows in their bell).
+        if (me.UserId is { } uid)
+            await notifier.NotifyAsync([uid], "package.renewRequested", "درخواست تمدید شما ثبت شد", "آژانس به‌زودی با شما تماس می‌گیرد.", "/profile", false, key, ct);
+        audit.Add("portal.renewRequested", nameof(Client), clientId.ToString(), new { note });
+        await db.SaveChangesAsync(ct);
+        return new RenewResultDto(false);
     }
 }

@@ -11,7 +11,7 @@ const PANEL_BUDGET = 180 * 1024;
 const appDir = join(dir, "server", "app");
 let failed = false;
 
-for (const page of ["login", "dashboard", "roles", "profile", "setup", "settings/brand", "settings/texts", "users", "clients", "packages", "services", "settings/platforms", "work", "orders", "attendance", "attendance/live", "attendance/setup", "attendance/kiosk", "attendance/calendar", "attendance/report", "publishing", "content/blog", "content/blog/edit", "index"]) {
+for (const page of ["login", "dashboard", "roles", "profile", "setup", "settings/brand", "settings/texts", "users", "clients", "packages", "services", "settings/platforms", "work", "orders", "attendance", "attendance/live", "attendance/setup", "attendance/kiosk", "attendance/calendar", "attendance/report", "publishing", "content/blog", "content/blog/edit", "media", "leads", "chat", "index"]) {
   const htmlFile = join(appDir, `${page}.html`);
   if (!existsSync(htmlFile)) continue;
   const html = readFileSync(htmlFile, "utf8");

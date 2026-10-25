@@ -20,6 +20,8 @@ export function EditorSheet({
   wide,
   children,
   testId,
+  submitLabel,
+  noSubmit,
 }: {
   title: string;
   description?: string;
@@ -31,6 +33,10 @@ export function EditorSheet({
   wide?: boolean;
   children: React.ReactNode;
   testId?: string;
+  /** Button text when the action is not a plain save (e.g. "Assign"). */
+  submitLabel?: string;
+  /** Pick-from-a-list sheets: only the close button. */
+  noSubmit?: boolean;
 }) {
   const { t, dir } = useI18n();
   const isMobile = useIsMobile();
@@ -59,11 +65,13 @@ export function EditorSheet({
             <div className="safe-bottom sticky bottom-0 border-t bg-background p-4">
               <ErrorText error={error} />
               <div className="mt-2 flex gap-2">
-                <Button type="submit" className="h-12 flex-1" disabled={busy} data-testid={testId ? `${testId}-save` : undefined}>
-                  {busy && <Loader2 className="animate-spin" aria-hidden="true" />}
-                  {busy ? t("common.saving") : t("common.save")}
-                </Button>
-                <Button type="button" variant="outline" className="h-12" onClick={onClose}>
+                {!noSubmit && (
+                  <Button type="submit" className="h-12 flex-1" disabled={busy} data-testid={testId ? `${testId}-save` : undefined}>
+                    {busy && <Loader2 className="animate-spin" aria-hidden="true" />}
+                    {busy ? t("common.saving") : (submitLabel ?? t("common.save"))}
+                  </Button>
+                )}
+                <Button type="button" variant="outline" className={cn("h-12", noSubmit && "flex-1")} onClick={onClose}>
                   {t("common.cancel")}
                 </Button>
               </div>

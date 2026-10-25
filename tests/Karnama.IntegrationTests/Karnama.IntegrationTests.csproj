@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Karnama.Api\Karnama.Api.csproj" />
+    <ProjectReference Include="..\..\src\Karnama.TelegramGateway\Karnama.TelegramGateway.csproj" />
   </ItemGroup>
 
 </Project>

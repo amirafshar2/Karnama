@@ -17,6 +17,19 @@ export function onChange(fn: Listener) {
 }
 const emit = (c: Change | "resync") => listeners.forEach((l) => l(c));
 
+/** "Typing…" in a chat (live only, never stored). */
+export type Typing = { conversationId: string; userId: string };
+const typingListeners = new Set<(t: Typing) => void>();
+export function onTyping(fn: (t: Typing) => void) {
+  typingListeners.add(fn);
+  return () => void typingListeners.delete(fn);
+}
+let invoke: ((method: string, ...args: unknown[]) => Promise<unknown>) | null = null;
+/** Tells the other members of a chat that I'm typing (best effort; ignored when offline). */
+export function sendTyping(conversationId: string) {
+  void invoke?.("Typing", conversationId).catch(() => undefined);
+}
+
 // MessagePack keeps the server's PascalCase names.
 type Wire = { Seq?: number; Kind?: string; Id?: string; Fields?: string[]; seq?: number; kind?: string; id?: string; fields?: string[] };
 
@@ -46,6 +59,11 @@ export async function connectRealtime(handlers: Handlers) {
     await start();
   });
   connection.on("Changed", (m: Wire) => emit({ seq: Number(m.Seq ?? m.seq ?? 0), kind: String(m.Kind ?? m.kind ?? ""), id: String(m.Id ?? m.id ?? ""), fields: m.Fields ?? m.fields ?? [] }));
+  connection.on("Typing", (m: { ConversationId?: string; UserId?: string; conversationId?: string; userId?: string }) => {
+    const t = { conversationId: String(m.ConversationId ?? m.conversationId ?? ""), userId: String(m.UserId ?? m.userId ?? "") };
+    typingListeners.forEach((l) => l(t));
+  });
+  invoke = (method, ...args) => (connection.state === HubConnectionState.Connected ? connection.invoke(method, ...args) : Promise.resolve());
   connection.onreconnected(() => emit("resync"));
   let started = false;
 

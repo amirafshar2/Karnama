@@ -50,7 +50,7 @@ public sealed class ChangesService(IAppDbContext db, ICurrentUser me, Work.WorkA
         if (await access.PortalClientIdAsync(ct) is { } clientId)
         {
             var me1 = me.UserId ?? Guid.Empty;
-            q = q.Where(e => (e.ClientId == clientId && e.Kind != "notification") || (e.Kind == "notification" && e.AssigneeId == me1));
+            q = q.Where(e => (e.ClientId == clientId && e.Kind != "notification" && e.Kind != "chat") || ((e.Kind == "notification" || e.Kind == "chat") && e.AssigneeId == me1));
         }
         else
         {
@@ -58,7 +58,7 @@ public sealed class ChangesService(IAppDbContext db, ICurrentUser me, Work.WorkA
             var seesPresence = me.Has(Domain.Identity.Permissions.AttendanceView, Domain.Identity.PermissionScope.All);
             if (!access.SeesAllWork) q = q.Where(e => e.AssigneeId == uid || e.PreviousAssigneeId == uid || (seesPresence && e.Kind == "presence"));
             else if (!seesPresence) q = q.Where(e => e.Kind != "presence" || e.AssigneeId == uid);
-            q = q.Where(e => e.Kind != "notification" || e.AssigneeId == uid);
+            q = q.Where(e => (e.Kind != "notification" && e.Kind != "chat") || e.AssigneeId == uid);
         }
         var rows = await q.OrderBy(e => e.Seq).Take(MaxEvents + 1).ToListAsync(ct);
         if (rows.Count > MaxEvents) return new ChangesPage(latest, true, []);

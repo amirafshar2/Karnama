@@ -12,7 +12,8 @@ namespace Karnama.Application.Clients;
 
 public sealed record ClientAccountDto(Guid PlatformId, string Handle, PageManagement Management);
 
-public sealed record ActivePackageDto(Guid Id, string Name, DateTimeOffset StartsAt, DateTimeOffset EndsAt, int DaysLeft, int TotalDays, long Price, IReadOnlyList<QuotaDto> Quotas);
+public sealed record ActivePackageDto(Guid Id, string Name, DateTimeOffset StartsAt, DateTimeOffset EndsAt, int DaysLeft, int TotalDays, long Price, IReadOnlyList<QuotaDto> Quotas,
+    PageAccess Access, ClientPackageStatus Status, IReadOnlyDictionary<Guid, int>? Used = null);
 
 public sealed record ClientListItemDto(
     Guid Id, string BusinessName, string? Industry, string? City, string? ContactName, string? Mobile, ClientStatus Status,
@@ -235,10 +236,14 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     {
         var now = clock.GetUtcNow();
         var packages = await db.ClientPackages.AsNoTracking().Where(cp => cp.ClientId == c.Id).OrderByDescending(cp => cp.StartsAt).ToListAsync(ct);
+        var active = packages.FirstOrDefault(p => p.Status == ClientPackageStatus.Active && p.EndsAt > now);
+        var used = active is null ? null : await db.Orders.AsNoTracking()
+            .Where(o => o.ClientPackageId == active.Id && o.Status != Domain.Work.OrderStatus.Rejected && o.Status != Domain.Work.OrderStatus.Cancelled)
+            .GroupBy(o => o.ServiceTypeId).Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(g => g.Key, g => g.N, ct);
         ActivePackageDto Map(ClientPackage cp) => new(cp.Id, cp.PackageName.Get(me.LanguageCode), cp.StartsAt, cp.EndsAt, cp.DaysLeft(now),
             (int)Math.Round((cp.EndsAt - cp.StartsAt).TotalDays), cp.Price,
-            System.Text.Json.JsonSerializer.Deserialize<List<QuotaDto>>(cp.QuotasJson, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)) ?? []);
-        var active = packages.FirstOrDefault(p => p.Status == ClientPackageStatus.Active && p.EndsAt > now);
+            System.Text.Json.JsonSerializer.Deserialize<List<QuotaDto>>(cp.QuotasJson, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)) ?? [],
+            cp.Access, cp.Status == ClientPackageStatus.Active && cp.EndsAt <= now ? ClientPackageStatus.Ended : cp.Status, cp == active ? used : null);
         return new ClientDto(c.Id, c.BusinessName, c.Industry, c.ContactName, CanSeeContact ? c.Mobile : null, c.City, c.InternalNote, c.Status,
             c.Accounts.Select(a => new ClientAccountDto(a.PlatformId, a.Handle, a.Management)).ToList(), c.PortalUserId is not null,
             active is null ? null : Map(active), packages.Where(p => p != active).Select(Map).ToList(), c.IsDeleted, c.Version);

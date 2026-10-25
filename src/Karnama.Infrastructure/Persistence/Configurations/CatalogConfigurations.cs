@@ -171,3 +171,19 @@ internal sealed class ClientPackageConfiguration : IEntityTypeConfiguration<Clie
         b.HasOne<Package>().WithMany().HasForeignKey(x => x.PackageId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+internal sealed class ClientCredentialConfiguration : IEntityTypeConfiguration<ClientCredential>
+{
+    public void Configure(EntityTypeBuilder<ClientCredential> b)
+    {
+        b.ToTable("client_credentials");
+        b.Property(x => x.Handle).HasMaxLength(100).IsRequired();
+        b.Property(x => x.Cipher).HasMaxLength(4096);
+        b.Property(x => x.WrappedKey).HasMaxLength(128);
+        b.Ignore(x => x.HasSecret);
+        b.Property(x => x.Version).IsRowVersion();
+        b.HasIndex(x => new { x.ClientId, x.PlatformId, x.Handle }).IsUnique();
+        b.HasOne<Client>().WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<Platform>().WithMany().HasForeignKey(x => x.PlatformId).OnDelete(DeleteBehavior.Restrict);
+    }
+}

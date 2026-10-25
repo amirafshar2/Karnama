@@ -1630,3 +1630,244 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025193215_N4Vault') THEN
+    ALTER TABLE otp_challenges ADD "Purpose" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025193215_N4Vault') THEN
+    CREATE TABLE client_credentials (
+        "Id" uuid NOT NULL,
+        "ClientId" uuid NOT NULL,
+        "PlatformId" uuid NOT NULL,
+        "Handle" character varying(100) NOT NULL,
+        "BusinessSuiteAccess" boolean NOT NULL,
+        "Cipher" bytea,
+        "WrappedKey" bytea,
+        "KeyVersion" integer NOT NULL,
+        "Source" integer NOT NULL,
+        "UpdatedAt" timestamp with time zone NOT NULL,
+        "UpdatedBy" uuid,
+        "LastRevealedAt" timestamp with time zone,
+        "LastRevealedBy" uuid,
+        CONSTRAINT "PK_client_credentials" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_client_credentials_clients_ClientId" FOREIGN KEY ("ClientId") REFERENCES clients ("Id") ON DELETE CASCADE,
+        CONSTRAINT "FK_client_credentials_platforms_PlatformId" FOREIGN KEY ("PlatformId") REFERENCES platforms ("Id") ON DELETE RESTRICT
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025193215_N4Vault') THEN
+    CREATE UNIQUE INDEX "IX_client_credentials_ClientId_PlatformId_Handle" ON client_credentials ("ClientId", "PlatformId", "Handle");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025193215_N4Vault') THEN
+    CREATE INDEX "IX_client_credentials_PlatformId" ON client_credentials ("PlatformId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025193215_N4Vault') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025193215_N4Vault', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025200211_N5Media') THEN
+    ALTER TABLE outbox ADD "Payload" character varying(8000);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025200211_N5Media') THEN
+    CREATE TABLE media_assets (
+        "Id" uuid NOT NULL,
+        "Messenger" integer NOT NULL,
+        "SenderId" uuid NOT NULL,
+        "Kind" integer NOT NULL,
+        "FileId" character varying(200) NOT NULL,
+        "FileUniqueId" character varying(100) NOT NULL,
+        "FileSize" bigint,
+        "DurationSeconds" integer,
+        "FileName" character varying(200),
+        "MimeType" character varying(100),
+        "Caption" character varying(1000),
+        "ThumbFileId" character varying(200),
+        "ThumbPath" character varying(100),
+        "SentAt" timestamp with time zone NOT NULL,
+        "ReceivedAt" timestamp with time zone NOT NULL,
+        "SourceChatId" bigint NOT NULL,
+        "SourceMessageId" bigint NOT NULL,
+        "ArchiveChatId" bigint,
+        "ArchiveMessageId" bigint,
+        "WorkItemId" uuid,
+        "ClientId" uuid,
+        "Status" integer NOT NULL,
+        "AssignedToId" uuid,
+        "AssignedById" uuid,
+        "AssignedAt" timestamp with time zone,
+        "DeliveredAt" timestamp with time zone,
+        "Error" character varying(300),
+        CONSTRAINT "PK_media_assets" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025200211_N5Media') THEN
+    CREATE UNIQUE INDEX "IX_media_assets_Messenger_FileUniqueId" ON media_assets ("Messenger", "FileUniqueId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025200211_N5Media') THEN
+    CREATE INDEX "IX_media_assets_SenderId" ON media_assets ("SenderId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025200211_N5Media') THEN
+    CREATE INDEX "IX_media_assets_Status_Id" ON media_assets ("Status", "Id");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025200211_N5Media') THEN
+    CREATE INDEX "IX_media_assets_WorkItemId" ON media_assets ("WorkItemId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025200211_N5Media') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025200211_N5Media', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    CREATE TABLE chat_messages (
+        "Id" bigint GENERATED ALWAYS AS IDENTITY,
+        "ConversationId" uuid NOT NULL,
+        "AuthorId" uuid NOT NULL,
+        "Kind" integer NOT NULL,
+        "Body" character varying(4000),
+        "FileKey" character varying(200),
+        "FileName" character varying(200),
+        "ContentType" character varying(100),
+        "FileSize" bigint,
+        "DurationSeconds" integer,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "EditedAt" timestamp with time zone,
+        "DeletedAt" timestamp with time zone,
+        "ClientKey" uuid NOT NULL,
+        CONSTRAINT "PK_chat_messages" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    CREATE TABLE conversations (
+        "Id" uuid NOT NULL,
+        "Kind" integer NOT NULL,
+        "Title" character varying(120),
+        "DirectKey" character varying(70),
+        "OrderId" uuid,
+        "CreatedBy" uuid,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "LastMessageAt" timestamp with time zone NOT NULL,
+        "LastMessageId" bigint NOT NULL,
+        "LastPreview" character varying(200),
+        CONSTRAINT "PK_conversations" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    CREATE TABLE conversation_members (
+        "ConversationId" uuid NOT NULL,
+        "UserId" uuid NOT NULL,
+        "JoinedAt" timestamp with time zone NOT NULL,
+        "LastReadId" bigint NOT NULL,
+        "Muted" boolean NOT NULL,
+        CONSTRAINT "PK_conversation_members" PRIMARY KEY ("ConversationId", "UserId"),
+        CONSTRAINT "FK_conversation_members_conversations_ConversationId" FOREIGN KEY ("ConversationId") REFERENCES conversations ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    CREATE UNIQUE INDEX "IX_chat_messages_ConversationId_ClientKey" ON chat_messages ("ConversationId", "ClientKey");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    CREATE INDEX "IX_chat_messages_ConversationId_Id" ON chat_messages ("ConversationId", "Id");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    CREATE INDEX "IX_conversation_members_UserId" ON conversation_members ("UserId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    CREATE UNIQUE INDEX "IX_conversations_DirectKey" ON conversations ("DirectKey") WHERE "DirectKey" IS NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    CREATE UNIQUE INDEX "IX_conversations_OrderId" ON conversations ("OrderId") WHERE "OrderId" IS NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025202919_N6Chat') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025202919_N6Chat', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+

@@ -8,6 +8,7 @@ x-app-env: &app-env
   ConnectionStrings__Redis: "redis:6379"
   Jwt__SigningKey: ${JWT_SIGNING_KEY}
   Otp__HashKey: ${OTP_HASH_KEY}
+  Vault__MasterKey: ${VAULT_MASTER_KEY}
   Setup__Token: ${SETUP_TOKEN}
   Seed__Mode: Empty
   DemoLogin__Enabled: "false"
@@ -24,6 +25,10 @@ x-app-env: &app-env
   Notify__BaleBotUsername: ${BALE_BOT_USERNAME}
   Messengers__BaleToken: ${BALE_TOKEN}
   Messengers__BaleWebhookSecret: ${BALE_WEBHOOK_SECRET}
+  Notify__TelegramBotUsername: ${TELEGRAM_BOT_USERNAME}
+  Messengers__TelegramGatewayUrl: ${TELEGRAM_GATEWAY_URL}
+  Messengers__TelegramGatewaySecret: ${TELEGRAM_GATEWAY_SECRET}
+  Notify__TelegramArchiveChatId: ${TELEGRAM_ARCHIVE_CHAT_ID}
 
 services:
   postgres:

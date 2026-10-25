@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@/lib/query";
-import { CalendarClock, Loader2 } from "lucide-react";
+import { CalendarClock, Loader2, MessagesSquare } from "lucide-react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { ErrorText, useErrorMessage } from "@/components/app/error-text";
@@ -141,6 +142,14 @@ export function OrderSheet({ id, onClose }: { id: string; onClose: () => void })
               <FilesPanel files={o.files} target={{ orderId: o.id, purpose: "brief" }} canUpload={canManage && o.status !== "cancelled" && o.status !== "rejected"} canShare={canManage} onChanged={() => qc.invalidateQueries({ queryKey: ["order", id] })} />
             </section>
 
+            {(hasPermission(me, "chat.use", "own") || hasPermission(me, "chat.groups.manage", "all")) && (
+              <Button asChild variant="outline" className="h-12 w-full sm:me-2 sm:w-auto">
+                <Link href={`/chat?order=${o.id}`} data-testid="order-chat">
+                  <MessagesSquare aria-hidden="true" />
+                  {t("chat.aboutWork")}
+                </Link>
+              </Button>
+            )}
             {canManage && (o.status === "inProgress" || o.status === "completed") && (
               <Button type="button" variant="outline" className="h-12 w-full sm:w-auto" onClick={() => setScheduling(true)} data-testid="order-schedule">
                 <CalendarClock aria-hidden="true" />

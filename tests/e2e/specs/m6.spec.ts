@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { DEMO_URL, demoLogin, navTo, shot } from "./helpers";
 
-const jalaliToday = () => {
-  const j = new Intl.DateTimeFormat("en-u-ca-persian-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tehran" }).formatToParts(new Date());
+/** Tehran day and time ~40 minutes from now: always in the future, whatever hour the suite runs. */
+const soon = () => {
+  const at = new Date(Date.now() + 40 * 60_000);
+  const j = new Intl.DateTimeFormat("en-u-ca-persian-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Tehran" }).formatToParts(at);
   const p = (t: string) => j.find((x) => x.type === t)!.value;
-  return `${p("year").replace(/\D/g, "")}/${p("month")}/${p("day")}`;
+  return { day: `${p("year").replace(/\D/g, "")}/${p("month")}/${p("day")}`, time: `${p("hour")}:${p("minute")}` };
 };
 
 test.describe("M6: notifications, publishing calendar, client reminders and messages", () => {
@@ -51,8 +53,9 @@ test.describe("M6: notifications, publishing calendar, client reminders and mess
     await admin.getByTestId("publish-client").selectOption({ label: "پوشاک نمونه" });
     await expect(admin.getByTestId("publish-page").locator("option")).toHaveCount(2);   // "choose…" + the one page
     await admin.getByTestId("publish-page").selectOption({ index: 1 });
-    await admin.getByTestId("publish-day").fill(jalaliToday());
-    await admin.getByTestId("publish-time").fill("23:50");
+    const when = soon();
+    await admin.getByTestId("publish-day").fill(when.day);
+    await admin.getByTestId("publish-time").fill(when.time);
     await admin.getByTestId("publish-caption").fill(`حراج آخر شب (${info.project.name})`);
     await admin.getByTestId("publish-tags").fill("#حراج پوشاک");
     await shot(admin, info, "m6-publish-editor");

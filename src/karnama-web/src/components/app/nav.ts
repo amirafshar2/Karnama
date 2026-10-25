@@ -1,4 +1,4 @@
-import { BarChart3, CalendarClock, Newspaper, Globe, Trophy, PhoneIncoming, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { Inbox, MessagesSquare, BarChart3, CalendarClock, Newspaper, Globe, Trophy, PhoneIncoming, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
 import type { TextKey } from "@/lib/i18n/registry";
 import { hasPermission, type Me, type Scope } from "@/lib/types";
 
@@ -8,6 +8,8 @@ export type NavItem = {
   icon: LucideIcon;
   /** Shown if the user has ANY of these (permission, minimum scope). */
   anyOf?: { code: string; scope: Scope }[];
+  /** Also shown to client (portal) users, who hold no staff permissions. */
+  clients?: boolean;
 };
 
 /** Menu is built from the user's permissions; new modules add their entries here as they ship. */
@@ -17,10 +19,12 @@ export const NAV: NavItem[] = [
   { href: "/orders", label: "nav.orders", icon: ClipboardList, anyOf: [{ code: "orders.view", scope: "assigned" }] },
   { href: "/publishing", label: "nav.publishing", icon: CalendarClock, anyOf: [{ code: "orders.manage", scope: "all" }] },
   { href: "/attendance", label: "nav.attendance", icon: Clock, anyOf: [{ code: "attendance.self", scope: "own" }] },
+  { href: "/chat", label: "nav.chat", icon: MessagesSquare, anyOf: [{ code: "chat.use", scope: "own" }, { code: "chat.groups.manage", scope: "all" }], clients: true },
   { href: "/attendance/calendar", label: "nav.calendar", icon: CalendarDays, anyOf: [{ code: "attendance.self", scope: "own" }] },
   { href: "/attendance/live", label: "nav.live", icon: UsersRound, anyOf: [{ code: "attendance.view", scope: "all" }] },
   { href: "/attendance/report", label: "nav.attReport", icon: BarChart3, anyOf: [{ code: "attendance.view", scope: "all" }] },
   { href: "/content/blog", label: "nav.blog", icon: Newspaper, anyOf: [{ code: "blog.write", scope: "own" }, { code: "blog.publish", scope: "all" }] },
+  { href: "/media", label: "nav.media", icon: Inbox, anyOf: [{ code: "media.inbox", scope: "all" }] },
   { href: "/leads", label: "nav.leads", icon: PhoneIncoming, anyOf: [{ code: "leads.manage", scope: "all" }] },
   { href: "/clients", label: "nav.clients", icon: Briefcase, anyOf: [{ code: "clients.view", scope: "assigned" }] },
   { href: "/packages", label: "nav.packages", icon: Package, anyOf: [{ code: "packages.view", scope: "all" }] },
@@ -46,5 +50,5 @@ export const NAV: NavItem[] = [
 ];
 
 export function navFor(me: Me | null) {
-  return NAV.filter((i) => !i.anyOf || i.anyOf.some((p) => hasPermission(me, p.code, p.scope)));
+  return NAV.filter((i) => !i.anyOf || i.anyOf.some((p) => hasPermission(me, p.code, p.scope)) || (i.clients && me?.kind === "client"));
 }

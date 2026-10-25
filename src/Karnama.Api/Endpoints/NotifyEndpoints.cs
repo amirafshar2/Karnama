@@ -32,24 +32,28 @@ internal static class NotifyEndpoints
 
         // ---- Bots. Anonymous by nature, so each is authenticated by its own secret; anything malformed gets a quiet 200/401. ----
         var bots = app.MapGroup("/api/v1/bots").WithTags("Bots").AllowAnonymous().DisableRateLimiting();
-        bots.MapPost("/bale/{secret}", async (string secret, HttpContext http, IOptions<MessengerOptions> o, BotUpdateService svc, IMessengerSender send,
+        bots.MapPost("/bale/{secret}", async (string secret, HttpContext http, IOptions<MessengerOptions> o, Karnama.Application.Media.BotRouter router, IMessengerSender send,
             ILoggerFactory logs, CancellationToken ct) =>
         {
             var expected = o.Value.BaleWebhookSecret;
             if (string.IsNullOrEmpty(expected) || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
                     System.Text.Encoding.UTF8.GetBytes(secret), System.Text.Encoding.UTF8.GetBytes(expected))) return Results.NotFound();
             if (await ReadBodyAsync(http, ct) is not { } body) return Results.Ok();
-            var u = ParseBale(body);
-            if (u is null) return Results.Ok();
-            await ReplyAsync(Messenger.Bale, u, svc, send, logs, ct);
+            await RouteAsync(Messenger.Bale, body, router, send, logs, ct);
             return Results.Ok();
         });
-        bots.MapPost("/telegram", async (HttpContext http, IOptions<MessengerOptions> o, BotUpdateService svc, IMessengerSender send, TimeProvider clock,
-            ILoggerFactory logs, CancellationToken ct) =>
+        bots.MapPost("/telegram", async (HttpContext http, IOptions<MessengerOptions> o, BotUpdateService svc, Karnama.Application.Media.BotRouter router, IMessengerSender send,
+            TimeProvider clock, ILoggerFactory logs, CancellationToken ct) =>
         {
             if (await ReadBodyAsync(http, ct) is not { } body) return Results.Ok();
             if (!GatewaySignature.Verify(o.Value.TelegramGatewaySecret, http.Request.Headers[GatewaySignature.TimestampHeader], http.Request.Headers[GatewaySignature.SignatureHeader], body, clock.GetUtcNow()))
                 return Results.Unauthorized();
+            // The gateway forwards Telegram's update as is (PROMPT2 §8); the short {updateId, chatId, text} form is still accepted.
+            if (body.Contains("\"update_id\"", StringComparison.Ordinal))
+            {
+                await RouteAsync(Messenger.Telegram, body, router, send, logs, ct);
+                return Results.Ok();
+            }
             BotUpdateService.Incoming? u;
             try { u = JsonSerializer.Deserialize<BotUpdateService.Incoming>(body, JsonSerializerOptions.Web); } catch (JsonException) { return Results.Ok(); }
             if (u is null || u.ChatId == 0) return Results.Ok();
@@ -86,19 +90,15 @@ internal static class NotifyEndpoints
         return n > 64 * 1024 ? null : new string(buffer, 0, n);
     }
 
-    /// <summary>Bale uses the Telegram Bot API shape: {update_id, message:{chat:{id}, text}}.</summary>
-    internal static BotUpdateService.Incoming? ParseBale(string body)
+    private static async Task RouteAsync(Messenger m, string body, Karnama.Application.Media.BotRouter router, IMessengerSender send, ILoggerFactory logs, CancellationToken ct)
     {
-        try
+        var (chatId, reply) = await router.HandleAsync(m, body, ct);
+        if (reply is null || chatId == 0) return;
+        try { await send.SendAsync(m, chatId, reply, ct); }
+        catch (Exception e) when (e is not OperationCanceledException)
         {
-            using var doc = JsonDocument.Parse(body);
-            var root = doc.RootElement;
-            if (!root.TryGetProperty("update_id", out var id) || !root.TryGetProperty("message", out var msg)) return null;
-            if (!msg.TryGetProperty("chat", out var chat) || !chat.TryGetProperty("id", out var chatId)) return null;
-            var text = msg.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
-            return new BotUpdateService.Incoming(id.GetInt64(), chatId.GetInt64(), text);
+            logs.CreateLogger("Bots").LogWarning("Bot reply via {Messenger} failed: {Error}", m, e.GetType().Name);
         }
-        catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException) { return null; }
     }
 
     private static async Task ReplyAsync(Messenger m, BotUpdateService.Incoming u, BotUpdateService svc, IMessengerSender send, ILoggerFactory logs, CancellationToken ct)

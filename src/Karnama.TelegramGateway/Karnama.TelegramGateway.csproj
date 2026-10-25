@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Karnama.TelegramGateway</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Karnama.IntegrationTests" />
+    <InternalsVisibleTo Include="Karnama.UnitTests" />
+  </ItemGroup>
+
+</Project>

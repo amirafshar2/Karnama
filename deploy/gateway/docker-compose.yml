@@ -1,0 +1,29 @@
+# Small server OUTSIDE Iran (1 vCPU / 512 MB is enough). Only the update queue is stored here.
+#   cp .env.example .env && nano .env && docker compose up -d --build
+services:
+  gateway:
+    build:
+      context: ../..
+      dockerfile: src/Karnama.TelegramGateway/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - queue:/data/queue
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+
+  caddy:
+    image: caddy:2.10.2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      GATEWAY_DOMAIN: ${GATEWAY_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [gateway]
+
+volumes:
+  queue:
+  caddy-data:

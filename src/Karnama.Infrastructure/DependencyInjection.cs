@@ -56,6 +56,8 @@ public static class DependencyInjection
         services.AddSingleton<ITotpService, TotpService>();
         services.AddSingleton<ISecretProtector, SecretProtector>();
         services.AddSingleton<ILinkSigner, Security.LinkSigner>();
+        services.AddSingleton<IVault, Security.Vault>();
+        services.AddSingleton<IBotGateway, Notify.BotGateway>();
         services.AddScoped<DataSeeder>();
         services.AddSingleton<IMediaStore, Storage.LocalMediaStore>();
         services.AddSingleton<IFileStore, Storage.LocalFileStore>();

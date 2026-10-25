@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@/lib/query";
 import { Check, Download, Plus, RotateCcw } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useState } from "react";
 import { useErrorMessage } from "@/components/app/error-text";
 import { Button } from "@/components/ui/button";
@@ -149,6 +150,9 @@ export function PortalHome() {
         ) : (
           <p className="text-muted-foreground">{t("portal.noPackage")}</p>
         )}
+        <Link href="/profile" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline" data-testid="portal-profile-link">
+          {t("portal.profileLink")}
+        </Link>
       </section>
 
       <section aria-labelledby="ord" className="space-y-3">

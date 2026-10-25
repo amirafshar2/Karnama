@@ -2,7 +2,8 @@ using Karnama.Domain.Common;
 
 namespace Karnama.Domain.Notify;
 
-public enum Channel { InApp, Sms, Bale, Telegram, Push }
+/// <summary>BotCall: a Bot API call made through the messenger (copy a file, answer a button), carried in <see cref="OutboxMessage.Payload"/>.</summary>
+public enum Channel { InApp, Sms, Bale, Telegram, Push, BotCall }
 
 /// <summary>One message in a person's in-app inbox (always created; other channels are copies via the outbox).</summary>
 public sealed class Notification : Entity
@@ -61,6 +62,19 @@ public sealed class OutboxMessage
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset? SentAt { get; private set; }
     public string? LastError { get; private set; }
+    /// <summary>JSON of a bot call (method, args, what to do with the result). Only for <see cref="Channel.BotCall"/>.</summary>
+    public string? Payload { get; private set; }
+
+    public static OutboxMessage BotCall(Guid userId, string payloadJson, string idempotencyKey, DateTimeOffset now) =>
+        new(Channel.BotCall, userId, "bot-call", null, idempotencyKey, now, now) { Payload = payloadJson };
+
+    /// <summary>The other side said no for good (e.g. the user blocked the bot): no retries.</summary>
+    public void FailNow(string error)
+    {
+        Attempts++;
+        LastError = error.Length > 500 ? error[..500] : error;
+        Status = OutboxStatus.Failed;
+    }
 
     public void Sent(DateTimeOffset now) { Status = OutboxStatus.Sent; SentAt = now; Attempts++; LastError = null; }
     public void Skip(string why) { Status = OutboxStatus.Skipped; LastError = why; }

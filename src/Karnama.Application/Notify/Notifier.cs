@@ -16,6 +16,11 @@ public sealed class NotifyOptions
     public string PublicBaseUrl { get; set; } = "http://localhost:3000";
     public string? BaleBotUsername { get; set; }
     public string? TelegramBotUsername { get; set; }
+    /// <summary>Private archive channel (the bot is its admin): every received file is copied there first (PROMPT2 §8.3).</summary>
+    public long? TelegramArchiveChatId { get; set; }
+    public long? BaleArchiveChatId { get; set; }
+    /// <summary>Files through Bale only after checking its Bot API supports copyMessage for your bot (official docs).</summary>
+    public bool BaleFiles { get; set; }
 }
 
 /// <summary>
@@ -142,12 +147,17 @@ public sealed class BotUpdateService(IAppDbContext db, TimeProvider clock)
     public sealed record Incoming(long UpdateId, long ChatId, string? Text);
 
     /// <returns>The reply to send back to that chat (or null).</returns>
-    public async Task<string?> HandleAsync(Messenger m, Incoming u, CancellationToken ct)
+    public async Task<string?> HandleAsync(Messenger m, Incoming u, CancellationToken ct) =>
+        await ClaimAsync(m, u.UpdateId, ct) ? await HandleTextAsync(m, u.ChatId, u.Text, ct) : null;
+
+    /// <summary>Each update once, even if the platform (or the gateway's queue) delivers it again.</summary>
+    public async Task<bool> ClaimAsync(Messenger m, long updateId, CancellationToken ct) =>
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO bot_updates (\"Messenger\", \"UpdateId\", \"At\") VALUES ({(int)m}, {updateId}, {clock.GetUtcNow()}) ON CONFLICT DO NOTHING", ct) > 0;
+
+    public async Task<string?> HandleTextAsync(Messenger m, long chatId, string? rawText, CancellationToken ct)
     {
-        // Each update once, even if the platform retries it.
-        var inserted = await db.Database.ExecuteSqlInterpolatedAsync(
-            $"INSERT INTO bot_updates (\"Messenger\", \"UpdateId\", \"At\") VALUES ({(int)m}, {u.UpdateId}, {clock.GetUtcNow()}) ON CONFLICT DO NOTHING", ct);
-        if (inserted == 0) return null;
+        var u = new Incoming(0, chatId, rawText);
         var text = (u.Text ?? "").Trim();
         if (text.StartsWith("/start", StringComparison.Ordinal))
         {

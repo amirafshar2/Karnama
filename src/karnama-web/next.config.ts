@@ -17,6 +17,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${api}`,
   "font-src 'self'",
+  // Chat voice messages and private previews play from blob: URLs.
+  "media-src 'self' blob:",
   `connect-src 'self' ${api} ${hub} ${ws(hub)}`,
   "object-src 'none'",
   "base-uri 'self'",
@@ -29,7 +31,8 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  // Own origin only: QR + selfie (camera), chat voice (microphone), attendance (location); never inside frames.
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(self), payment=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   ...(process.env.NODE_ENV === "production" && api.startsWith("https://")
     ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]

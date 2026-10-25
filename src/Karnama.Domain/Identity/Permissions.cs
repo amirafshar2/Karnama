@@ -61,6 +61,16 @@ public static class Permissions
     public const string BlogPublish = "blog.publish";
     public const string LeadsManage = "leads.manage";
 
+    public const string CredentialsView = "credentials.view";
+    public const string CredentialsReveal = "credentials.reveal";
+    public const string CredentialsManage = "credentials.manage";
+
+    public const string MediaInbox = "media.inbox";
+    public const string MediaAssign = "media.assign";
+
+    public const string ChatUse = "chat.use";
+    public const string ChatGroupsManage = "chat.groups.manage";
+
     public const string CampaignsManage = "campaigns.manage";
     public const string InfluencersManage = "influencers.manage";
 
@@ -111,6 +121,16 @@ public static class Permissions
         new(BlogWrite, "blog", OwnOrAll),
         new(BlogPublish, "blog", AllOnly),
         new(LeadsManage, "clients", AllOnly),
+
+        new(CredentialsView, "credentials", AllOnly),
+        new(CredentialsReveal, "credentials", AllOnly),
+        new(CredentialsManage, "credentials", AllOnly),
+
+        new(MediaInbox, "media", AllOnly),
+        new(MediaAssign, "media", AllOnly),
+
+        new(ChatUse, "chat", [PermissionScope.Own]),
+        new(ChatGroupsManage, "chat", AllOnly),
 
         new(CampaignsManage, "campaigns", AllOnly),
         new(InfluencersManage, "campaigns", AllOnly),

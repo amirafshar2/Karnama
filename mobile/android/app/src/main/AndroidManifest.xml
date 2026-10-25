@@ -47,6 +47,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Clock-in: office QR (camera) and location check at that moment only (never in the background). -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Short voice messages in chat (PROMPT2 §7); asked only when the record button is pressed. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Reminders (publish time) as local notifications. -->

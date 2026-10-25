@@ -176,6 +176,9 @@ app.MapLeave();
 app.MapNotify();
 app.MapBlog();
 app.MapSite();
+app.MapCredentials();
+app.MapMedia();
+app.MapChat();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

@@ -6,6 +6,8 @@ namespace Karnama.Domain.Identity;
 /// One OTP send. The code itself is never stored, only an HMAC of it.
 /// Rules: valid 2 minutes, 5 attempts, single use.
 /// </summary>
+public enum OtpPurpose { Login = 0, Reveal = 1 }
+
 public sealed class OtpChallenge : Entity
 {
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(2);
@@ -19,10 +21,13 @@ public sealed class OtpChallenge : Entity
     public DateTimeOffset ExpiresAt { get; private set; }
     public int Attempts { get; private set; }
     public DateTimeOffset? ConsumedAt { get; private set; }
+    /// <summary>A code sent to re-confirm a sensitive action (e.g. seeing a password) can never log anyone in, and vice versa.</summary>
+    public OtpPurpose Purpose { get; private set; }
 
-    public static OtpChallenge Create(Guid id, string phone, string codeHash, DateTimeOffset now) => new()
+    public static OtpChallenge Create(Guid id, string phone, string codeHash, DateTimeOffset now, OtpPurpose purpose = OtpPurpose.Login) => new()
     {
         Id = id,
+        Purpose = purpose,
         Phone = phone,
         CodeHash = codeHash,
         CreatedAt = now,

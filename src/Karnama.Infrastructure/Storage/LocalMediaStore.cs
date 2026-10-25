@@ -62,7 +62,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
         return (File.OpenRead(path), type);
     }
 
-    [GeneratedRegex("^consent/[0-9a-f]{32}\\.(png|jpg|webp)$")]
+    [GeneratedRegex("^(consent|media)/[0-9a-f]{32}\\.(png|jpg|webp)$")]
     private static partial Regex PrivateIdPattern();
 
     public (Stream Stream, string ContentType)? OpenPrivate(string id)

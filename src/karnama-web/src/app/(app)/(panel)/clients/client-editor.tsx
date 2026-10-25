@@ -2,7 +2,10 @@
 
 import { useQuery, useQueryClient } from "@/lib/query";
 import { Plus, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { hasPermission } from "@/lib/types";
 import { EditorSheet } from "@/components/app/editor-sheet";
 import { useErrorMessage } from "@/components/app/error-text";
 import { JalaliDateField, SelectField, TextArea, TextField } from "@/components/app/form";
@@ -17,8 +20,10 @@ import { registerTexts as registerFormTexts } from "@/lib/i18n/registry";
 
 registerFormTexts(faM2Forms);
 
+const Credentials = dynamic(() => import("@/components/vault/credentials").then((m) => m.Credentials), { ssr: false });
+
 type Account = { platformId: string; handle: string; management: string };
-type ClientPackage = { id: string; name: string; startsAt: string; endsAt: string; daysLeft: number; totalDays: number; price: number; quotas: { serviceTypeId: string; count: number; serviceName: string | null }[] };
+type ClientPackage = { id: string; name: string; startsAt: string; endsAt: string; daysLeft: number; totalDays: number; price: number; quotas: { serviceTypeId: string; count: number; serviceName: string | null }[]; used?: Record<string, number> | null };
 type Client = {
   id: string;
   businessName: string;
@@ -49,6 +54,7 @@ export function ClientEditor(props: Props) {
 
 function ClientForm({ id, onClose, onSaved, onChanged, initial }: Props & { initial: Client }) {
   const { t } = useI18n();
+  const { me } = useAuth();
   const qc = useQueryClient();
   const isNew = id === "new";
   const platforms = useQuery({ queryKey: ["platforms"], queryFn: () => api<{ id: string; name: string; isActive: boolean }[]>("/api/v1/platforms") });
@@ -119,6 +125,11 @@ function ClientForm({ id, onClose, onSaved, onChanged, initial }: Props & { init
           </section>
 
           {!isNew && <PackagesPanel client={c} onChange={reload} />}
+          {!isNew && hasPermission(me, "credentials.view", "all") && (
+            <div className="rounded-xl border p-4">
+              <Credentials mode={{ kind: "staff", clientId: id, canManage: hasPermission(me, "credentials.manage", "all"), canReveal: hasPermission(me, "credentials.reveal", "all") }} accounts={c.accounts} />
+            </div>
+          )}
         </>
       )}
     </EditorSheet>
@@ -165,7 +176,16 @@ function PackagesPanel({ client, onChange }: { client: Client; onChange: (c: Cli
             <div className="h-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, (ap.daysLeft / Math.max(1, ap.totalDays)) * 100))}%` }} />
           </div>
           <p className="text-sm">{t("clients.remaining", { total: formatNumber(ap.totalDays), left: formatNumber(ap.daysLeft) })}</p>
-          <p className="text-sm text-muted-foreground">{ap.quotas.map((q) => `${formatNumber(q.count)} ${q.serviceName ?? ""}`).join("، ")}</p>
+          <ul className="grid gap-1 text-sm sm:grid-cols-2" data-testid="client-quotas">
+            {ap.quotas.map((q) => {
+              const used = ap.used?.[q.serviceTypeId] ?? 0;
+              return (
+                <li key={q.serviceTypeId} className={used >= q.count ? "font-semibold text-destructive" : "text-muted-foreground"}>
+                  {q.serviceName}: {t("clients.quotaUse", { used: formatNumber(used), total: formatNumber(q.count) })}
+                </li>
+              );
+            })}
+          </ul>
           {confirmCancel ? (
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="destructive" className="h-11" disabled={working} onClick={() => run(() => api<Client>(`/api/v1/clients/${client.id}/packages/${ap.id}/cancel`, { method: "POST" }), t("crud.saved"))} data-testid="package-cancel-yes">

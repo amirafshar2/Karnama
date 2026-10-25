@@ -26,3 +26,32 @@ public interface ILinkSigner
     /// <returns>The payload, or null if the token is forged, altered or expired.</returns>
     string? Verify(string token);
 }
+
+/// <summary>
+/// Envelope encryption for the credential vault (PROMPT2 §10.2): every record gets its own random AES-256-GCM data key,
+/// wrapped by a master key that never touches the database. <paramref name="context"/> is bound as associated data
+/// (the record id), so a ciphertext copied onto another row does not open.
+/// </summary>
+public interface IVault
+{
+    bool IsConfigured { get; }
+    SealedSecret Seal(byte[] plain, string context);
+    /// <returns>The plain bytes, or null if the data was altered, belongs to another record or its key is gone.</returns>
+    byte[]? Open(SealedSecret sealedSecret, string context);
+}
+
+public sealed record SealedSecret(byte[] Cipher, byte[] WrappedKey, int KeyVersion);
+
+/// <summary>
+/// Bot API calls through the messenger (Telegram: the signed gateway outside Iran; Bale: its own API).
+/// <see cref="BotCallResult.Permanent"/> = the messenger refused for good (blocked bot, deleted message): don't retry.
+/// </summary>
+public interface IBotGateway
+{
+    bool IsConfigured(Domain.Notify.Messenger messenger);
+    Task<BotCallResult> CallAsync(Domain.Notify.Messenger messenger, string method, System.Text.Json.Nodes.JsonObject args, CancellationToken ct);
+    /// <summary>A small preview (≤ 1 MB) by file id, or null.</summary>
+    Task<byte[]?> ThumbnailAsync(Domain.Notify.Messenger messenger, string fileId, CancellationToken ct);
+}
+
+public sealed record BotCallResult(bool Ok, bool Permanent, string? ResultJson, string? Error);

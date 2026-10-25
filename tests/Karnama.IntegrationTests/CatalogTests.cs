@@ -185,7 +185,7 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
         {
             [Permissions.UsersManage] = PermissionScope.All, [Permissions.WorkView] = PermissionScope.All, [Permissions.WorkRun] = PermissionScope.All,
             [Permissions.OrdersView] = PermissionScope.All, [Permissions.AttendanceSelf] = PermissionScope.Own, [Permissions.AttendanceView] = PermissionScope.All,
-            [Permissions.ReportsView] = PermissionScope.All,
+            [Permissions.ReportsView] = PermissionScope.All, [Permissions.ChatUse] = PermissionScope.Own,
         });
         (await withWork.PostAsJsonAsync("/api/v1/users", new { displayName = "تدوینگر دوم", phone = "09127772223", roleIds = new[] { RoleId("تدوینگر") }, isActive = true }))
             .StatusCode.Should().Be(HttpStatusCode.Created);

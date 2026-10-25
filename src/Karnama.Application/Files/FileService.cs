@@ -208,6 +208,7 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
         }
         if (At(h, 0, [0x1A, 0x45, 0xDF, 0xA3])) return "webm";
         if (At(h, 0, "%PDF-"u8)) return "pdf";
+        if (At(h, 0, "OggS"u8)) return "ogg";
         if (At(h, 0, [0x50, 0x4B, 0x03, 0x04])) return "zip";
         if (At(h, 0, "8BPS"u8)) return "psd";
         if (At(h, 0, "ID3"u8) || At(h, 0, [0xFF, 0xFB]) || At(h, 0, [0xFF, 0xF3])) return "mp3";

@@ -1,0 +1,35 @@
+export type Member = { id: string; name: string; isClient: boolean };
+export type Conversation = {
+  id: string;
+  kind: "direct" | "group" | "work";
+  title: string;
+  orderId: string | null;
+  otherUserId: string | null;
+  otherIsClient: boolean;
+  lastPreview: string | null;
+  lastMessageAt: string;
+  unread: number;
+  muted: boolean;
+  members: Member[];
+};
+export type Message = {
+  id: number;
+  conversationId: string;
+  authorId: string;
+  authorName: string;
+  mine: boolean;
+  kind: "text" | "image" | "voice" | "file";
+  body: string | null;
+  fileName: string | null;
+  contentType: string | null;
+  fileSize: number | null;
+  durationSeconds: number | null;
+  createdAt: string;
+  editedAt: string | null;
+  deleted: boolean;
+  canEdit: boolean;
+  clientKey: string;
+};
+export type MessagesPage = { items: Message[]; othersReadUpTo: number; hasOlder: boolean };
+export type Contact = { id: string; name: string; isClient: boolean; note: string | null };
+export type SearchHit = { id: number; conversationId: string; conversationTitle: string; authorName: string; snippet: string; createdAt: string };

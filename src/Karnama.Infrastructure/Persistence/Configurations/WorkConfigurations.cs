@@ -103,6 +103,7 @@ internal sealed class OutboxConfiguration : IEntityTypeConfiguration<Karnama.Dom
         b.Property(x => x.Link).HasMaxLength(300);
         b.Property(x => x.IdempotencyKey).HasMaxLength(200).IsRequired();
         b.Property(x => x.LastError).HasMaxLength(500);
+        b.Property(x => x.Payload).HasMaxLength(8000);
         b.HasIndex(x => x.IdempotencyKey).IsUnique();
         b.HasIndex(x => new { x.Status, x.DueAt });
     }

@@ -42,12 +42,17 @@ public static class DependencyInjection
         services.AddScoped<Notify.Notifier>();
         services.AddScoped<Notify.InboxService>();
         services.AddScoped<Notify.BotUpdateService>();
+        services.AddScoped<Media.MediaService>();
+        services.AddScoped<Media.BotRouter>();
+        services.AddScoped<Chat.ChatService>();
         services.AddScoped<Notify.PackageExpiryJob>();
         services.AddScoped<Publishing.PublishService>();
         services.AddScoped<Blog.BlogService>();
         services.AddScoped<Site.SiteContentStore>();
         services.AddScoped<Site.PublicSiteService>();
         services.AddScoped<Site.CaseStudyService>();
+        services.AddScoped<Clients.CredentialService>();
+        services.AddScoped<Clients.PackageNoticeSettingsStore>();
         return services;
     }
 }

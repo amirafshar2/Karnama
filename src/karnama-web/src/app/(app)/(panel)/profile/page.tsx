@@ -13,6 +13,7 @@ import { faProfile } from "@/lib/i18n/fa-pages";
 import { registerTexts as registerPageTexts } from "@/lib/i18n/registry";
 import dynamic from "next/dynamic";
 
+const PortalProfile = dynamic(() => import("@/components/portal/portal-profile").then((m) => m.PortalProfile), { ssr: false });
 const NotifyPrefs = dynamic(() => import("@/components/notify/notify-prefs").then((m) => m.NotifyPrefs), { ssr: false });
 
 registerPageTexts(faProfile);
@@ -36,8 +37,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-xl space-y-8">
+    <div className={`${me.kind === "client" ? "max-w-3xl" : "max-w-xl"} space-y-8`}>
       <h1 className="text-2xl font-extrabold">{t("profile.title")}</h1>
+      {me.kind === "client" && <PortalProfile />}
 
       <section className="rounded-xl border bg-card p-5">
         <p className="text-lg font-bold">{me.displayName}</p>

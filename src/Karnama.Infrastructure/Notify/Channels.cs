@@ -122,6 +122,11 @@ public sealed class OutboxDispatcher(IServiceScopeFactory scopes, ILogger<Outbox
             """).ToListAsync(ct);
         foreach (var m in batch)
         {
+            if (m.Channel == Channel.BotCall)
+            {
+                await BotCallAsync(scope.ServiceProvider, m, clock, ct);
+                continue;
+            }
             var text = m.Link is null ? m.Text : $"{m.Text}\n{baseUrl}{m.Link}";
             try
             {
@@ -153,5 +158,42 @@ public sealed class OutboxDispatcher(IServiceScopeFactory scopes, ILogger<Outbox
         }
         await db.SaveChangesAsync(ct);
         return batch.Count;
+    }
+
+    /// <summary>A Bot API call (copy a file, answer a button). The result goes back to the media service once final.</summary>
+    private async Task BotCallAsync(IServiceProvider sp, OutboxMessage m, TimeProvider clock, CancellationToken ct)
+    {
+        var gateway = sp.GetRequiredService<IBotGateway>();
+        var media = sp.GetRequiredService<Karnama.Application.Media.MediaService>();
+        Karnama.Application.Media.BotCallPayload? p;
+        try { p = JsonSerializer.Deserialize<Karnama.Application.Media.BotCallPayload>(m.Payload ?? "", JsonSerializerOptions.Web); }
+        catch (JsonException) { p = null; }
+        if (p is null) { m.Skip("bad payload"); return; }
+        if (!gateway.IsConfigured(p.Messenger)) { m.Skip("messenger not configured"); return; }
+        try
+        {
+            if (p.Method == "thumb")
+            {
+                var bytes = await gateway.ThumbnailAsync(p.Messenger, p.Args["file_id"]?.GetValue<string>() ?? "", ct);
+                if (bytes is not null && p.MediaId is { } id) await media.StoreThumbAsync(id, bytes, ct);
+                m.Sent(clock.GetUtcNow());
+                return;
+            }
+            var r = await gateway.CallAsync(p.Messenger, p.Method, p.Args, ct);
+            if (r.Ok)
+            {
+                m.Sent(clock.GetUtcNow());
+                await media.ApplyResultAsync(p, true, r.ResultJson, null, ct);
+                return;
+            }
+            if (r.Permanent) m.FailNow(r.Error ?? "refused");
+            else m.Fail(r.Error ?? "error", clock.GetUtcNow());
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning("Bot call {Id} ({Method}) failed: {Error}", m.Id, p.Method, ex.GetType().Name);
+            m.Fail(ex.GetType().Name, clock.GetUtcNow());
+        }
+        if (m.Status == OutboxStatus.Failed) await media.ApplyResultAsync(p, false, null, m.LastError, ct);
     }
 }

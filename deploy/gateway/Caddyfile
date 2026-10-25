@@ -1,0 +1,12 @@
+{$GATEWAY_DOMAIN} {
+	encode zstd gzip
+	# Only Telegram's webhook and the signed calls from the Iran API are served; everything else is 404.
+	@allowed path /tg/* /v1/* /health
+	handle @allowed {
+		reverse_proxy gateway:8080
+	}
+	handle {
+		respond 404
+	}
+	header -Server
+}

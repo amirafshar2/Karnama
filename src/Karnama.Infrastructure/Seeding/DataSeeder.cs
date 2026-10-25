@@ -14,7 +14,7 @@ namespace Karnama.Infrastructure.Seeding;
 /// Idempotent seed. Always: languages and system roles (owner grants are re-synced with the permission catalog).
 /// Demo mode only: sample roles and demo accounts (IsDemo = true). Every text is sample data, editable from the panel.
 /// </summary>
-public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, ILogger<DataSeeder> logger)
+public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, ILogger<DataSeeder> logger, Karnama.Application.Abstractions.IVault vault)
 {
     public const string OwnerDemoPhone = "09000000000";
 
@@ -35,6 +35,8 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             await DemoWorkSeed.SeedPublishingAsync(db, ct);
             await DemoBlogSeed.SeedAsync(db, ct);
             await DemoSiteSeed.SeedAsync(db, ct);
+            await DemoVaultSeed.SeedAsync(db, vault, ct);
+            await DemoMediaSeed.SeedAsync(db, ct);
             await SyncDemoAdminAsync(ct);
         }
         logger.LogInformation("Seed completed (mode: {Mode})", options.Value.Mode);
@@ -102,6 +104,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             new(Permissions.AttendanceSelf, PermissionScope.Own),
             new(Permissions.AttendanceView, PermissionScope.Own),
             new(Permissions.ReportsView, PermissionScope.Own),
+            new(Permissions.ChatUse, PermissionScope.Own),
         ];
         var editorRole = Role.Create(Name("تدوینگر", "Video editor"), "تدوین ریلز و ویدیو", worker).Value;
         var writerRole = Role.Create(Name("عکاس و متن‌نویس", "Photographer & copywriter"), "عکاسی، کپشن و متن", [.. worker, new(Permissions.BlogWrite, PermissionScope.Own)]).Value;
@@ -129,8 +132,18 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         var phone = DemoAccounts.Find("admin")!.Phone;
         var roleId = await db.Users.Where(u => u.Phone == phone && u.IsDemo).SelectMany(u => u.Roles.Select(r => r.RoleId)).FirstOrDefaultAsync(ct);
         var role = await db.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == roleId && r.SystemKey == null, ct);
-        if (role is null || role.Permissions.Count == Permissions.Catalog.Count) return;
-        role.Update(role.Name, role.Description, Permissions.Catalog.Select(p => new PermissionGrant(p.Code, p.MaxScope)));
+        if (role is not null && role.Permissions.Count != Permissions.Catalog.Count)
+            role.Update(role.Name, role.Description, Permissions.Catalog.Select(p => new PermissionGrant(p.Code, p.MaxScope)));
+
+        // Demo installs made before a permission existed: give the demo team the new everyday ones (chat).
+        var demoRoleIds = await db.Users.Where(u => u.IsDemo && u.Kind == UserKind.Staff).SelectMany(u => u.Roles.Select(r => r.RoleId)).Distinct().ToListAsync(ct);
+        foreach (var r in await db.Roles.Include(x => x.Permissions).Where(x => demoRoleIds.Contains(x.Id) && x.SystemKey == null).ToListAsync(ct))
+        {
+            if (r.Permissions.Any(g => g.Code == Permissions.ChatUse || g.Code == Permissions.ChatGroupsManage)) continue;
+            var grants = r.Permissions.Select(g => new PermissionGrant(g.Code, g.Scope)).ToList();
+            grants.Add(grants.Any(g => g.Code == Permissions.WorkAssign) ? new PermissionGrant(Permissions.ChatGroupsManage, PermissionScope.All) : new PermissionGrant(Permissions.ChatUse, PermissionScope.Own));
+            r.Update(r.Name, r.Description, grants);
+        }
         await db.SaveChangesAsync(ct);
     }
 

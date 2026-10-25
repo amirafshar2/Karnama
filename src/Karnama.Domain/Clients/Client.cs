@@ -132,20 +132,35 @@ public sealed class ClientPackage : AuditableEntity
         };
     }
 
-    /// <summary>Smallest "days left" threshold already announced (7, 3, 1), so each reminder goes out once.</summary>
+    /// <summary>Smallest "days left" threshold already announced (e.g. 7, 3, 1, 0 = the last day), so each reminder goes out once.</summary>
     public int? ExpiryNoticeSent { get; private set; }
 
-    /// <summary>True when a new threshold was crossed and a reminder should go out now.</summary>
-    public bool NeedsExpiryNotice(DateTimeOffset now, out int threshold)
+    /// <summary>
+    /// True when a new threshold was crossed and a reminder should go out now. <paramref name="daysLeft"/> counts calendar
+    /// days in the agency's time zone (0 = today is the last day); thresholds come from the panel.
+    /// Only the closest crossed threshold is announced: a job that missed days never sends a burst of old reminders.
+    /// </summary>
+    public bool NeedsExpiryNotice(int daysLeft, IReadOnlyCollection<int> thresholds, out int threshold)
     {
-        threshold = 0;
-        if (Status != ClientPackageStatus.Active) return false;
-        var left = DaysLeft(now);
-        foreach (var t in new[] { 1, 3, 7 })
+        threshold = -1;
+        if (Status != ClientPackageStatus.Active || daysLeft < 0) return false;
+        foreach (var t in thresholds.Where(t => t >= 0).Distinct().Order())
         {
-            if (left <= t && (ExpiryNoticeSent is null || ExpiryNoticeSent > t)) { threshold = t; ExpiryNoticeSent = t; return true; }
+            if (daysLeft > t) continue;
+            if (ExpiryNoticeSent is not null && ExpiryNoticeSent <= t) return false;
+            threshold = t;
+            ExpiryNoticeSent = t;
+            return true;
         }
         return false;
+    }
+
+    /// <summary>The contract time is over: the package stops counting as active.</summary>
+    public bool EndIfOver(DateTimeOffset now)
+    {
+        if (Status != ClientPackageStatus.Active || EndsAt > now) return false;
+        Status = ClientPackageStatus.Ended;
+        return true;
     }
 
     public int DaysLeft(DateTimeOffset now) => Status != ClientPackageStatus.Active ? 0 : Math.Max(0, (int)Math.Ceiling((EndsAt - now).TotalDays));

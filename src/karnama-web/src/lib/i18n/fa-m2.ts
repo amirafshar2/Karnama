@@ -55,6 +55,7 @@ export const faM2 = {
   "clients.cancelPackage": "لغو این پکیج",
   "clients.history": "پکیج‌های قبلی",
   "clients.remaining": "از {total} روز، {left} روز مانده",
+  "clients.quotaUse": "{used} از {total}",
 
   "packages.title": "پکیج‌های فروش",
   "packages.subtitle": "هر پکیج مثل یک محصول: قیمت، سهمیه‌ها، مدت اعتبار و توضیحات.",

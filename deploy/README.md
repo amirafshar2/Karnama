@@ -7,7 +7,7 @@
 1. Docker و پلاگین compose را نصب کنید. چون Docker Hub از ایران گاهی بسته است، میرور داخلی بگذارید (مثلاً `docker.arvancloud.ir`) در `/etc/docker/daemon.json`:
    `{ "registry-mirrors": ["https://docker.arvancloud.ir"] }`
 2. کد را در `/opt/karnama` بگذارید.
-3. رمزها: `python3 tools/new-env.py --prod` → `deploy/.env.prod` ساخته می‌شود؛ دامنه‌ها و کلید پیامک/بله را پر کنید؛ `chmod 600 deploy/.env.prod`.
+3. رمزها: `python3 tools/new-env.py --prod` → `deploy/.env.prod` ساخته می‌شود؛ دامنه‌ها و کلید پیامک/بله را پر کنید؛ `chmod 600 deploy/.env.prod`. **مقدار `VAULT_MASTER_KEY` را جای امن دیگری هم یادداشت کنید** (جدا از بکاپ سرور): بدون آن رمز حساب مشتری‌ها باز نمی‌شود.
 4. DNS: `example.ir` و `api.example.ir` به IP سرور (یا پشت CDN ابر آروان با «دسترسی بین‌الملل» روشن تا گوگل سایت را ببیند).
 5. اجرا:
    `docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d --build`

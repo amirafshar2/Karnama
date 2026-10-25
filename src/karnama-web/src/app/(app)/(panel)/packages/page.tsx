@@ -12,9 +12,14 @@ import { useI18n } from "@/lib/i18n/provider";
 import { registerTexts, type TextKey } from "@/lib/i18n/registry";
 import { notify } from "@/lib/notify";
 import { API_BASE } from "@/lib/config";
+import { BellRing } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { faN4 } from "@/lib/i18n/fa-n4";
 
 registerTexts(faM2);
+registerTexts({ "notices.open": faN4["notices.open"] });
 
+const NoticeSettings = dynamic(() => import("./notice-settings").then((m) => m.NoticeSettings), { ssr: false });
 const PackageEditor = dynamic(() => import("./package-editor").then((m) => m.PackageEditor), { ssr: false });
 
 export type PackageItem = {
@@ -45,6 +50,7 @@ export default function PackagesPage() {
   const { t, formatNumber } = useI18n();
   const qc = useQueryClient();
   const [editing, setEditing] = useState<string | null>(null);
+  const [notices, setNotices] = useState(false);
   if (!allowed) return null;
 
   const price = (p: PackageItem) => (
@@ -95,6 +101,14 @@ export default function PackagesPage() {
         emptyText={t("packages.empty")}
         exportPath={canManage ? "/api/v1/packages/export" : undefined}
         historyType={canManage ? "Package" : undefined}
+        filters={
+          canManage ? (
+            <Button variant="outline" className="h-12 md:h-11" onClick={() => setNotices(true)} data-testid="notices-open">
+              <BellRing aria-hidden="true" />
+              {t("notices.open")}
+            </Button>
+          ) : undefined
+        }
         card={(p) => (
           <>
             <div className="flex items-start justify-between gap-2">
@@ -106,6 +120,7 @@ export default function PackagesPage() {
           </>
         )}
       />
+      {notices && <NoticeSettings onClose={() => setNotices(false)} />}
       {editing && (
         <PackageEditor
           id={editing}

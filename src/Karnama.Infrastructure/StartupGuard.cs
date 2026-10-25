@@ -31,6 +31,12 @@ public static class StartupGuard
             var networks = config.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [];
             if (proxies.Length == 0 && networks.Length == 0)
                 errors.Add("ReverseProxy__KnownNetworks__0 (مثل 172.16.0.0/12) یا ReverseProxy__KnownProxies__0 خالی است؛ بدون آن محدودیت درخواست‌ها پشت Nginx درست کار نمی‌کند.");
+            var vaultKey = config["Vault:MasterKey"];
+            bool validKey;
+            try { validKey = !string.IsNullOrWhiteSpace(vaultKey) && Convert.FromBase64String(vaultKey.Trim()).Length == 32; }
+            catch (FormatException) { validKey = false; }
+            if (!validKey)
+                errors.Add("Vault__MasterKey در Production الزامی است (۳۲ بایت تصادفی به‌صورت base64؛ با tools/new-env.py --prod بسازید). بدون آن رمز حساب مشتری‌ها ذخیره نمی‌شود. این کلید را جدا از بکاپ دیتابیس نگه دارید.");
             if (config.GetValue<bool>("Database:AutoMigrate"))
                 errors.Add("Database__AutoMigrate در Production مجاز نیست؛ اسکریپت Migration بازبینی‌شده اجرا کنید.");
         }

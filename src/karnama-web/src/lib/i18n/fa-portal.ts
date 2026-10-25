@@ -28,4 +28,5 @@ export const faPortal = {
   "portal.messages": "پیام‌ها",
   "portal.noMessages": "پیامی نیست.",
   "portal.files": "فایل‌ها",
+  "portal.profileLink": "پروفایل، درخواست تمدید و اطلاعات ورود حساب‌ها",
 } as const;

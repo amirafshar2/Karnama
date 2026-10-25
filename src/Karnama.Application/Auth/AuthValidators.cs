@@ -43,7 +43,7 @@ public sealed class DemoLoginValidator : AbstractValidator<DemoLoginRequest>
     }
 }
 
-internal static class Digits
+public static class Digits
 {
     public static string ToLatin(string s)
     {

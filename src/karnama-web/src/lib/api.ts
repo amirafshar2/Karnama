@@ -170,3 +170,11 @@ export async function uploadForm<T>(path: string, form: FormData): Promise<T> {
   }
   return (await res.json()) as T;
 }
+
+/** Authenticated binary GET (private previews); one token refresh on 401. */
+export async function apiBlob(path: string): Promise<Blob> {
+  let res = await rawFetch(path, {});
+  if (res.status === 401 && (await refreshSession())) res = await rawFetch(path, {});
+  if (!res.ok) throw await toError(res);
+  return res.blob();
+}

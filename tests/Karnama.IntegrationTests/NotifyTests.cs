@@ -137,7 +137,7 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
 
         // /stop from the chat unlinks it.
         await anon.PostAsJsonAsync("/api/v1/bots/bale/" + KarnamaFactory.BaleSecret, Update(9004, "/stop"));
-        (await Ok(await editor.GetAsync("/api/v1/notifications/prefs"))).GetProperty("linked").GetArrayLength().Should().Be(0);
+        (await Ok(await editor.GetAsync("/api/v1/notifications/prefs"))).GetProperty("linked").EnumerateArray().Select(x => x.GetString()).Should().NotContain("bale");
     }
 
     [Fact]

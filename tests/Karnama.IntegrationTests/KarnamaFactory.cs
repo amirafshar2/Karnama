@@ -102,6 +102,28 @@ public sealed class CapturingMessenger : Karnama.Infrastructure.Notify.IMessenge
     }
 }
 
+/// <summary>Stands in for the Telegram gateway / Bale API: records calls; chats listed in <see cref="Blocked"/> answer 403.</summary>
+public sealed class CapturingBotGateway : Karnama.Application.Abstractions.IBotGateway
+{
+    public ConcurrentQueue<(Karnama.Domain.Notify.Messenger M, string Method, System.Text.Json.Nodes.JsonObject Args)> Calls { get; } = new();
+    public HashSet<long> Blocked { get; } = [];
+    private long _messageId = 1000;
+
+    public bool IsConfigured(Karnama.Domain.Notify.Messenger messenger) => true;
+
+    public Task<Karnama.Application.Abstractions.BotCallResult> CallAsync(Karnama.Domain.Notify.Messenger m, string method, System.Text.Json.Nodes.JsonObject args, CancellationToken ct)
+    {
+        Calls.Enqueue((m, method, (System.Text.Json.Nodes.JsonObject)args.DeepClone()));
+        if (args["chat_id"] is { } chat && Blocked.Contains(chat.GetValue<long>()))
+            return Task.FromResult(new Karnama.Application.Abstractions.BotCallResult(false, true, null, "403: Forbidden: bot was blocked by the user"));
+        var id = Interlocked.Increment(ref _messageId);
+        return Task.FromResult(new Karnama.Application.Abstractions.BotCallResult(true, false, $"{{\"message_id\":{id}}}", null));
+    }
+
+    public Task<byte[]?> ThumbnailAsync(Karnama.Domain.Notify.Messenger m, string fileId, CancellationToken ct) =>
+        Task.FromResult<byte[]?>([0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46, 0x49, 0x46]);
+}
+
 public class KarnamaFactory(string connectionString, bool demoLogin = true, string seedMode = "Demo", string environment = "Development")
     : WebApplicationFactory<Program>
 {
@@ -110,6 +132,8 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
     public CapturingSms Sms { get; } = new();
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
     public CapturingMessenger Messenger { get; } = new();
+    public CapturingBotGateway Bots { get; } = new();
+    public const long ArchiveChat = -1001234567890;
     public const string BaleSecret = "bale-webhook-secret-test-0123456789";
     public const string GatewaySecret = "telegram-gateway-secret-test-0123456789";
 
@@ -123,6 +147,7 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
         builder.UseSetting("Jwt:SigningKey", "integration-test-signing-key-0123456789-abcdef");
         builder.UseSetting("Otp:HashKey", "integration-test-otp-hash-key-0123456789-abcdef");
         builder.UseSetting("Setup:Token", SetupToken);
+        builder.UseSetting("Vault:MasterKey", "dGVzdC12YXVsdC1tYXN0ZXIta2V5LTMyLWJ5dGVzISE=");
         builder.UseSetting("Seed:Mode", seedMode);
         builder.UseSetting("DemoLogin:Enabled", demoLogin ? "true" : "false");
         builder.UseSetting("Database:AutoMigrate", "true");
@@ -134,10 +159,13 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
         builder.UseSetting("Messengers:BaleWebhookSecret", BaleSecret);
         builder.UseSetting("Messengers:TelegramGatewaySecret", GatewaySecret);
         builder.UseSetting("Notify:BaleBotUsername", "karnama_test_bot");
+        builder.UseSetting("Notify:TelegramArchiveChatId", ArchiveChat.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.ConfigureServices(s =>
         {
             s.RemoveAll<Karnama.Infrastructure.Notify.IMessengerSender>();
             s.AddSingleton<Karnama.Infrastructure.Notify.IMessengerSender>(Messenger);
+            s.RemoveAll<Karnama.Application.Abstractions.IBotGateway>();
+            s.AddSingleton<Karnama.Application.Abstractions.IBotGateway>(Bots);
             s.RemoveAll<ISmsSender>();
             s.AddSingleton<ISmsSender>(Sms);
             s.RemoveAll<TimeProvider>();

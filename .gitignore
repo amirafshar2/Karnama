@@ -3,6 +3,7 @@
 .env.*
 !deploy/.env.prod.example
 !.env.example
+!deploy/gateway/.env.example
 *.keystore
 *.jks
 keystore.properties

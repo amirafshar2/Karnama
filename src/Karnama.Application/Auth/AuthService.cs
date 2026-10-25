@@ -34,7 +34,7 @@ public sealed class AuthService(
         var windowStart = now.AddMinutes(-10);
 
         var recent = await db.OtpChallenges.AsNoTracking()
-            .Where(c => c.Phone == phone && c.CreatedAt > windowStart)
+            .Where(c => c.Phone == phone && c.CreatedAt > windowStart && c.Purpose == OtpPurpose.Login)
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => c.CreatedAt)
             .ToListAsync(ct);
@@ -66,7 +66,7 @@ public sealed class AuthService(
     public async Task<Result<LoginResult>> VerifyOtpAsync(VerifyOtpRequest request, ClientKind client, CancellationToken ct)
     {
         var now = clock.GetUtcNow();
-        var challenge = await db.OtpChallenges.AsNoTracking().FirstOrDefaultAsync(c => c.Id == request.ChallengeId, ct);
+        var challenge = await db.OtpChallenges.AsNoTracking().FirstOrDefaultAsync(c => c.Id == request.ChallengeId && c.Purpose == OtpPurpose.Login, ct);
         if (challenge is null) return OtpChallenge.WrongCode;
 
         // Claim one attempt atomically: parallel guesses can never exceed MaxAttempts.
