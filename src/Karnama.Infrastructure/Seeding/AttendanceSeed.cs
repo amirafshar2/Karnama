@@ -30,6 +30,21 @@ internal static class AttendanceSeed
             db.AttendancePolicies.Add(AttendancePolicy.Create("فیلمبردار و عکاس بیرون", "Geofence & Selfie", [], [], false).Value!);
         }
 
+        if (!await db.LeaveTypes.AnyAsync(ct))
+        {
+            // Defaults from the Iranian labour law (26 paid days a year); every one editable in the panel.
+            (string Name, LeaveKind Kind, bool Paid, bool Doc, decimal? Days, string Color)[] types =
+            [
+                ("مرخصی استحقاقی", LeaveKind.Annual, true, false, 26, "#1E88E5"),
+                ("مرخصی استعلاجی", LeaveKind.Sick, true, true, null, "#C62828"),
+                ("ماموریت (کار بیرون)", LeaveKind.Mission, true, false, null, "#8E24AA"),
+                ("غیبت موجه", LeaveKind.ExcusedAbsence, false, false, null, "#F9A825"),
+                ("مرخصی بدون حقوق", LeaveKind.Other, false, false, null, "#6D4C41"),
+            ];
+            var order = 0;
+            foreach (var t in types) db.LeaveTypes.Add(LeaveType.Create(t.Name, t.Kind, t.Paid, t.Doc, t.Days, t.Color, order++).Value!);
+        }
+
         if (demo)
         {
             if (!await db.AttendancePlaces.AnyAsync(ct))

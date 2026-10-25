@@ -39,6 +39,8 @@ export const faCore = {
   "nav.work": "تابلوی کار",
   "nav.orders": "سفارش‌ها",
   "nav.attendance": "حضور و ساعت",
+  "nav.calendar": "تقویم حضور",
+  "nav.attReport": "گزارش حضور",
   "nav.live": "حضور زنده‌ی تیم",
   "nav.attSetup": "تنظیم حضور",
   "nav.kiosk": "QR دفتر",

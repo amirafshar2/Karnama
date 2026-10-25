@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@/lib/query";
 import { useState } from "react";
 import { DynamicForm, type FormFieldDef } from "@/components/app/dynamic-form";
 import { EditorSheet } from "@/components/app/editor-sheet";

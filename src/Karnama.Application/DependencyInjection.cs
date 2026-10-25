@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<Attendance.AttendanceSettingsStore>();
         services.AddScoped<Attendance.AttendanceService>();
         services.AddScoped<Attendance.AttendanceAdminService>();
+        services.AddScoped<Attendance.LeaveService>();
         return services;
     }
 }

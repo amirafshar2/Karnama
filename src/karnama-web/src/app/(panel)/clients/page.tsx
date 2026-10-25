@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@/lib/query";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { CrudList, type Column } from "@/components/app/crud-list";

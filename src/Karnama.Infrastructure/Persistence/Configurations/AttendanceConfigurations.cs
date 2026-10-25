@@ -109,3 +109,41 @@ internal sealed class KioskCodeUseConfiguration : IEntityTypeConfiguration<Kiosk
         b.HasKey(x => new { x.Step, x.N });
     }
 }
+
+internal sealed class LeaveTypeConfiguration : IEntityTypeConfiguration<LeaveType>
+{
+    public void Configure(EntityTypeBuilder<LeaveType> b)
+    {
+        b.ToTable("leave_types");
+        b.Property(x => x.Name).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Color).HasMaxLength(7).IsRequired();
+        b.Property(x => x.AnnualDays).HasPrecision(6, 2);
+        b.Property(x => x.Version).IsRowVersion();
+    }
+}
+
+internal sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<LeaveRequest>
+{
+    public void Configure(EntityTypeBuilder<LeaveRequest> b)
+    {
+        b.ToTable("leave_requests");
+        b.Property(x => x.Reason).HasMaxLength(LeaveRequest.MaxReason).IsRequired();
+        b.Property(x => x.DecisionNote).HasMaxLength(1000);
+        b.Property(x => x.Version).IsRowVersion();
+        b.HasIndex(x => new { x.UserId, x.From, x.To });
+        b.HasIndex(x => new { x.Status, x.CreatedAt });
+    }
+}
+
+internal sealed class AbsenceConfiguration : IEntityTypeConfiguration<Absence>
+{
+    public void Configure(EntityTypeBuilder<Absence> b)
+    {
+        b.ToTable("absences");
+        b.Property(x => x.Reason).HasMaxLength(1000);
+        b.Property(x => x.DecisionNote).HasMaxLength(1000);
+        b.Property(x => x.Version).IsRowVersion();
+        b.HasIndex(x => new { x.UserId, x.Day }).IsUnique();   // one per person per day, even if two workers run the job
+        b.HasIndex(x => new { x.Status, x.ReasonDeadline });
+    }
+}

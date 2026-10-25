@@ -50,3 +50,39 @@ internal static class AttendanceEndpoints
         }).WithTags("Attendance").RequirePermission(Permissions.AttendanceKiosk, PermissionScope.All);
     }
 }
+
+/// <summary>M5: leave, absence and lateness.</summary>
+internal static class LeaveEndpoints
+{
+    public static void MapLeave(this IEndpointRouteBuilder app)
+    {
+        var self = app.MapGroup("/api/v1/leave").WithTags("Leave")
+            .RequirePermission(Permissions.AttendanceSelf, PermissionScope.Own).AddEndpointFilter<ValidationFilter>();
+        self.MapGet("/types", async (LeaveService svc, CancellationToken ct) => Results.Ok(await svc.TypesAsync(ct)));
+        self.MapGet("/requests", async (bool? pending, Guid? userId, LeaveService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(pending ?? false, userId, ct)));
+        self.MapPost("/requests", async (CreateLeaveRequest body, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.RequestAsync(body, ct)).ToHttp(http));
+        self.MapPost("/requests/{id:guid}/cancel", async (Guid id, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.CancelAsync(id, ct)).ToHttp(http));
+        self.MapGet("/balance", async (Guid? userId, LeaveService svc, CancellationToken ct) => Results.Ok(await svc.BalanceAsync(userId, ct)));
+        self.MapGet("/absences", async (bool? open, LeaveService svc, CancellationToken ct) => Results.Ok(await svc.AbsencesAsync(open ?? false, ct)));
+        self.MapPost("/absences/{id:guid}/reason", async (Guid id, AbsenceReasonRequest body, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.ReasonAsync(id, body, ct)).ToHttp(http));
+        self.MapGet("/calendar", async (DateOnly from, DateOnly to, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.CalendarAsync(from, to, ct)).ToHttp(http));
+
+        var approve = app.MapGroup("/api/v1/leave").WithTags("Leave")
+            .RequirePermission(Permissions.AttendanceApprove, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
+        approve.MapPost("/requests/{id:guid}/decide", async (Guid id, DecisionRequest body, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.DecideAsync(id, body, ct)).ToHttp(http));
+        approve.MapPost("/absences/{id:guid}/decide", async (Guid id, DecisionRequest body, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.DecideAbsenceAsync(id, body, ct)).ToHttp(http));
+
+        var view = app.MapGroup("/api/v1/leave").WithTags("Leave").RequirePermission(Permissions.AttendanceView, PermissionScope.All);
+        view.MapGet("/report", async (DateOnly from, DateOnly to, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.ReportAsync(from, to, ct)).ToHttp(http));
+        view.MapGet("/report/export", async (DateOnly from, DateOnly to, LeaveService svc, HttpContext http, CancellationToken ct) =>
+        {
+            var r = await svc.ReportExcelAsync(from, to, ct);
+            return r.IsFailure ? r.ToHttp(http) : Results.File(r.Value!, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"attendance-{from:yyyyMMdd}-{to:yyyyMMdd}.xlsx");
+        });
+
+        var setup = app.MapGroup("/api/v1/leave/types").WithTags("Leave")
+            .RequirePermission(Permissions.AttendancePoliciesManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
+        setup.MapPost("/", async (UpsertLeaveTypeRequest body, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.SaveTypeAsync(null, body, ct)).ToHttp(http));
+        setup.MapPut("/{id:guid}", async (Guid id, UpsertLeaveTypeRequest body, LeaveService svc, HttpContext http, CancellationToken ct) => (await svc.SaveTypeAsync(id, body, ct)).ToHttp(http));
+    }
+}

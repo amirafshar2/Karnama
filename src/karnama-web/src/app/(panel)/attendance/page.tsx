@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@/lib/query";
 import { Coffee, LogIn, LogOut, MapPin, QrCode, Square, WifiOff } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 registerTexts(faM4);
 
 const QrScanner = dynamic(() => import("./qr-scanner").then((m) => m.QrScanner), { ssr: false });
+const MyLeave = dynamic(() => import("@/components/leave/my-leave").then((m) => m.MyLeave), { ssr: false });
 const CorrectionSheet = dynamic(() => import("./correction-sheet").then((m) => m.CorrectionSheet), { ssr: false });
 const ME = ["attendance-me"];
 
@@ -202,14 +203,8 @@ export default function AttendancePage() {
                     </Button>
                   </>
                 )}
-                {(needsQr || needsLocation) && (
+                {needsLocation && (
                   <p className="flex flex-wrap justify-center gap-3 text-xs text-muted-foreground">
-                    {needsQr && (
-                      <span>
-                        <QrCode className="me-1 inline size-3" aria-hidden="true" />
-                        {t("att.how.RotatingQr")}
-                      </span>
-                    )}
                     {needsLocation && (
                       <span>
                         <MapPin className="me-1 inline size-3" aria-hidden="true" />
@@ -279,6 +274,7 @@ export default function AttendancePage() {
           </ul>
         </section>
       )}
+      <MyLeave />
       <p className="text-xs text-muted-foreground">{t("att.privacy")}</p>
       {correcting && <CorrectionSheet onClose={() => setCorrecting(false)} />}
     </div>

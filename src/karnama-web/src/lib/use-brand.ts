@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@/lib/query";
 import { api } from "./api";
 import { API_BASE } from "./config";
 import { DEFAULT_COLORS, type Brand } from "./brand";

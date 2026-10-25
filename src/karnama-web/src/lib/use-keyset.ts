@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@/lib/query";
 import { useState } from "react";
 import { api } from "./api";
 import type { KeysetPage } from "./types";

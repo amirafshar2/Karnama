@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@/lib/query";
 import { ImageUp, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { BrandMark } from "@/components/app/brand-mark";

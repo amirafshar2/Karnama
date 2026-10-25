@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@/lib/query";
 import { useEffect, useState } from "react";
 import { useRequire } from "@/components/app/use-require";
 import { api } from "@/lib/api";
@@ -17,8 +17,9 @@ export default function KioskPage() {
   const code = useQuery({ queryKey: ["kiosk"], enabled: allowed, queryFn: () => api<{ code: string; secondsLeft: number }>("/api/v1/attendance/kiosk/code"), refetchInterval: 3000 });
   const [img, setImg] = useState<string | null>(null);
   useEffect(() => {
-    if (!code.data) return;
-    void import("qrcode").then(({ toDataURL }) => toDataURL(code.data.code, { margin: 1, width: 640, errorCorrectionLevel: "M" }).then(setImg));
+    const value = code.data?.code;
+    if (!value) return;
+    void import("qrcode").then(({ toDataURL }) => toDataURL(value, { margin: 1, width: 640, errorCorrectionLevel: "M" }).then(setImg));
   }, [code.data]);
   if (!allowed) return null;
   return (

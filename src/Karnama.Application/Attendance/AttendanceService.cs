@@ -94,6 +94,8 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         var reasons = new[] { check.Reason, timeIssue }.Where(x => x is not null).ToList();
         var shift = Shift.Open(Me, day, at, check.Results, check.Trust, reasons.Count > 0, reasons.Count > 0 ? string.Join(" | ", reasons) : null, offline, late);
         db.Shifts.Add(shift);
+        // Detected as absent, then arrived after all: it's a late arrival of exactly this many minutes.
+        foreach (var absence in await db.Absences.Where(a => a.UserId == Me && a.Day == day).ToListAsync(ct)) absence.BecomeLate(at);
         db.AttendanceEvents.Add(Event(shift.Id, AttendanceEventKind.ClockIn, at, now, r, check.Results, check.Trust));
         audit.Add("attendance.clockIn", nameof(Shift), shift.Id.ToString(), new { trust = check.Trust, offline, late });
         changes.Record("presence", Me, null, Me, null, "clockIn");

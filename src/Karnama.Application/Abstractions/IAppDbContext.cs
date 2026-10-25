@@ -45,6 +45,9 @@ public interface IAppDbContext
     DbSet<AttendancePolicy> AttendancePolicies { get; }
     DbSet<AttendancePlace> AttendancePlaces { get; }
     DbSet<KioskCodeUse> KioskCodeUses { get; }
+    DbSet<LeaveType> LeaveTypes { get; }
+    DbSet<LeaveRequest> LeaveRequests { get; }
+    DbSet<Absence> Absences { get; }
 
     /// <summary>For the few statements EF can't express (e.g. INSERT … ON CONFLICT DO NOTHING).</summary>
     Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }

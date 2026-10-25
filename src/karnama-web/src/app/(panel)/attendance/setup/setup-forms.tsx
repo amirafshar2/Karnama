@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@/lib/query";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useErrorMessage } from "@/components/app/error-text";
@@ -9,16 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { faCrud } from "@/lib/i18n/fa-crud";
+import { faM5 } from "@/lib/i18n/fa-m5";
 import { useI18n } from "@/lib/i18n/provider";
 import { registerTexts, type TextKey } from "@/lib/i18n/registry";
 import { notify } from "@/lib/notify";
 import type { KeysetPage, RoleListItem } from "@/lib/types";
 
 registerTexts(faCrud);
+registerTexts(faM5);
 
 
 type Day = { day: number; start: string; end: string };
-type Settings = { officeNetworks: string[]; autoClockInOnTimer: boolean; offlineToleranceMinutes: number; forgottenAfterHours: number; selfieRetentionDays: number; locationRetentionDays: number; askEarlyLeaveReason: boolean };
+type Settings = { officeNetworks: string[]; autoClockInOnTimer: boolean; offlineToleranceMinutes: number; forgottenAfterHours: number; selfieRetentionDays: number; locationRetentionDays: number; askEarlyLeaveReason: boolean; absenceReasonHours?: number };
 export type Setup = {
   settings: Settings;
   schedules: { id: string; userId: string | null; days: Day[]; breakMinutes: number; graceMinutes: number; flexible: boolean; weeklyHours: number }[];
@@ -137,6 +139,7 @@ export function SetupForms({ setup }: { setup: Setup }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberField label={t("setup.att.tolerance")} value={s.offlineToleranceMinutes} onChange={(v) => setS({ ...s, offlineToleranceMinutes: v ?? 10 })} min={1} max={120} />
           <NumberField label={t("setup.att.forgotten")} value={s.forgottenAfterHours} onChange={(v) => setS({ ...s, forgottenAfterHours: v ?? 4 })} min={1} max={24} />
+          <NumberField label={t("setup.leave.reasonHours")} value={s.absenceReasonHours ?? 48} onChange={(v) => setS({ ...s, absenceReasonHours: v ?? 48 })} min={1} max={240} />
         </div>
         <Button className="h-11" onClick={() => run(() => api("/api/v1/attendance/setup/settings", { method: "PUT", body: s }))} data-testid="settings-save">
           {t("common.save")}
@@ -194,6 +197,8 @@ export function SetupForms({ setup }: { setup: Setup }) {
           </Button>
         </div>
       </section>
+
+      <LeaveTypes />
 
       <section className="space-y-4 rounded-xl border bg-card p-5" aria-labelledby="hol">
         <h2 id="hol" className="text-lg font-bold">
@@ -257,5 +262,75 @@ function PolicyRow({ policy, roles, onSave }: { policy: Setup["policies"][number
         {t("common.save")}
       </Button>
     </div>
+  );
+}
+
+type LeaveTypeRow = { id: string; name: string; kind: string; paid: boolean; needsDocument: boolean; annualDays: number | null; color: string; isActive: boolean; sortOrder: number };
+
+/** Leave types: paid or not, document needed, yearly allowance, calendar colour. */
+function LeaveTypes() {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const errorMessage = useErrorMessage();
+  const types = useQuery({ queryKey: ["leave-types"], queryFn: () => api<LeaveTypeRow[]>("/api/v1/leave/types") });
+  const save = async (row: LeaveTypeRow | null, body: Omit<LeaveTypeRow, "id">) => {
+    try {
+      await api(row ? `/api/v1/leave/types/${row.id}` : "/api/v1/leave/types", { method: row ? "PUT" : "POST", body });
+      notify.success(t("crud.saved"));
+      await qc.invalidateQueries({ queryKey: ["leave-types"] });
+    } catch (e) {
+      notify.error(errorMessage(e));
+    }
+  };
+  return (
+    <section className="space-y-4 rounded-xl border bg-card p-5" aria-labelledby="ltypes">
+      <h2 id="ltypes" className="text-lg font-bold">
+        {t("setup.leave.title")}
+      </h2>
+      <p className="text-sm text-muted-foreground">{t("setup.leave.help")}</p>
+      <ul className="space-y-2">
+        {(types.data ?? []).map((row) => (
+          <LeaveTypeRowEditor key={row.id} row={row} onSave={(b) => save(row, b)} />
+        ))}
+      </ul>
+      <Button variant="outline" className="h-11" onClick={() => save(null, { name: "نوع جدید", kind: "other", paid: false, needsDocument: false, annualDays: null, color: "#607D8B", isActive: true, sortOrder: 99 })}>
+        <Plus aria-hidden="true" />
+        {t("crud.add")}
+      </Button>
+    </section>
+  );
+}
+
+function LeaveTypeRowEditor({ row, onSave }: { row: LeaveTypeRow; onSave: (b: Omit<LeaveTypeRow, "id">) => void }) {
+  const { t } = useI18n();
+  const [r, setR] = useState(row);
+  return (
+    <li className="flex flex-wrap items-end gap-3 rounded-lg border p-3">
+      <div className="w-48">
+        <TextField label={t("leave.type")} value={r.name} onChange={(v) => setR({ ...r, name: v })} />
+      </div>
+      <div className="w-28">
+        <NumberField label={t("setup.leave.days")} value={r.annualDays} onChange={(v) => setR({ ...r, annualDays: v })} optional min={0} max={365} />
+      </div>
+      <label className="flex min-h-11 items-center gap-2 text-sm">
+        <input type="checkbox" className="size-5" checked={r.paid} onChange={(e) => setR({ ...r, paid: e.target.checked })} />
+        {t("setup.leave.paid")}
+      </label>
+      <label className="flex min-h-11 items-center gap-2 text-sm">
+        <input type="checkbox" className="size-5" checked={r.needsDocument} onChange={(e) => setR({ ...r, needsDocument: e.target.checked })} />
+        {t("setup.leave.doc")}
+      </label>
+      <label className="flex min-h-11 items-center gap-2 text-sm">
+        <input type="checkbox" className="size-5" checked={r.isActive} onChange={(e) => setR({ ...r, isActive: e.target.checked })} />
+        {t("setup.leave.active")}
+      </label>
+      <label className="flex min-h-11 items-center gap-2 text-sm">
+        {t("setup.leave.color")}
+        <input type="color" className="h-10 w-12 rounded border" value={r.color} onChange={(e) => setR({ ...r, color: e.target.value })} />
+      </label>
+      <Button className="h-10" onClick={() => onSave(r)}>
+        {t("common.save")}
+      </Button>
+    </li>
   );
 }

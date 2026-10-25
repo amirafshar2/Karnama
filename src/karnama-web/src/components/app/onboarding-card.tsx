@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@/lib/query";
 import { Check, Circle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";

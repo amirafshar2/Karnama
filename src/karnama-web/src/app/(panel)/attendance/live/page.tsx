@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@/lib/query";
+import dynamic from "next/dynamic";
 import { useRequire } from "@/components/app/use-require";
 import { useErrorMessage } from "@/components/app/error-text";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ import { useLive } from "@/lib/use-live";
 import { cn } from "@/lib/utils";
 
 registerTexts(faM4);
+
+const LeaveApprovals = dynamic(() => import("@/components/leave/leave-approvals").then((m) => m.LeaveApprovals), { ssr: false });
 
 type Presence = { userId: string; name: string; state: "in" | "break" | "out" | "absent" | "expected" | "off"; since: string | null; workedMinutes: number; lateMinutes: number; trust: Shift["trust"] | null; needsReview: boolean; timerTitle: string | null; timerMinutes: number | null };
 type Correction = { id: string; userId: string; userName: string; day: string; clockIn: string | null; clockOut: string | null; reason: string; status: string; createdAt: string };
@@ -80,6 +83,8 @@ export default function LivePresencePage() {
           ))}
         </ul>
       </section>
+
+      <LeaveApprovals myId={me?.id} canApprove={hasPermission(me, "attendance.approve", "all")} />
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">{t("live.review")}</h2>

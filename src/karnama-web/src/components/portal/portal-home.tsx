@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@/lib/query";
 import { Check, Download, Plus, RotateCcw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";

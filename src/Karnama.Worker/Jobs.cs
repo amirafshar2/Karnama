@@ -27,8 +27,16 @@ public sealed class MaintenanceJobs(IAppDbContext db, TimeProvider clock, ILogge
 }
 
 /// <summary>Attendance housekeeping (docs/PROMPT.md §6.6): forgotten clock-outs are closed and flagged, never guessed.</summary>
-public sealed class AttendanceJobs(Karnama.Application.Attendance.AttendanceAdminService attendance, ILogger<AttendanceJobs> logger)
+public sealed class AttendanceJobs(Karnama.Application.Attendance.AttendanceAdminService attendance, Karnama.Application.Attendance.LeaveService leave, ILogger<AttendanceJobs> logger)
 {
+    /// <summary>Every 5 minutes (docs/PROMPT.md §6.7 scenario 2).</summary>
+    [AutomaticRetry(Attempts = 1)]
+    public async Task DetectAbsencesAsync(CancellationToken ct)
+    {
+        var (detected, expired) = await leave.DetectAsync(ct);
+        if (detected + expired > 0) logger.LogInformation("Absences: {Detected} detected, {Expired} became unexcused", detected, expired);
+    }
+
     [AutomaticRetry(Attempts = 3)]
     public async Task CloseForgottenAsync(CancellationToken ct)
     {
@@ -48,6 +56,7 @@ internal sealed class JobRegistrar(IRecurringJobManager jobs) : IHostedService
     {
         jobs.AddOrUpdate<MaintenanceJobs>("purge-auth", j => j.PurgeExpiredAuthDataAsync(CancellationToken.None), Cron.Hourly());
         jobs.AddOrUpdate<MaintenanceJobs>("purge-stale-uploads", j => j.PurgeStaleUploadsAsync(CancellationToken.None), Cron.Hourly());
+        jobs.AddOrUpdate<AttendanceJobs>("detect-absences", j => j.DetectAbsencesAsync(CancellationToken.None), "*/5 * * * *");
         jobs.AddOrUpdate<AttendanceJobs>("close-forgotten-shifts", j => j.CloseForgottenAsync(CancellationToken.None), "*/30 * * * *");
         return Task.CompletedTask;
     }

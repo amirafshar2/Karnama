@@ -74,5 +74,34 @@ internal static class DemoWorkSeed
             if (r.Stage == stages.Count && r.Status == WorkStatus.Done) order.Complete(now.AddHours(-1));
         }
         await db.SaveChangesAsync(ct);
+        await SeedLeaveAsync(db, users.Select(u => (u.Id, u.DisplayName)).ToList(), now, ct);
+    }
+
+    /// <summary>Sample leave and absence rows so the approvals, calendar and report pages aren't empty in the demo.</summary>
+    private static async Task SeedLeaveAsync(AppDbContext db, List<(Guid Id, string Name)> users, DateTimeOffset now, CancellationToken ct)
+    {
+        if (await db.LeaveRequests.AnyAsync(ct)) return;
+        var types = await db.LeaveTypes.ToListAsync(ct);
+        var annual = types.FirstOrDefault(t => t.Kind == Domain.Attendance.LeaveKind.Annual);
+        var mission = types.FirstOrDefault(t => t.Kind == Domain.Attendance.LeaveKind.Mission);
+        Guid? U(string p) => users.FirstOrDefault(u => u.Name.StartsWith(p, StringComparison.Ordinal)).Id is var id && id != Guid.Empty ? id : null;
+        var manager = U("سارا");
+        if (annual is null || mission is null || manager is null) return;
+        var today = Karnama.Application.Attendance.Iran.Today(now);
+        DateTimeOffset At(int days, int h) => Karnama.Application.Attendance.Iran.At(today.AddDays(days), new TimeOnly(h, 0));
+
+        if (U("رضا") is { } reza)
+            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(reza, annual, false, At(2, 0), At(4, 0), "سفر خانوادگی (نمونه)", null, manager.Value, true, now).Value!);
+        if (U("نگار") is { } negar)
+            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(negar, annual, true, At(1, 10), At(1, 13), "کار اداری (نمونه)", null, negar, false, now).Value!);
+        if (U("علی") is { } ali)
+            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(ali, mission, false, At(3, 0), At(4, 0), "فیلمبرداری در محل مشتری (نمونه)", null, ali, false, now).Value!);
+        if (U("محمد") is { } mohammad)
+        {
+            var a = Domain.Attendance.Absence.Detect(mohammad, today.AddDays(-1), At(-1, 9).AddMinutes(0), At(-1, 9).AddMinutes(15), 48);
+            a.SubmitReason("بیمار بودم؛ گواهی را فردا می‌آورم (نمونه)", At(-1, 9), At(-1, 17), null);
+            db.Absences.Add(a);
+        }
+        await db.SaveChangesAsync(ct);
     }
 }

@@ -165,6 +165,8 @@ export const en: Partial<Dictionary> = {
   "nav.work": "Work board",
   "nav.orders": "Orders",
   "nav.attendance": "My time",
+  "nav.calendar": "Attendance calendar",
+  "nav.attReport": "Attendance report",
   "nav.live": "Team presence",
   "nav.attSetup": "Attendance setup",
   "nav.kiosk": "Office QR",

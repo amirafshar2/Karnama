@@ -10,7 +10,7 @@ namespace Karnama.Application.Attendance;
 /// <summary>Agency-wide attendance settings (one JSON row in site_settings).</summary>
 public sealed record AttendanceSettingsDto(
     List<string> OfficeNetworks, bool AutoClockInOnTimer, int OfflineToleranceMinutes, int ForgottenAfterHours,
-    int SelfieRetentionDays, int LocationRetentionDays, bool AskEarlyLeaveReason)
+    int SelfieRetentionDays, int LocationRetentionDays, bool AskEarlyLeaveReason, int AbsenceReasonHours = 48)
 {
     public static AttendanceSettingsDto Default => new([], false, 10, 4, 30, 90, true);
 }

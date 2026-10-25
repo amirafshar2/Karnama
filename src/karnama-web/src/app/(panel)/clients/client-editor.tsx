@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@/lib/query";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { EditorSheet } from "@/components/app/editor-sheet";

@@ -1,6 +1,6 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@/lib/query";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { BrandTheme } from "@/components/app/brand-theme";

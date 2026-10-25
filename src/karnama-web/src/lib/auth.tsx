@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@/lib/query";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, refreshSession, setSessionLostHandler, storeSession, type Session } from "./api";
 import { useI18n } from "./i18n/provider";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@/lib/query";
 import { Loader2, Play, Send, Square } from "lucide-react";
 import { useState } from "react";
 import { ErrorText, useErrorMessage } from "@/components/app/error-text";

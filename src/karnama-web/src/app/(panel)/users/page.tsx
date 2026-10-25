@@ -8,7 +8,7 @@ import { faM2 } from "@/lib/i18n/fa-m2";
 import { useI18n } from "@/lib/i18n/provider";
 import { registerTexts } from "@/lib/i18n/registry";
 import { notify } from "@/lib/notify";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@/lib/query";
 
 registerTexts(faM2);
 
