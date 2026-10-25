@@ -42,6 +42,22 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
             version,
         }, Http.Json);
         updated.StatusCode.Should().Be(HttpStatusCode.OK);
+        var newVersion = (await updated.JsonAsync()).GetProperty("version").GetUInt32();
+        newVersion.Should().NotBe(version, "changing only the grants must still move the version");
+
+        // Read back from the database: grants were really replaced (one scope changed, one added, one removed).
+        var addOne = await admin.PutAsJsonAsync($"/api/v1/roles/{id}", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "گرافیست ارشد" },
+            permissions = new[] { new { code = "work.view", scope = "all" }, new { code = "attendance.self", scope = "own" } },
+            version = newVersion,
+        }, Http.Json);
+        addOne.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fresh = await (await admin.GetAsync($"/api/v1/roles/{id}")).JsonAsync();
+        fresh.GetProperty("permissions").EnumerateArray()
+            .Select(p => $"{p.GetProperty("code").GetString()}:{p.GetProperty("scope").GetString()}")
+            .Should().BeEquivalentTo("attendance.self:own", "work.view:all");
+        fresh.GetProperty("updatedAt").ValueKind.Should().NotBe(System.Text.Json.JsonValueKind.Null);
 
         var stale = await admin.PutAsJsonAsync($"/api/v1/roles/{id}", new
         {

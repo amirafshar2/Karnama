@@ -41,3 +41,5 @@ playwright-report/
 *.log
 .DS_Store
 docs/PROJECT_MAP.html
+.next-*/
+storage/

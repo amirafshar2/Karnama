@@ -21,6 +21,9 @@ public interface IAppDbContext
     /// <summary>Sets the concurrency token the client last saw, so a stale update fails with a conflict.</summary>
     void SetOriginalVersion<TEntity>(TEntity entity, uint version) where TEntity : class;
 
+    /// <summary>Forces an UPDATE of the row (audit fields + concurrency token) even if only children changed.</summary>
+    void MarkModified<TEntity>(TEntity entity) where TEntity : class;
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 
     /// <summary>Runs <paramref name="work"/> in a serializable transaction (with the provider's retry strategy).</summary>

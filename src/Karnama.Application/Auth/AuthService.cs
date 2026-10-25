@@ -12,7 +12,7 @@ namespace Karnama.Application.Auth;
 public sealed class AuthService(
     IAppDbContext db,
     IOtpCodeService otp,
-    ISmsSender sms,
+    IOtpDispatcher sms,
     ITokenService tokens,
     ITotpService totp,
     ISecretProtector protector,
@@ -53,9 +53,10 @@ public sealed class AuthService(
         await db.SaveChangesAsync(ct);
 
         // Same response whether or not the account exists (no user enumeration); SMS only goes to real, active accounts.
+        // The SMS goes out in the background: real and unknown phones get the same response time and status.
         var canLogin = await db.Users.AsNoTracking().AnyAsync(u => u.Phone == phone && u.IsActive && !u.IsDemo, ct);
         if (canLogin)
-            await sms.SendOtpAsync(phone, code, ct);
+            sms.Enqueue(phone, code);
         else
             logger.LogInformation("OTP requested for unknown or inactive phone {Phone}", PhoneNumber.Mask(phone));
 
@@ -65,28 +66,34 @@ public sealed class AuthService(
     public async Task<Result<LoginResult>> VerifyOtpAsync(VerifyOtpRequest request, ClientKind client, CancellationToken ct)
     {
         var now = clock.GetUtcNow();
-        var challenge = await db.OtpChallenges.FirstOrDefaultAsync(c => c.Id == request.ChallengeId, ct);
-        if (challenge is null)
-            return Error.Validation("auth.otpWrong", "کد واردشده درست نیست.");
+        var challenge = await db.OtpChallenges.AsNoTracking().FirstOrDefaultAsync(c => c.Id == request.ChallengeId, ct);
+        if (challenge is null) return OtpChallenge.WrongCode;
 
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == challenge.Phone && !u.IsDemo, ct);
-        if (user is not null && user.IsLockedOut(now))
-            return Error.TooMany("auth.locked", "حساب به‌خاطر تلاش‌های ناموفق موقتاً قفل است. ۱۵ دقیقه‌ی دیگر تلاش کنید.");
-
-        var code = Digits.ToLatin(request.Code.Trim());
-        var matches = otp.Matches(challenge.CodeHash, otp.Hash(challenge.Id, challenge.Phone, code));
-        var verified = challenge.Verify(matches, now);
-        if (verified.IsFailure)
+        // Claim one attempt atomically: parallel guesses can never exceed MaxAttempts.
+        var claimed = await db.OtpChallenges
+            .Where(c => c.Id == challenge.Id && c.ConsumedAt == null && c.Attempts < OtpChallenge.MaxAttempts && c.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Attempts, c => c.Attempts + 1), ct);
+        if (claimed == 0)
         {
-            if (user is not null)
-            {
-                user.RegisterFailedLogin(now);
-                audit.Add(AuditActions.LoginFailed, nameof(User), user.Id.ToString(), new { reason = verified.Error!.Code }, actorOverride: user.Id);
-            }
-            await db.SaveChangesAsync(ct);
-            return verified.Error!;
+            var fresh = await db.OtpChallenges.AsNoTracking().FirstAsync(c => c.Id == challenge.Id, ct);
+            var reason = fresh.CheckUsable(now);
+            return reason.IsFailure ? reason.Error! : OtpChallenge.WrongCode;
         }
 
+        var code = Digits.ToLatin(request.Code.Trim());
+        if (!otp.Matches(challenge.CodeHash, otp.Hash(challenge.Id, challenge.Phone, code)))
+            return OtpChallenge.WrongCode;
+
+        // Consume atomically: one code = one session, even if two correct requests race.
+        var consumed = await db.OtpChallenges
+            .Where(c => c.Id == challenge.Id && c.ConsumedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now), ct);
+        if (consumed == 0)
+            return Error.Validation("auth.otpUsed", "این کد قبلاً استفاده شده است. کد جدید بگیرید.");
+
+        // OTP failures never lock the account (that would let anyone lock out the owner); the per-challenge
+        // cap plus 3 sends per 10 minutes already bounds guessing.
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == challenge.Phone && !u.IsDemo, ct);
         if (user is null || !user.IsActive)
         {
             await db.SaveChangesAsync(ct);
@@ -100,7 +107,6 @@ public sealed class AuthService(
             return new LoginResult(step, null, tokens.CreateTwoFactorToken(user.Id, client));
         }
 
-        user.RegisterSuccessfulLogin();
         var session = await IssueSessionAsync(user, client, Guid.CreateVersion7(), ct);
         audit.Add(AuditActions.Login, nameof(User), user.Id.ToString(), new { client = client.ToString() }, actorOverride: user.Id);
         await db.SaveChangesAsync(ct);
@@ -132,19 +138,38 @@ public sealed class AuthService(
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == pending.Value.UserId && u.IsActive, ct);
         if (user is null || user.TwoFactorSecret is null)
             return Error.Unauthorized("auth.twoFactorExpired", "مرحله‌ی ورود منقضی شده است. دوباره وارد شوید.");
-        if (user.IsLockedOut(now))
-            return Error.TooMany("auth.locked", "حساب به‌خاطر تلاش‌های ناموفق موقتاً قفل است. ۱۵ دقیقه‌ی دیگر تلاش کنید.");
+        var locked = Error.TooMany("auth.locked", "حساب به‌خاطر تلاش‌های ناموفق موقتاً قفل است. ۱۵ دقیقه‌ی دیگر تلاش کنید.");
+        var userId = user.Id;
+
+        // Claim one attempt atomically (max 10 per lockout window, even with parallel requests).
+        var attempt = await db.Users
+            .Where(u => u.Id == userId && (u.LockoutUntil == null || u.LockoutUntil <= now) && u.FailedLoginCount < User.MaxFailedLogins)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLoginCount, u => u.FailedLoginCount + 1), ct);
+        if (attempt == 0)
+        {
+            var lockUntil = now.Add(User.LockoutDuration);
+            await db.Users
+                .Where(u => u.Id == userId && (u.LockoutUntil == null || u.LockoutUntil <= now))
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.LockoutUntil, lockUntil).SetProperty(u => u.FailedLoginCount, 0), ct);
+            return locked;
+        }
 
         var step = totp.Verify(protector.Unprotect(user.TwoFactorSecret), Digits.ToLatin(request.Code.Trim()), now);
         if (step is null)
         {
-            user.RegisterFailedLogin(now);
-            audit.Add(AuditActions.LoginFailed, nameof(User), user.Id.ToString(), new { reason = "totp" }, actorOverride: user.Id);
+            audit.Add(AuditActions.LoginFailed, nameof(User), userId.ToString(), new { reason = "totp" }, actorOverride: userId);
             await db.SaveChangesAsync(ct);
             return Error.Validation("auth.totpWrong", "کد برنامه‌ی تأیید درست نیست.");
         }
         var accepted = user.AcceptTwoFactorStep(step.Value);
         if (accepted.IsFailure) return accepted.Error!;
+        // Same check in SQL so two requests with one code can't both pass.
+        var stepValue = step.Value;
+        var stepClaimed = await db.Users
+            .Where(u => u.Id == user.Id && (u.LastTwoFactorStep == null || u.LastTwoFactorStep < stepValue))
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastTwoFactorStep, stepValue), ct);
+        if (stepClaimed == 0)
+            return Error.Validation("auth.totpReused", "این کد قبلاً استفاده شده است. منتظر کد بعدی بمانید.");
 
         if (!user.TwoFactorEnabled)
         {
@@ -152,7 +177,8 @@ public sealed class AuthService(
             audit.Add(AuditActions.TwoFactorEnabled, nameof(User), user.Id.ToString(), actorOverride: user.Id);
         }
 
-        user.RegisterSuccessfulLogin();
+        await db.Users.Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLoginCount, 0).SetProperty(u => u.LockoutUntil, (DateTimeOffset?)null), ct);
         var session = await IssueSessionAsync(user, pending.Value.Client, Guid.CreateVersion7(), ct);
         audit.Add(AuditActions.Login, nameof(User), user.Id.ToString(), new { client = pending.Value.Client.ToString(), twoFactor = true }, actorOverride: user.Id);
         await db.SaveChangesAsync(ct);
@@ -184,24 +210,29 @@ public sealed class AuthService(
         if (now >= current.ExpiresAt) return invalid;
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == current.UserId, ct);
-        if (user is null || !user.IsActive || user.IsLockedOut(now)) return invalid;
+        if (user is null || !user.IsActive) return invalid;
         if (user.IsDemo && !demoOptions.Value.Enabled) return invalid;
 
-        var replacementId = Guid.CreateVersion7();
-        // Atomic claim: only one concurrent refresh can rotate this token; the loser is treated as reuse.
-        var claimed = await db.RefreshTokens
-            .Where(t => t.Id == current.Id && t.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now).SetProperty(t => t.ReplacedById, replacementId), ct);
-        if (claimed == 0)
+        // Claim + insert of the replacement in one transaction: a racing loser waits on the row lock,
+        // then sees the claim and revokes the whole family including the new token.
+        var userId = user.Id;
+        var rotated = await db.InTransactionAsync<SessionTokens?>(async token =>
         {
-            await RevokeFamilyAsync(current.FamilyId, now, ct);
-            await db.SaveChangesAsync(ct);
-            return invalid;
-        }
-
-        var session = await IssueSessionAsync(user, current.Client == ClientKind.Android ? ClientKind.Android : client, current.FamilyId, ct, replacementId);
-        await db.SaveChangesAsync(ct);
-        return session;
+            var replacementId = Guid.CreateVersion7();
+            var claimed = await db.RefreshTokens
+                .Where(t => t.Id == current.Id && t.RevokedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now).SetProperty(t => t.ReplacedById, replacementId), token);
+            if (claimed == 0)
+            {
+                await RevokeFamilyAsync(current.FamilyId, now, token);
+                return null;
+            }
+            var fresh = await db.Users.FirstAsync(u => u.Id == userId, token);
+            var session = await IssueSessionAsync(fresh, current.Client == ClientKind.Android ? ClientKind.Android : client, current.FamilyId, token, replacementId);
+            await db.SaveChangesAsync(token);
+            return session;
+        }, ct);
+        return rotated is null ? invalid : rotated;
     }
 
     public async Task LogoutAsync(string? rawToken, CancellationToken ct)

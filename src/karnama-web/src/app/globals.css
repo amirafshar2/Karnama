@@ -1,0 +1,174 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Brand theme defaults (docs/PROMPT2.md, rule 0.3): black #0A0A0A + brand yellow #FEFF00 from the client's "M" logo.
+  Light theme: yellow only as a button background with black text; emphasis text uses a dark yellow (AA contrast).
+  Dark theme: yellow on black is free. These are only defaults: the admin changes them in Settings > Brand,
+  and BrandTheme (components/app/brand-theme.tsx) writes the saved colours over these variables at runtime.
+  Orange "live" is reserved for things happening now (demo bar, running timer, on shift).
+*/
+:root {
+  --radius: 0.625rem;
+  --brand-black: #0a0a0a;
+  --brand-yellow: #feff00;
+  --background: #f4f4f3;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #feff00;
+  --primary-foreground: #0a0a0a;
+  --primary-border: #0a0a0a;
+  --secondary: #ebebe8;
+  --secondary-foreground: #0a0a0a;
+  --muted: #ebebe8;
+  --muted-foreground: #55554f;
+  --accent: #ebebe8;
+  --accent-foreground: #0a0a0a;
+  --emphasis: #6b5f00;
+  --panel: #0a0a0a;
+  --panel-foreground: #feff00;
+  --live: #d9480f;
+  --live-foreground: #ffffff;
+  --success: #157347;
+  --destructive: #b42318;
+  --border: #dcdcd8;
+  --input: #c9c9c4;
+  --ring: #0a0a0a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #0a0a0a;
+  --sidebar-primary-foreground: #feff00;
+  --sidebar-accent: #0a0a0a;
+  --sidebar-accent-foreground: #feff00;
+  --sidebar-border: #e2e2de;
+  --sidebar-ring: #0a0a0a;
+  --tile-line: rgb(10 10 10 / 0.07);
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f4f4ef;
+  --card: #141414;
+  --card-foreground: #f4f4ef;
+  --popover: #181818;
+  --popover-foreground: #f4f4ef;
+  --primary: #feff00;
+  --primary-foreground: #0a0a0a;
+  --primary-border: transparent;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #f4f4ef;
+  --muted: #1c1c1c;
+  --muted-foreground: #a3a39b;
+  --accent: #1f1f1f;
+  --accent-foreground: #feff00;
+  --emphasis: #feff00;
+  --panel: #000000;
+  --panel-foreground: #feff00;
+  --live: #f76707;
+  --live-foreground: #0a0a0a;
+  --success: #51cf66;
+  --destructive: #ff8787;
+  --border: #2a2a2a;
+  --input: #383838;
+  --ring: #feff00;
+  --sidebar: #101010;
+  --sidebar-foreground: #f4f4ef;
+  --sidebar-primary: #feff00;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #feff00;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #232323;
+  --sidebar-ring: #feff00;
+  --tile-line: rgb(254 255 0 / 0.07);
+}
+
+/* Tile lattice on the black brand panel. */
+.tile-on-panel {
+  --tile-line: color-mix(in srgb, var(--panel-foreground) 16%, transparent);
+}
+
+@theme inline {
+  --font-sans: var(--font-vazirmatn), Tahoma, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary-border: var(--primary-border);
+  --color-emphasis: var(--emphasis);
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-live: var(--live);
+  --color-live-foreground: var(--live-foreground);
+  --color-success: var(--success);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  /* Comfortable reading for Persian: slightly taller lines than Latin defaults. */
+  :lang(fa) body {
+    line-height: 1.75;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Safe areas inside the Android app (notch, gesture bar). */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}

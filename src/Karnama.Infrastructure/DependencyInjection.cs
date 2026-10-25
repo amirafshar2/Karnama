@@ -46,6 +46,10 @@ public static class DependencyInjection
         services.AddSingleton<ITotpService, TotpService>();
         services.AddSingleton<ISecretProtector, SecretProtector>();
         services.AddScoped<DataSeeder>();
+        services.AddSingleton<IMediaStore, Storage.LocalMediaStore>();
+        services.AddSingleton<OtpDispatcher>();
+        services.AddSingleton<IOtpDispatcher>(sp => sp.GetRequiredService<OtpDispatcher>());
+        services.AddHostedService<OtpDispatchService>();
 
         var provider = config["Sms:Provider"] ?? "Console";
         switch (provider)

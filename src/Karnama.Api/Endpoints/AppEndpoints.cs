@@ -5,8 +5,11 @@ using Karnama.Application.Common;
 using Karnama.Application.Localization;
 using Karnama.Application.Me;
 using Karnama.Application.Roles;
+using Karnama.Application.Settings;
 using Karnama.Application.Setup;
 using Karnama.Domain.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -65,23 +68,70 @@ internal static class AppEndpoints
     {
         var g = app.MapGroup("/api/v1/setup").WithTags("Setup").AddEndpointFilter<ValidationFilter>();
         g.MapGet("/status", async (SetupService svc, CancellationToken ct) => Results.Ok(await svc.GetStatusAsync(ct)));
-        g.MapPost("/", async (CompleteSetupRequest body, SetupService svc, HttpContext http, CancellationToken ct) =>
-            (await svc.CompleteAsync(body, ct)).ToHttp(http)).RequireRateLimiting(RateLimits.Otp);
+        g.MapPost("/", async (CompleteSetupRequest body, SetupService svc, IOutputCacheStore cache, HttpContext http, CancellationToken ct) =>
+        {
+            var result = await svc.CompleteAsync(body, ct);
+            if (result.IsSuccess) await cache.EvictByTagAsync("public", ct); // the brand name may have changed
+            return result.ToHttp(http);
+        }).RequireRateLimiting(RateLimits.Otp);
+    }
+
+    public static void MapSettings(this IEndpointRouteBuilder app)
+    {
+        var brand = app.MapGroup("/api/v1/settings/brand").WithTags("Settings")
+            .RequirePermission(Permissions.SettingsManage, PermissionScope.All)
+            .AddEndpointFilter<ValidationFilter>();
+
+        brand.MapPut("/", async (UpdateBrandRequest body, BrandService svc, IOutputCacheStore cache, HttpContext http, CancellationToken ct) =>
+        {
+            var r = await svc.UpdateAsync(body, ct);
+            await cache.EvictByTagAsync("public", ct);
+            return r.ToHttp(http);
+        });
+        brand.MapPost("/logo", async (IFormFile file, BrandService svc, IOutputCacheStore cache, HttpContext http, CancellationToken ct) =>
+        {
+            await using var stream = file.OpenReadStream();
+            var r = await svc.SetLogoAsync(stream, Path.GetFileName(file.FileName), file.Length, ct);
+            await cache.EvictByTagAsync("public", ct);
+            return r.ToHttp(http);
+        }).DisableAntiforgery() // bearer-token API, no cookie auth on this route
+          .WithMetadata(new RequestSizeLimitAttribute(3 * 1024 * 1024));
+        brand.MapDelete("/logo", async (BrandService svc, IOutputCacheStore cache, HttpContext http, CancellationToken ct) =>
+        {
+            var r = await svc.RemoveLogoAsync(ct);
+            await cache.EvictByTagAsync("public", ct);
+            return r.ToHttp(http);
+        });
+
+        // UI texts: languages.manage or content.manage.
+        var texts = app.MapGroup("/api/v1/translations").WithTags("Settings")
+            .RequireAuthorization(p => p.RequireAssertion(ctx =>
+            {
+                var me = ctx.Resource is HttpContext h ? h.RequestServices.GetRequiredService<ICurrentUser>() : null;
+                return me is not null && (me.Has(Permissions.LanguagesManage, PermissionScope.All) || me.Has(Permissions.ContentManage, PermissionScope.All));
+            }))
+            .AddEndpointFilter<ValidationFilter>();
+        texts.MapGet("/{lang}", async (string lang, TranslationAdminService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.ListAsync(lang, ct)).ToHttp(http));
+        texts.MapPut("/{lang}/{key}", async (string lang, string key, SetTranslationRequest body, TranslationAdminService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.SetAsync(lang, key, body.Value, ct)).ToHttp(http));
+        texts.MapDelete("/{lang}/{key}", async (string lang, string key, TranslationAdminService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.ResetAsync(lang, key, ct)).ToHttp(http));
     }
 
     public static void MapPublic(this IEndpointRouteBuilder app, bool demoLoginEnabled)
     {
-        app.MapGet("/api/v1/public/brand", async (IAppDbContext db, CancellationToken ct) =>
+        app.MapGet("/api/v1/public/brand", async (BrandService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(ct)))
+            .WithTags("Public").CacheOutput(OutputCachePolicies.Public);
+
+        // Public brand files (logo). Ids are regex-checked and resolved inside the storage root only.
+        app.MapGet("/media/public/{folder}/{file}", (string folder, string file, IMediaStore media, HttpContext http) =>
         {
-            var json = await db.SiteSettings.AsNoTracking().Where(s => s.Key == "brand").Select(s => s.Json).FirstOrDefaultAsync(ct);
-            string? name = null;
-            if (json is not null)
-            {
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("name", out var n)) name = n.GetString();
-            }
-            return Results.Ok(new { name = string.IsNullOrWhiteSpace(name) ? null : name, demo = demoLoginEnabled });
-        }).WithTags("Public").CacheOutput(OutputCachePolicies.Public);
+            var opened = media.OpenPublic($"{folder}/{file}");
+            if (opened is null) return Results.NotFound();
+            http.Response.Headers.CacheControl = "public, max-age=31536000, immutable"; // names are random and never reused
+            return Results.Stream(opened.Value.Stream, opened.Value.ContentType);
+        }).WithTags("Public");
 
         app.MapGet("/api/v1/app/version", (IOptions<AppVersionOptions> o) =>
             Results.Ok(new { o.Value.MinSupportedVersion, o.Value.LatestVersion, o.Value.DownloadUrl }))

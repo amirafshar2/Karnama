@@ -9,7 +9,8 @@ internal static class DotEnv
     public static void LoadForDevelopment(string startDirectory)
     {
         var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
-        if (string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase)) return;
+        // Only when Development is explicit: an unset variable means Production to ASP.NET Core.
+        if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase)) return;
         if (Environment.GetEnvironmentVariable("KARNAMA_SKIP_DOTENV") == "1") return;
 
         var dir = new DirectoryInfo(startDirectory);

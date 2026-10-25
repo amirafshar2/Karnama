@@ -58,6 +58,14 @@ public sealed class EmptyInstallTests(EmptyAppFixture app) : IClassFixture<Empty
 public sealed class StartupGuardTests(PostgresFixture pg) : IClassFixture<PostgresFixture>
 {
     [Fact]
+    public void Staging_with_demo_login_refuses_to_start()
+    {
+        using var f = new KarnamaFactory(pg.ConnectionString, demoLogin: true, environment: "Staging");
+        var act = () => f.CreateClient();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*DemoLogin__Enabled*");
+    }
+
+    [Fact]
     public void Production_with_demo_login_refuses_to_start()
     {
         using var f = new KarnamaFactory(pg.ConnectionString, demoLogin: true, environment: "Production");

@@ -17,8 +17,8 @@ public static class StartupGuard
         RequireSecret(config, "Setup:Token", 16, errors);
 
         var demo = config.GetValue<bool>("DemoLogin:Enabled");
-        if (demo && env.IsProduction())
-            errors.Add("DemoLogin__Enabled در Production روشن است. ورود سریع دمو در Production ممنوع است.");
+        if (demo && !env.IsDevelopment())
+            errors.Add($"DemoLogin__Enabled در محیط {env.EnvironmentName} روشن است. ورود سریع دمو فقط در Development مجاز است (در Production ممنوع).");
 
         if (env.IsProduction())
         {
@@ -27,6 +27,10 @@ public static class StartupGuard
             var sms = config["Sms:Provider"] ?? "Console";
             if (sms == "Console")
                 errors.Add("Sms__Provider در Production نمی‌تواند Console باشد (Kavenegar یا SmsIr).");
+            var proxies = config.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [];
+            var networks = config.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [];
+            if (proxies.Length == 0 && networks.Length == 0)
+                errors.Add("ReverseProxy__KnownNetworks__0 (مثل 172.16.0.0/12) یا ReverseProxy__KnownProxies__0 خالی است؛ بدون آن محدودیت درخواست‌ها پشت Nginx درست کار نمی‌کند.");
             if (config.GetValue<bool>("Database:AutoMigrate"))
                 errors.Add("Database__AutoMigrate در Production مجاز نیست؛ اسکریپت Migration بازبینی‌شده اجرا کنید.");
         }

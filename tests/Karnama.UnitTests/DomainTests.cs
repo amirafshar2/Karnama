@@ -104,27 +104,15 @@ public class OtpChallengeTests
     private static readonly DateTimeOffset Now = new(2026, 10, 25, 8, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Correct_code_is_single_use()
+    public void Fresh_challenge_is_usable_for_two_minutes()
     {
         var c = OtpChallenge.Create(Guid.NewGuid(), "09121234567", "h", Now);
-        c.Verify(true, Now.AddSeconds(10)).IsSuccess.Should().BeTrue();
-        c.Verify(true, Now.AddSeconds(20)).Error!.Code.Should().Be("auth.otpUsed");
+        c.CheckUsable(Now.AddSeconds(119)).IsSuccess.Should().BeTrue();
+        c.CheckUsable(Now.AddMinutes(2)).Error!.Code.Should().Be("auth.otpExpired");
     }
 
     [Fact]
-    public void Expires_after_two_minutes()
-    {
-        var c = OtpChallenge.Create(Guid.NewGuid(), "09121234567", "h", Now);
-        c.Verify(true, Now.AddMinutes(2)).Error!.Code.Should().Be("auth.otpExpired");
-    }
-
-    [Fact]
-    public void Five_attempts_then_blocked_even_with_right_code()
-    {
-        var c = OtpChallenge.Create(Guid.NewGuid(), "09121234567", "h", Now);
-        for (var i = 0; i < OtpChallenge.MaxAttempts; i++) c.Verify(false, Now).Error!.Code.Should().Be("auth.otpWrong");
-        c.Verify(true, Now).Error!.Code.Should().Be("auth.otpTooManyAttempts");
-    }
+    public void Wrong_code_error_is_generic() => OtpChallenge.WrongCode.Code.Should().Be("auth.otpWrong");
 }
 
 public class UserTests

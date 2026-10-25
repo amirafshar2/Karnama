@@ -31,7 +31,7 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         IEnumerable<RoleListItemDto> items = rows
             .Select(r => new RoleListItemDto(r.Id, r.Name.Get(lang), r.Name.Values, r.Description, r.SystemKey is not null,
                 r.SystemKey, r.PermissionCount, r.UserCount, r.IsDeleted, r.Version))
-            .OrderByDescending(r => r.IsSystem).ThenBy(r => r.Id);
+            .OrderByDescending(r => r.IsSystem).ThenByDescending(r => r.Id); // system roles, then newest first
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -55,7 +55,7 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
 
     public async Task<Result<RoleDetailDto>> GetAsync(Guid id, CancellationToken ct)
     {
-        var role = await db.Roles.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
+        var role = await db.Roles.IgnoreQueryFilters().AsNoTracking().Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id, ct);
         return role is null ? Error.NotFound("roles.notFound", "نقش پیدا نشد.") : ToDetail(role);
     }
 
@@ -81,6 +81,8 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         var updated = role.Update(new LocalizedText(request.Name), request.Description, ToGrants(request));
         if (updated.IsFailure) return updated.Error!;
 
+        // Grants live in a child table: touch the role row so its version (xmin) moves and stale editors get 409.
+        db.MarkModified(role);
         audit.Add(AuditActions.RoleUpdated, nameof(Role), role.Id.ToString(), new { name = request.Name, before, after = request.Permissions });
         await db.SaveChangesAsync(ct);
         await NotifyMembersAsync(role.Id, ct);

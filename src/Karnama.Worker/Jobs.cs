@@ -49,7 +49,7 @@ internal static class DevDotEnv
 {
     public static void Load(IHostEnvironment env)
     {
-        if (env.IsProduction()) return;
+        if (!env.IsDevelopment()) return;
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, ".env"))) dir = dir.Parent;
         if (dir is null) return;

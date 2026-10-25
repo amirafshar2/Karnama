@@ -36,7 +36,7 @@ internal static class AuthEndpoints
             var result = await auth.RefreshAsync(raw, client, ct);
             if (result.IsFailure) ClearCookie(http);
             return result.ToHttp(http, s => Results.Ok(SessionBody(http, s)));
-        }).RequireRateLimiting(RateLimits.Auth);
+        }).RequireRateLimiting(RateLimits.Refresh);
 
         g.MapPost("/logout", async (AuthService auth, HttpContext http, CancellationToken ct) =>
         {

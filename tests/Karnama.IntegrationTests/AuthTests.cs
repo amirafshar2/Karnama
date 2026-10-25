@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Karnama.IntegrationTests;
 
@@ -12,13 +13,13 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
 
     private HttpClient Https() => _f.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
 
-    private async Task<(Guid Id, string Code)> RequestOtpAsync(HttpClient c, string phone)
+    private async Task<(Guid Id, string Code)> RequestOtpAsync(HttpClient c, string phone, string? previous = null)
     {
         var r = await c.PostAsJsonAsync("/api/v1/auth/otp/request", new { phone });
         r.StatusCode.Should().Be(HttpStatusCode.Accepted);
         var id = (await r.JsonAsync()).GetProperty("challengeId").GetGuid();
-        _f.Sms.LastCode.TryGetValue(phone, out var code);
-        return (id, code ?? string.Empty);
+        var code = await _f.Sms.WaitForCodeAsync(phone, previous);
+        return (id, code);
     }
 
     [Fact]
@@ -27,6 +28,7 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var before = _f.Sms.Sent;
         var r = await Https().PostAsJsonAsync("/api/v1/auth/otp/request", new { phone = "09359998877" });
         r.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        await Task.Delay(300);
         _f.Sms.Sent.Should().Be(before);
     }
 
@@ -80,12 +82,75 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     }
 
     [Fact]
+    public async Task Parallel_guesses_cannot_exceed_five_attempts_and_do_not_lock_the_account()
+    {
+        // Uses a separate staff user so the owner flow in other tests is untouched.
+        const string phone = "09127770000";
+        using (var scope = _f.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
+            db.Users.Add(Karnama.Domain.Identity.User.Create(phone, "کارگر تست", Karnama.Domain.Identity.UserKind.Staff).Value);
+            await db.SaveChangesAsync();
+        }
+
+        var (id, code) = await RequestOtpAsync(Https(), phone);
+        var wrong = code == "000000" ? "111111" : "000000";
+        var guesses = await Task.WhenAll(Enumerable.Range(0, 25).Select(_ =>
+            Https().PostAsJsonAsync("/api/v1/auth/otp/verify", new { challengeId = id, code = wrong })));
+        guesses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.UnprocessableEntity || r.StatusCode == HttpStatusCode.TooManyRequests);
+
+        await using (var conn = new Npgsql.NpgsqlConnection(app.Pg.ConnectionString))
+        {
+            await conn.OpenAsync();
+            await using var cmd = new Npgsql.NpgsqlCommand("SELECT \"Attempts\" FROM otp_challenges WHERE \"Id\" = @id", conn);
+            cmd.Parameters.AddWithValue("id", id);
+            ((int)(await cmd.ExecuteScalarAsync())!).Should().Be(5);
+        }
+
+        // Even the right code is refused now…
+        (await Https().PostAsJsonAsync("/api/v1/auth/otp/verify", new { challengeId = id, code })).StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+
+        // …but the account is not locked: a fresh code works (no lockout DoS through OTP guessing).
+        _f.Clock.Advance(TimeSpan.FromSeconds(61));
+        var (id2, code2) = await RequestOtpAsync(Https(), phone, code);
+        var ok = await Https().PostAsJsonAsync("/api/v1/auth/otp/verify", new { challengeId = id2, code = code2 });
+        ok.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ok.JsonAsync()).GetProperty("step").GetString().Should().Be("completed");
+    }
+
+    [Fact]
+    public async Task One_code_gives_one_session_even_when_raced()
+    {
+        const string phone = "09127770001";
+        using (var scope = _f.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
+            db.Users.Add(Karnama.Domain.Identity.User.Create(phone, "کارگر دوم", Karnama.Domain.Identity.UserKind.Staff).Value);
+            await db.SaveChangesAsync();
+        }
+        var (id, code) = await RequestOtpAsync(Https(), phone);
+        var results = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ =>
+            Https().PostAsJsonAsync("/api/v1/auth/otp/verify", new { challengeId = id, code })));
+        results.Count(r => r.StatusCode == HttpStatusCode.OK).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Setup_is_refused_in_a_demo_install()
+    {
+        var r = await _f.CreateClient().PostAsJsonAsync("/api/v1/setup",
+            new { token = KarnamaFactory.SetupToken, phone = "09121234500", displayName = "x" });
+        r.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await (await _f.CreateClient().GetAsync("/api/v1/setup/status")).JsonAsync()).GetProperty("needsSetup").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Demo_accounts_cannot_log_in_with_otp()
     {
         var c = Https();
         var before = _f.Sms.Sent;
         var r = await c.PostAsJsonAsync("/api/v1/auth/otp/request", new { phone = "09000000001" });
         r.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        await Task.Delay(300);
         _f.Sms.Sent.Should().Be(before, "demo users never receive an SMS");
     }
 

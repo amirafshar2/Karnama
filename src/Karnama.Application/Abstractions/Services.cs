@@ -8,6 +8,12 @@ public interface ISmsSender
     Task SendOtpAsync(string phone, string code, CancellationToken ct);
 }
 
+/// <summary>Queues an OTP SMS so the HTTP response never waits on (or reveals) the SMS provider.</summary>
+public interface IOtpDispatcher
+{
+    void Enqueue(string phone, string code);
+}
+
 public interface IOtpCodeService
 {
     string GenerateCode();

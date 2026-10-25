@@ -62,3 +62,15 @@ public class OtpCodeServiceTests
         h.Should().NotContain("123456");
     }
 }
+
+public class MediaSniffTests
+{
+    [Fact]
+    public void Recognises_png_jpeg_webp_and_rejects_svg()
+    {
+        Karnama.Infrastructure.Storage.LocalMediaStore.Sniff(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0 }).Should().Be("png");
+        Karnama.Infrastructure.Storage.LocalMediaStore.Sniff(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }).Should().Be("jpg");
+        Karnama.Infrastructure.Storage.LocalMediaStore.Sniff("RIFF\0\0\0\0WEBPVP8 "u8).Should().Be("webp");
+        Karnama.Infrastructure.Storage.LocalMediaStore.Sniff("<svg xmlns="u8).Should().BeNull();
+    }
+}

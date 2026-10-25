@@ -44,6 +44,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public void SetOriginalVersion<TEntity>(TEntity entity, uint version) where TEntity : class =>
         Entry(entity).Property("Version").OriginalValue = version;
 
+    public void MarkModified<TEntity>(TEntity entity) where TEntity : class
+    {
+        var entry = Entry(entity);
+        if (entry.State == EntityState.Unchanged) entry.State = EntityState.Modified;
+    }
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = _clock.GetUtcNow();

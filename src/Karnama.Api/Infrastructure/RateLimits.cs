@@ -7,6 +7,7 @@ internal static class RateLimits
 {
     public const string Otp = "otp";
     public const string Auth = "auth";
+    public const string Refresh = "refresh";
 
     public static IServiceCollection AddKarnamaRateLimits(this IServiceCollection services, IConfiguration config) => services.AddRateLimiter(o =>
     {
@@ -35,6 +36,12 @@ internal static class RateLimits
         o.AddPolicy(Auth, http => RateLimitPartition.GetFixedWindowLimiter(IpOf(http),
             _ => new FixedWindowRateLimiterOptions { PermitLimit = authPerIp, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 
+        // Refresh tokens are 48 random bytes (not guessable); this cap only stops a broken client looping.
+        // It is high on purpose: a whole office behind one NAT address reloads at 9 am.
+        var refreshPerIp = config.GetValue("RateLimits:RefreshPerIpPerMinute", 300);
+        o.AddPolicy(Refresh, http => RateLimitPartition.GetFixedWindowLimiter(IpOf(http),
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = refreshPerIp, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
         // Everyone: token bucket per user (or per IP when anonymous) so one broken client can't take the server down.
         o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(http =>
         {
@@ -50,5 +57,14 @@ internal static class RateLimits
         });
     });
 
-    private static string IpOf(HttpContext http) => http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    /// <summary>IPv4 per address; IPv6 per /64 (one customer usually owns a whole /64).</summary>
+    private static string IpOf(HttpContext http)
+    {
+        var ip = http.Connection.RemoteIpAddress;
+        if (ip is null) return "unknown";
+        if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+        if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6) return ip.ToString();
+        var bytes = ip.GetAddressBytes();
+        return Convert.ToHexString(bytes, 0, 8) + "::/64";
+    }
 }

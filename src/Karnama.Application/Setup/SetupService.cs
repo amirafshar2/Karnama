@@ -26,12 +26,17 @@ public sealed class CompleteSetupValidator : AbstractValidator<CompleteSetupRequ
 }
 
 /// <summary>First-run: creates the first real Owner. Allowed only while no real (non-demo) owner exists.</summary>
-public sealed class SetupService(IAppDbContext db, IAuditWriter audit, IOptions<SetupOptions> options)
+public sealed class SetupService(IAppDbContext db, IAuditWriter audit, IOptions<SetupOptions> options, IOptions<SeedOptions> seed, IOptions<DemoLoginOptions> demo)
 {
-    public async Task<SetupStatusDto> GetStatusAsync(CancellationToken ct) => new(!await HasRealOwnerAsync(ct));
+    public async Task<SetupStatusDto> GetStatusAsync(CancellationToken ct) =>
+        new(seed.Value.Mode != SeedMode.Demo && !demo.Value.Enabled && !await HasRealOwnerAsync(ct));
 
     public async Task<Result> CompleteAsync(CompleteSetupRequest request, CancellationToken ct)
     {
+        // Real owners never live next to demo accounts: demo sessions could otherwise change real data.
+        if (seed.Value.Mode == SeedMode.Demo || demo.Value.Enabled)
+            return Error.Conflict("setup.demoInstall", "این نصب نمایشی است؛ برای مشتری واقعی نصب خالی (start-empty.cmd) را اجرا کنید.");
+
         var expected = Encoding.UTF8.GetBytes(options.Value.Token);
         var given = Encoding.UTF8.GetBytes(request.Token ?? string.Empty);
         if (expected.Length == 0 || !CryptographicOperations.FixedTimeEquals(SHA256.HashData(expected), SHA256.HashData(given)))

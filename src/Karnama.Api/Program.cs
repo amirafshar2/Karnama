@@ -111,6 +111,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
     o.KnownProxies.Clear();
     foreach (var proxy in config.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
         o.KnownProxies.Add(System.Net.IPAddress.Parse(proxy));
+    foreach (var network in config.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [])
+        o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
 });
 
 var app = builder.Build();
@@ -153,6 +155,7 @@ app.MapRoles();
 app.MapI18n();
 app.MapSetup();
 app.MapPublic(demoLogin);
+app.MapSettings();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

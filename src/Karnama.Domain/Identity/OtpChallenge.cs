@@ -29,8 +29,12 @@ public sealed class OtpChallenge : Entity
         ExpiresAt = now.Add(Lifetime),
     };
 
-    /// <summary>Checks a code. <paramref name="matches"/> must be a constant-time comparison of hashes.</summary>
-    public Result Verify(bool matches, DateTimeOffset now)
+    /// <summary>
+    /// Why this challenge can't take another attempt, or success if it can.
+    /// The attempt itself is claimed atomically in the database (see AuthService) so parallel guesses
+    /// can never exceed <see cref="MaxAttempts"/>; this method only explains the state to the user.
+    /// </summary>
+    public Result CheckUsable(DateTimeOffset now)
     {
         if (ConsumedAt is not null)
             return Error.Validation("auth.otpUsed", "این کد قبلاً استفاده شده است. کد جدید بگیرید.");
@@ -38,12 +42,8 @@ public sealed class OtpChallenge : Entity
             return Error.Validation("auth.otpExpired", "کد منقضی شده است. کد جدید بگیرید.");
         if (Attempts >= MaxAttempts)
             return Error.TooMany("auth.otpTooManyAttempts", "تعداد تلاش‌ها زیاد بود. کد جدید بگیرید.");
-
-        Attempts++;
-        if (!matches)
-            return Error.Validation("auth.otpWrong", "کد واردشده درست نیست.");
-
-        ConsumedAt = now;
         return Result.Success();
     }
+
+    public static Error WrongCode => Error.Validation("auth.otpWrong", "کد واردشده درست نیست.");
 }

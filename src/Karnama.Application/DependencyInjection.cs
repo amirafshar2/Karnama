@@ -19,6 +19,8 @@ public static class DependencyInjection
         services.AddScoped<MeService>();
         services.AddScoped<LocalizationService>();
         services.AddScoped<SetupService>();
+        services.AddScoped<Settings.BrandService>();
+        services.AddScoped<TranslationAdminService>();
         return services;
     }
 }

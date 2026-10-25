@@ -70,6 +70,17 @@ public sealed class CapturingSms : ISmsSender
         Interlocked.Increment(ref Sent);
         return Task.CompletedTask;
     }
+
+    /// <summary>SMS are sent in the background; wait until a new code for the phone arrives.</summary>
+    public async Task<string> WaitForCodeAsync(string phone, string? previous = null)
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            if (LastCode.TryGetValue(phone, out var c) && c != previous) return c;
+            await Task.Delay(50);
+        }
+        throw new TimeoutException($"No OTP sent to {phone}");
+    }
 }
 
 public class KarnamaFactory(string connectionString, bool demoLogin = true, string seedMode = "Demo", string environment = "Development")
@@ -97,6 +108,7 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
         builder.UseSetting("RateLimits:OtpPerIpPer10Minutes", "1000");
         builder.UseSetting("RateLimits:AuthPerIpPerMinute", "1000");
         builder.UseSetting("RateLimits:UserBurst", "1000");
+        builder.UseSetting("Storage:LocalPath", Path.Combine(Path.GetTempPath(), "karnama-test-storage"));
         builder.ConfigureServices(s =>
         {
             s.RemoveAll<ISmsSender>();
@@ -154,12 +166,17 @@ public class AppFixture(bool demoLogin = true, string seedMode = "Demo") : IAsyn
 
 public sealed class DemoAppFixture : AppFixture
 {
+    /// <summary>Setup is refused in demo installs, so the test owner is written straight to the database.</summary>
     public override async Task InitializeAsync()
     {
         await base.InitializeAsync();
-        var setup = await Factory.CreateClient().PostAsJsonAsync("/api/v1/setup",
-            new { token = KarnamaFactory.SetupToken, phone = OwnerPhone, displayName = "مالک تست" });
-        setup.EnsureSuccessStatusCode();
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
+        var ownerRole = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstAsync(db.Roles, r => r.SystemKey == "owner");
+        var user = Karnama.Domain.Identity.User.Create(OwnerPhone, "مالک تست", Karnama.Domain.Identity.UserKind.Staff).Value;
+        user.AssignRole(ownerRole.Id);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
     }
 }
 
