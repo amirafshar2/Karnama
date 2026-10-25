@@ -16,7 +16,8 @@ public sealed record ApprovalDto(Guid WorkItemId, Guid OrderId, long OrderNumber
 public sealed record PortalOrderDto(Guid Id, long Number, string Title, string ServiceName, OrderStatus Status, int Percent, string StepLabel, DateTimeOffset CreatedAt);
 public sealed record PortalHomeDto(string ClientName, PortalPackageDto? Package, IReadOnlyList<ApprovalDto> Approvals, IReadOnlyList<PortalOrderDto> Orders);
 public sealed record PortalMessageDto(Guid Id, string Author, bool FromMe, string Body, DateTimeOffset At);
-public sealed record ApprovalRequest(bool Approve, string? Note);
+/// <summary><paramref name="Stars"/>: optional 1–5 when approving (PROMPT2 §11 client score).</summary>
+public sealed record ApprovalRequest(bool Approve, string? Note, int? Stars = null);
 public sealed record PortalMessageRequest(string Body);
 public sealed record PortalAccountDto(Guid PlatformId, string PlatformName, string Handle);
 public sealed record PortalPackageHistoryDto(string Name, DateTimeOffset StartsAt, DateTimeOffset EndsAt, Domain.Clients.ClientPackageStatus Status);
@@ -130,6 +131,7 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
         var now = clock.GetUtcNow();
         var moved = w.MoveTo(r.Approve ? WorkStatus.Done : WorkStatus.ChangesRequested, WorkActor.Client, now);
         if (moved.IsFailure) return moved.Error!;
+        if (r.Approve && r.Stars is { } stars && w.RateByClient(stars) is { IsFailure: true } bad) return bad.Error!;
         db.MarkModified(w);
         var name = await db.Clients.Where(c => c.Id == clientId).Select(c => c.BusinessName).FirstAsync(ct);
         if (!string.IsNullOrWhiteSpace(r.Note))

@@ -23,6 +23,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         await SeedLanguagesAsync(ct);
         var (owner, client) = await SeedSystemRolesAsync(ct);
         await SeedPlatformsAsync(ct);
+        await SeedCrmDefaultsAsync(ct);
         await db.SaveChangesAsync(ct);
         await AttendanceSeed.SeedAsync(db, options.Value.Mode == SeedMode.Demo, ct);
 
@@ -37,9 +38,26 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             await DemoSiteSeed.SeedAsync(db, ct);
             await DemoVaultSeed.SeedAsync(db, vault, ct);
             await DemoMediaSeed.SeedAsync(db, ct);
+            await EnsureDemoMarketerAsync(ct);
+            await DemoCrmSeed.SeedAsync(db, ct);
+            await DemoHistorySeed.SeedAsync(db, ct);
             await SyncDemoAdminAsync(ct);
         }
         logger.LogInformation("Seed completed (mode: {Mode})", options.Value.Mode);
+    }
+
+    /// <summary>Starting sales pipeline and lead sources (also in empty installs; editable in the panel).</summary>
+    private async Task SeedCrmDefaultsAsync(CancellationToken ct)
+    {
+        if (!await db.LeadStages.AnyAsync(ct))
+            foreach (var s in Karnama.Domain.Crm.CrmDefaults.Stages)
+                db.LeadStages.Add(Karnama.Domain.Crm.LeadStage.Create(s.Name, s.Kind, s.Order, s.Id).Value!);
+        if (!await db.LeadSources.AnyAsync(ct))
+        {
+            var i = 0;
+            foreach (var name in Karnama.Domain.Crm.CrmDefaults.Sources)
+                db.LeadSources.Add(Karnama.Domain.Crm.LeadSource.Create(name, i += 10).Value!);
+        }
     }
 
     private async Task SeedLanguagesAsync(CancellationToken ct)
@@ -105,6 +123,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             new(Permissions.AttendanceView, PermissionScope.Own),
             new(Permissions.ReportsView, PermissionScope.Own),
             new(Permissions.ChatUse, PermissionScope.Own),
+            new(Permissions.ScoresView, PermissionScope.Own),
         ];
         var editorRole = Role.Create(Name("تدوینگر", "Video editor"), "تدوین ریلز و ویدیو", worker).Value;
         var writerRole = Role.Create(Name("عکاس و متن‌نویس", "Photographer & copywriter"), "عکاسی، کپشن و متن", [.. worker, new(Permissions.BlogWrite, PermissionScope.Own)]).Value;
@@ -126,6 +145,24 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         AddUser("09000000007", "محمد (مدیر نمونه)", UserKind.Staff, manager.Id);
     }
 
+    /// <summary>The «بازاریاب» role (PROMPT2 §4) and its demo user; also added to demo installs made before N7.</summary>
+    private async Task EnsureDemoMarketerAsync(CancellationToken ct)
+    {
+        var phone = DemoAccounts.Find("marketer")!.Phone;
+        if (await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Phone == phone, ct)) return;
+        var role = Role.Create(Name("بازاریاب", "Marketer"), "سرنخ‌های خودش، تماس و پیگیری",
+        [
+            new(Permissions.CrmLeads, PermissionScope.Own),
+            new(Permissions.ChatUse, PermissionScope.Own),
+            new(Permissions.AttendanceSelf, PermissionScope.Own),
+            new(Permissions.AttendanceView, PermissionScope.Own),
+            new(Permissions.ReportsView, PermissionScope.Own),
+        ]).Value;
+        db.Roles.Add(role);
+        AddUser(phone, "نیما (بازاریاب نمونه)", UserKind.Staff, role.Id);
+        await db.SaveChangesAsync(ct);
+    }
+
     /// <summary>The demo admin shows everything, so it follows the catalog as new modules add permissions.</summary>
     private async Task SyncDemoAdminAsync(CancellationToken ct)
     {
@@ -139,10 +176,14 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         var demoRoleIds = await db.Users.Where(u => u.IsDemo && u.Kind == UserKind.Staff).SelectMany(u => u.Roles.Select(r => r.RoleId)).Distinct().ToListAsync(ct);
         foreach (var r in await db.Roles.Include(x => x.Permissions).Where(x => demoRoleIds.Contains(x.Id) && x.SystemKey == null).ToListAsync(ct))
         {
-            if (r.Permissions.Any(g => g.Code == Permissions.ChatUse || g.Code == Permissions.ChatGroupsManage)) continue;
             var grants = r.Permissions.Select(g => new PermissionGrant(g.Code, g.Scope)).ToList();
-            grants.Add(grants.Any(g => g.Code == Permissions.WorkAssign) ? new PermissionGrant(Permissions.ChatGroupsManage, PermissionScope.All) : new PermissionGrant(Permissions.ChatUse, PermissionScope.Own));
-            r.Update(r.Name, r.Description, grants);
+            var manager = grants.Any(g => g.Code == Permissions.WorkAssign);
+            PermissionGrant[] wanted = manager
+                ? [new(Permissions.ChatGroupsManage, PermissionScope.All), new(Permissions.ScoresView, PermissionScope.All)]
+                : [new(Permissions.ChatUse, PermissionScope.Own), new(Permissions.ScoresView, PermissionScope.Own)];
+            var missing = wanted.Where(w => grants.All(g => g.Code != w.Code) && !(w.Code == Permissions.ChatUse && grants.Any(g => g.Code == Permissions.ChatGroupsManage))).ToList();
+            if (missing.Count == 0) continue;
+            r.Update(r.Name, r.Description, grants.Concat(missing));
         }
         await db.SaveChangesAsync(ct);
     }

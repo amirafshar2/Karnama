@@ -47,8 +47,15 @@ public sealed class AttendanceJobs(Karnama.Application.Attendance.AttendanceAdmi
 
 /// <summary>Publishing reminders (M6) and package expiry notices (7/3/1 days).</summary>
 public sealed class NotifyJobs(Karnama.Application.Publishing.PublishService publish, Karnama.Application.Notify.PackageExpiryJob expiry,
-    Karnama.Application.Blog.BlogService blog, ILogger<NotifyJobs> logger)
+    Karnama.Application.Blog.BlogService blog, Karnama.Application.Crm.CrmService crm, ILogger<NotifyJobs> logger)
 {
+    [AutomaticRetry(Attempts = 1)]
+    public async Task CrmFollowUpsAsync(CancellationToken ct)
+    {
+        var n = await crm.RemindFollowUpsAsync(ct);
+        if (n > 0) logger.LogInformation("Reminded {Count} CRM follow-ups", n);
+    }
+
     [AutomaticRetry(Attempts = 1)]
     public async Task BlogScheduleAsync(CancellationToken ct)
     {
@@ -85,6 +92,7 @@ internal sealed class JobRegistrar(IRecurringJobManager jobs) : IHostedService
         jobs.AddOrUpdate<AttendanceJobs>("detect-absences", j => j.DetectAbsencesAsync(CancellationToken.None), "*/5 * * * *");
         jobs.AddOrUpdate<AttendanceJobs>("close-forgotten-shifts", j => j.CloseForgottenAsync(CancellationToken.None), "*/30 * * * *");
         jobs.AddOrUpdate<NotifyJobs>("blog-schedule", j => j.BlogScheduleAsync(CancellationToken.None), Cron.Minutely());
+        jobs.AddOrUpdate<NotifyJobs>("crm-follow-ups", j => j.CrmFollowUpsAsync(CancellationToken.None), "*/5 * * * *");
         jobs.AddOrUpdate<NotifyJobs>("publish-tick", j => j.PublishTickAsync(CancellationToken.None), Cron.Minutely());
         jobs.AddOrUpdate<NotifyJobs>("package-expiry", j => j.PackageExpiryAsync(CancellationToken.None), "30 5 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran") });
         return Task.CompletedTask;

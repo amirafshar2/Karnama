@@ -14,7 +14,7 @@ public sealed record WorkCardDto(
 public sealed record CommentDto(Guid Id, string AuthorName, bool FromClient, CommentVisibility Visibility, string Body, DateTimeOffset CreatedAt, bool Mine);
 
 public sealed record WorkDetailDto(WorkCardDto Card, OrderDto Order, IReadOnlyList<CommentDto> Comments, IReadOnlyList<Files.FileDto> Files,
-    IReadOnlyList<WorkStatus> AllowedMoves, bool CanAssign, bool CanTalkToClient);
+    IReadOnlyList<WorkStatus> AllowedMoves, bool CanAssign, bool CanTalkToClient, int? ManagerStars = null, int? ClientStars = null, bool CanRate = false);
 
 public sealed record BoardFilter(Guid? ClientId, Guid? AssigneeId, Guid? ServiceTypeId, bool Mine, bool Overdue);
 
@@ -54,13 +54,29 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
             && CanMove(w, s, actor.Value)).ToList();
         return new WorkDetailDto((await CardsAsync([w], ct))[0], await orders.ToDtoAsync(order, ct),
             comments.Select(c => new CommentDto(c.Id, c.AuthorName, c.FromClient, c.Visibility, c.Body, c.CreatedAt, c.AuthorId == access.Me)).ToList(),
-            files.Select(Files.FileService.ToDto).ToList(), moves, access.CanAssign, access.CanTalkToClient);
+            files.Select(Files.FileService.ToDto).ToList(), moves, access.CanAssign, access.CanTalkToClient,
+            w.ManagerStars, w.ClientStars, w.Status == WorkStatus.Done && me.Has(Permissions.WorkReview, PermissionScope.All));
     }
 
     private WorkActor? ActorFor(WorkItem w) =>
         access.IsManager ? WorkActor.Manager : access.CanRun && w.AssigneeId == access.Me ? WorkActor.Assignee : null;
 
     private static bool CanMove(WorkItem w, WorkStatus target, WorkActor actor) => w.CanMoveTo(target, actor).IsSuccess;
+
+    /// <summary>A manager's 1–5 stars on finished work (feeds the worker score; PROMPT2 §11).</summary>
+    public async Task<Result> RateAsync(Guid id, int stars, CancellationToken ct)
+    {
+        if (!me.Has(Permissions.WorkReview, PermissionScope.All)) return Error.Forbidden();
+        var w = await db.WorkItems.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
+        var r = w.RateByManager(stars);
+        if (r.IsFailure) return r;
+        audit.Add("work.rated", nameof(WorkItem), w.Id.ToString(), new { stars });
+        changes.Record("work", w.Id, null, w.AssigneeId, null, "rating");
+        await db.SaveChangesAsync(ct);
+        await changes.PublishAsync(ct);
+        return Result.Success();
+    }
 
     public async Task<Result<WorkCardDto>> MoveAsync(Guid id, MoveRequest r, CancellationToken ct)
     {

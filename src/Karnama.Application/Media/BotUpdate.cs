@@ -9,6 +9,11 @@ public sealed record ParsedCallback(string Id, string Data, long MessageId);
 /// <summary>The parts of a Bot API update we use. Only private chats; everything else is ignored.</summary>
 public sealed record ParsedUpdate(long UpdateId, long ChatId, long MessageId, DateTimeOffset Date, string? Text, string? Caption, ParsedMedia? Media, ParsedCallback? Callback)
 {
+    /// <summary>Sender's display name (first + last) as the messenger shows it.</summary>
+    public string? FromName { get; init; }
+    /// <summary>Phone number the sender shared with the "share contact" button (their own, never a third party's).</summary>
+    public string? ContactPhone { get; init; }
+
     /// <summary>Telegram and Bale share this update shape. Returns null for anything we don't handle.</summary>
     public static ParsedUpdate? Parse(string json)
     {
@@ -34,7 +39,19 @@ public sealed record ParsedUpdate(long UpdateId, long ChatId, long MessageId, Da
             if (!chat.TryGetProperty("id", out var chatId)) return null;
             var msgId = msg.TryGetProperty("message_id", out var messageIdEl) && messageIdEl.TryGetInt64(out var mv) ? mv : 0;
             var date = msg.TryGetProperty("date", out var d) && d.TryGetInt64(out var unix) ? DateTimeOffset.FromUnixTimeSeconds(unix) : DateTimeOffset.UtcNow;
-            return new ParsedUpdate(updateId, chatId.GetInt64(), msgId, date, Str(msg, "text"), Str(msg, "caption"), MediaOf(msg), null);
+            string? fromName = null;
+            JsonElement sender = default;
+            if (msg.TryGetProperty("from", out sender))
+                fromName = string.Join(' ', new[] { Str(sender, "first_name"), Str(sender, "last_name") }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
+            string? contact = null;
+            if (msg.TryGetProperty("contact", out var c) && c.TryGetProperty("user_id", out var cu) && sender.ValueKind == JsonValueKind.Object
+                && sender.TryGetProperty("id", out var fid) && cu.GetInt64() == fid.GetInt64())
+                contact = Str(c, "phone_number");
+            return new ParsedUpdate(updateId, chatId.GetInt64(), msgId, date, Str(msg, "text"), Str(msg, "caption"), MediaOf(msg), null)
+            {
+                FromName = string.IsNullOrWhiteSpace(fromName) ? null : fromName,
+                ContactPhone = contact,
+            };
         }
         catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException) { return null; }
     }

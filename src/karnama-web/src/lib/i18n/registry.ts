@@ -13,6 +13,8 @@ import type { faSiteAdmin } from "./fa-siteadmin";
 import type { faN4 } from "./fa-n4";
 import type { faN5 } from "./fa-n5";
 import type { faN6 } from "./fa-n6";
+import type { faN7 } from "./fa-n7";
+import type { faN8 } from "./fa-n8";
 import { faCore } from "./fa";
 import type { faAuth, faDashboard, faProfile } from "./fa-pages";
 import type { faRoles } from "./fa-roles";
@@ -40,7 +42,9 @@ export type TextKey =
   | keyof typeof faSiteAdmin
   | keyof typeof faN4
   | keyof typeof faN5
-  | keyof typeof faN6;
+  | keyof typeof faN6
+  | keyof typeof faN7
+  | keyof typeof faN8;
 export type Dictionary = Record<TextKey, string>;
 
 const registered: Partial<Dictionary> = { ...faCore };

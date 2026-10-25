@@ -1871,3 +1871,384 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    DROP INDEX "IX_leads_Phone_CreatedAt";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    DROP INDEX "IX_leads_Status";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ALTER COLUMN "Source" TYPE character varying(200);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ALTER COLUMN "Phone" DROP NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ALTER COLUMN "Note" TYPE character varying(2000);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ALTER COLUMN "Name" TYPE character varying(80);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ALTER COLUMN "Message" TYPE character varying(1000);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ALTER COLUMN "Business" TYPE character varying(80);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "Budget" bigint;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "City" character varying(40);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "ClientId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "ClosedAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "FollowUpRemindedFor" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "Industry" character varying(60);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "Instagram" character varying(60);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "LastActivityAt" timestamp with time zone NOT NULL DEFAULT TIMESTAMPTZ '-infinity';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "LostReason" character varying(300);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "MessengerChatId" bigint;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "NextFollowUpAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "OwnerId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "SourceId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "StageId" uuid NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD "Tags" jsonb NOT NULL DEFAULT '[]';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE TABLE lead_activities (
+        "Id" bigint GENERATED ALWAYS AS IDENTITY,
+        "LeadId" uuid NOT NULL,
+        "ActorId" uuid,
+        "Kind" integer NOT NULL,
+        "Direction" integer,
+        "DurationSeconds" integer,
+        "Outcome" integer,
+        "Channel" integer,
+        "Note" character varying(1000),
+        "FromId" uuid,
+        "ToId" uuid,
+        "At" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_lead_activities" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_lead_activities_leads_LeadId" FOREIGN KEY ("LeadId") REFERENCES leads ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE TABLE lead_sources (
+        "Id" uuid NOT NULL,
+        "Name" character varying(40) NOT NULL,
+        "IsActive" boolean NOT NULL,
+        "SortOrder" integer NOT NULL,
+        CONSTRAINT "PK_lead_sources" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE TABLE lead_stages (
+        "Id" uuid NOT NULL,
+        "Name" character varying(40) NOT NULL,
+        "Kind" integer NOT NULL,
+        "SortOrder" integer NOT NULL,
+        "IsActive" boolean NOT NULL,
+        CONSTRAINT "PK_lead_stages" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE INDEX "IX_leads_MessengerChatId" ON leads ("MessengerChatId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE INDEX "IX_leads_NextFollowUpAt" ON leads ("NextFollowUpAt");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE INDEX "IX_leads_OwnerId_StageId" ON leads ("OwnerId", "StageId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE INDEX "IX_leads_Phone" ON leads ("Phone");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE INDEX "IX_leads_SourceId" ON leads ("SourceId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE INDEX "IX_leads_StageId" ON leads ("StageId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE INDEX "IX_lead_activities_Kind_At" ON lead_activities ("Kind", "At");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE INDEX "IX_lead_activities_LeadId_Id" ON lead_activities ("LeadId", "Id");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    CREATE UNIQUE INDEX "IX_lead_sources_Name" ON lead_sources ("Name");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    INSERT INTO lead_stages ("Id", "Name", "Kind", "SortOrder", "IsActive") VALUES
+      ('0193a000-0000-7000-8000-000000000001', 'جدید', 1, 10, true),
+      ('0193a000-0000-7000-8000-000000000002', 'تماس اول', 1, 20, true),
+      ('0193a000-0000-7000-8000-000000000003', 'جلسه / مشاوره', 1, 30, true),
+      ('0193a000-0000-7000-8000-000000000004', 'پیشنهاد قیمت', 1, 40, true),
+      ('0193a000-0000-7000-8000-000000000005', 'مذاکره', 1, 50, true),
+      ('0193a000-0000-7000-8000-000000000006', 'بسته شد (برد)', 2, 60, true),
+      ('0193a000-0000-7000-8000-000000000007', 'از دست رفت', 3, 70, true)
+    ON CONFLICT DO NOTHING;
+    INSERT INTO lead_sources ("Id", "Name", "IsActive", "SortOrder") VALUES
+      ('0193a000-0000-7000-8000-000000000101', 'معرفی', true, 10),
+      ('0193a000-0000-7000-8000-000000000102', 'اینستاگرام', true, 20),
+      ('0193a000-0000-7000-8000-000000000103', 'تماس ورودی', true, 30),
+      ('0193a000-0000-7000-8000-000000000104', 'فرم سایت', true, 40),
+      ('0193a000-0000-7000-8000-000000000105', 'حضوری', true, 50),
+      ('0193a000-0000-7000-8000-000000000106', 'ربات', true, 60)
+    ON CONFLICT DO NOTHING;
+    UPDATE leads SET
+      "StageId" = CASE "Status" WHEN 2 THEN '0193a000-0000-7000-8000-000000000002'::uuid
+                                WHEN 3 THEN '0193a000-0000-7000-8000-000000000006'::uuid
+                                WHEN 4 THEN '0193a000-0000-7000-8000-000000000007'::uuid
+                                ELSE '0193a000-0000-7000-8000-000000000001'::uuid END,
+      "ClosedAt" = CASE WHEN "Status" IN (3, 4) THEN COALESCE("UpdatedAt", "CreatedAt") END,
+      "LastActivityAt" = COALESCE("UpdatedAt", "CreatedAt"),
+      "SourceId" = '0193a000-0000-7000-8000-000000000104',
+      "Tags" = '[]';
+    -- Roles that managed website leads now manage the CRM.
+    INSERT INTO role_permissions ("RoleId", "Code", "Scope")
+      SELECT "RoleId", c, 3 FROM role_permissions, unnest(ARRAY['crm.assign', 'crm.pipeline.manage']) AS c WHERE "Code" = 'leads.manage'
+    ON CONFLICT DO NOTHING;
+    UPDATE role_permissions SET "Code" = 'crm.leads' WHERE "Code" = 'leads.manage';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD CONSTRAINT "FK_leads_lead_sources_SourceId" FOREIGN KEY ("SourceId") REFERENCES lead_sources ("Id") ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads ADD CONSTRAINT "FK_leads_lead_stages_StageId" FOREIGN KEY ("StageId") REFERENCES lead_stages ("Id") ON DELETE RESTRICT;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    ALTER TABLE leads DROP COLUMN "Status";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025210238_N7Crm') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025210238_N7Crm', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025212634_N8Scores') THEN
+    ALTER TABLE work_items ADD "ClientStars" smallint;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025212634_N8Scores') THEN
+    ALTER TABLE work_items ADD "FirstSubmittedAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025212634_N8Scores') THEN
+    ALTER TABLE work_items ADD "ManagerStars" smallint;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025212634_N8Scores') THEN
+    UPDATE work_items SET "FirstSubmittedAt" = "SubmittedAt" WHERE "SubmittedAt" IS NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025212634_N8Scores') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025212634_N8Scores', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+

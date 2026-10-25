@@ -33,6 +33,8 @@ internal static class WorkEndpoints
             Results.Ok(await svc.BoardAsync(new BoardFilter(clientId, assigneeId, serviceTypeId, mine ?? false, overdue ?? false), ct)));
         work.MapGet("/{id:guid}", async (Guid id, WorkService svc, HttpContext http, CancellationToken ct) => (await svc.GetAsync(id, ct)).ToHttp(http));
         work.MapPost("/{id:guid}/move", async (Guid id, MoveRequest body, WorkService svc, HttpContext http, CancellationToken ct) => (await svc.MoveAsync(id, body, ct)).ToHttp(http));
+        work.MapPost("/{id:guid}/rating", async (Guid id, RatingRequest body, WorkService svc, HttpContext http, CancellationToken ct) => (await svc.RateAsync(id, body.Stars, ct)).ToHttp(http))
+            .RequirePermission(Permissions.WorkReview, PermissionScope.All);
         work.MapPost("/{id:guid}/assign", async (Guid id, AssignRequest body, WorkService svc, HttpContext http, CancellationToken ct) => (await svc.AssignAsync(id, body, ct)).ToHttp(http));
         work.MapGet("/{id:guid}/suggestions", async (Guid id, WorkService svc, HttpContext http, CancellationToken ct) => (await svc.SuggestAsync(id, ct)).ToHttp(http));
         work.MapPost("/{id:guid}/comments", async (Guid id, CommentRequest body, WorkService svc, HttpContext http, CancellationToken ct) => (await svc.CommentAsync(id, body, ct)).ToHttp(http));
@@ -103,3 +105,5 @@ internal static class PortalEndpoints
             (await svc.CreateAsync(body, OrderSource.Client, ct)).ToHttp(http, r => Results.Created($"/api/v1/orders/{r.Id}", r)));
     }
 }
+
+public sealed record RatingRequest(int Stars);

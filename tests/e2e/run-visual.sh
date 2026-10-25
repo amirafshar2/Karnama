@@ -36,6 +36,10 @@ API_DLL="$ROOT/src/Karnama.Api/bin/Release/net10.0/Karnama.Api.dll"
 ( cd src/Karnama.Api && Seed__Mode=Empty DemoLogin__Enabled=false ConnectionStrings__Default="$EMPTY_CS" \
   Cors__AllowedOrigins__0=http://localhost:3001 dotnet "$API_DLL" --urls http://localhost:5081 > "$LOGS/api-empty.log" 2>&1 & )
 
+wait_for() { for _ in $(seq 1 90); do curl -fs "$1" >/dev/null 2>&1 && return 0; sleep 1; done; echo "[e2e] $1 did not start"; exit 1; }
+# The public pages are pre-rendered during the build, so the API must be seeded and answering first.
+wait_for http://localhost:5080/health/ready; wait_for http://localhost:5081/health/ready
+
 cd src/karnama-web
 [ -d node_modules ] || npm ci
 NEXT_DIST_DIR=.next-demo NEXT_PUBLIC_API_BASE=http://localhost:5080 NEXT_PUBLIC_HUB_BASE=http://localhost:5080 npx next build > "$LOGS/web-demo-build.log" 2>&1
@@ -48,8 +52,6 @@ node ../../tools/bundle-size.mjs .next-demo
 ( "$(command -v python3 || command -v python)" -m http.server 3002 --bind 127.0.0.1 --directory out > "$LOGS/web-app.log" 2>&1 & )
 cd "$ROOT"
 
-wait_for() { for _ in $(seq 1 90); do curl -fs "$1" >/dev/null 2>&1 && return 0; sleep 1; done; echo "[e2e] $1 did not start"; exit 1; }
-wait_for http://localhost:5080/health/ready; wait_for http://localhost:5081/health/ready
 wait_for http://localhost:3000/login; wait_for http://localhost:3001/login; wait_for http://localhost:3002/login/
 
 cd tests/e2e

@@ -109,15 +109,4 @@ export const faSiteAdmin = {
   "cases.featured": "در صفحه‌ی اصلی اول نشان داده شود",
   "cases.sort": "ترتیب",
 
-  "leads.title": "درخواست‌های مشاوره",
-  "leads.subtitle": "فرم «مشاوره‌ی رایگان» سایت. با هر درخواست تازه خبرتان می‌کنیم.",
-  "leads.empty": "هنوز درخواستی نیامده است.",
-  "leads.call": "تماس",
-  "leads.note": "یادداشت",
-  "leads.save": "ذخیره",
-  "leads.saved": "ذخیره شد.",
-  "leads.status.new": "تازه",
-  "leads.status.contacted": "تماس گرفته شد",
-  "leads.status.won": "مشتری شد",
-  "leads.status.lost": "منصرف شد",
 } as const;

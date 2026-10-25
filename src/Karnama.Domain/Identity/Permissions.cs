@@ -59,7 +59,14 @@ public static class Permissions
 
     public const string BlogWrite = "blog.write";
     public const string BlogPublish = "blog.publish";
-    public const string LeadsManage = "leads.manage";
+    /// <summary>Own = a marketer's own leads; All = every lead (sales manager). PROMPT2 §14 crm.leads.own / crm.leads.all.</summary>
+    /// <summary>Own = my score and "why"; All = everyone's (PROMPT2 §14 scores.view.own / scores.view.all).</summary>
+    public const string ScoresView = "scores.view";
+    public const string ScoresConfigure = "scores.configure";
+
+    public const string CrmLeads = "crm.leads";
+    public const string CrmAssign = "crm.assign";
+    public const string CrmPipelineManage = "crm.pipeline.manage";
 
     public const string CredentialsView = "credentials.view";
     public const string CredentialsReveal = "credentials.reveal";
@@ -120,7 +127,12 @@ public static class Permissions
 
         new(BlogWrite, "blog", OwnOrAll),
         new(BlogPublish, "blog", AllOnly),
-        new(LeadsManage, "clients", AllOnly),
+        new(ScoresView, "reports", OwnOrAll),
+        new(ScoresConfigure, "reports", AllOnly),
+
+        new(CrmLeads, "crm", OwnOrAll),
+        new(CrmAssign, "crm", AllOnly),
+        new(CrmPipelineManage, "crm", AllOnly),
 
         new(CredentialsView, "credentials", AllOnly),
         new(CredentialsReveal, "credentials", AllOnly),

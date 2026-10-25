@@ -13,5 +13,3 @@ export type CaseItem = {
   revenueBefore: number | null; revenueAfter: number | null; revenueAsPercent: boolean; metrics: CaseMetric[]; shots: CaseShot[]; quote: string | null; quoteBy: string | null;
   videoUrl: string | null; source: string | null; consentObtained: boolean; consentFile: string | null; isSample: boolean; published: boolean; featured: boolean; sortOrder: number; version: number;
 };
-export type LeadStatus = "new" | "contacted" | "won" | "lost";
-export type Lead = { id: string; name: string; phone: string; business: string | null; message: string | null; source: string | null; status: LeadStatus; note: string | null; createdAt: string; version: number };

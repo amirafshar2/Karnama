@@ -52,7 +52,7 @@ export type OrderDetail = {
 
 export type Comment = { id: string; authorName: string; fromClient: boolean; visibility: "internal" | "client"; body: string; createdAt: string; mine: boolean };
 
-export type WorkDetail = { card: WorkCard; order: OrderDetail; comments: Comment[]; files: FileItem[]; allowedMoves: WorkStatus[]; canAssign: boolean; canTalkToClient: boolean };
+export type WorkDetail = { card: WorkCard; order: OrderDetail; comments: Comment[]; files: FileItem[]; allowedMoves: WorkStatus[]; canAssign: boolean; canTalkToClient: boolean; managerStars: number | null; clientStars: number | null; canRate: boolean };
 
 /** Board columns, in workflow order. */
 export const COLUMNS: WorkStatus[] = ["waiting", "todo", "inProgress", "changesRequested", "inReview", "clientReview", "done"];

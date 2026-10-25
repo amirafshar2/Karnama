@@ -73,3 +73,10 @@
 | ویرایشگر متن | `components/blog/rich-editor.tsx` | Tiptap 3.31.4 (MIT) + نوار ابزار داخلی | ✅ |
 
 گزینه‌های 21st برای نوار ابزار ویرایشگر (کوئری `tiptap editor`, `rich text editor`, `notion editor`): ۱) Minimal Tiptap (@shadcn-ext) ۲) Novel-style editor ۳) Rich Text Editor (@originui) — با رسیدن کلید 21st جایگزین می‌شود؛ هسته (Tiptap) و خروجی JSON تغییری نمی‌کند.
+
+| بخش | کامپوننت | منبع | جایگزین موقت؟ |
+|---|---|---|---|
+| ستاره‌ی امتیاز (N8) | `components/app/stars.tsx` | گروه رادیویی بومی + آیکن Star از lucide | ✅ |
+| نمودار روزانه‌ی گزارش (N8) | `app/(app)/(panel)/reports/day-chart.tsx` | SVG دست‌ساز | ✅ |
+
+گزینه‌های 21st برای ستاره (کوئری `rating`, `star rating`): ۱) Rating (@originui) ۲) Star Rating (@shadcn-ext) ۳) Feedback rating — با رسیدن کلید 21st جایگزین می‌شود؛ ورودی/خروجی (عدد ۱ تا ۵) تغییری نمی‌کند.

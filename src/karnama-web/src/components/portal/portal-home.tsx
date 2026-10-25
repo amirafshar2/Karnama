@@ -13,10 +13,13 @@ import { useI18n } from "@/lib/i18n/provider";
 import { registerTexts, type TextKey } from "@/lib/i18n/registry";
 import { notify } from "@/lib/notify";
 import { downloadFile } from "@/lib/upload";
+import { StarRating } from "@/components/app/stars";
+import { faN8 } from "@/lib/i18n/fa-n8";
 import { useLive } from "@/lib/use-live";
 import type { FileItem } from "@/lib/work-types";
 
 registerTexts(faPortal);
+registerTexts(faN8);
 
 const PortalOrder = dynamic(() => import("./portal-order").then((m) => m.PortalOrder), { ssr: false });
 const PortalPublishing = dynamic(() => import("./portal-publishing").then((m) => m.PortalPublishing), { ssr: false });
@@ -38,13 +41,14 @@ export function PortalHome() {
   const home = useQuery({ queryKey: HOME, queryFn: () => api<Home>("/api/v1/portal/home") });
   useLive(["work", "order"], [HOME]);
   const [note, setNote] = useState<Record<string, string | undefined>>({});
+  const [stars, setStars] = useState<Record<string, number>>({});
   const [open, setOpen] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const h = home.data;
 
   const decide = async (id: string, approve: boolean) => {
     try {
-      await api(`/api/v1/portal/approvals/${id}`, { method: "POST", body: { approve, note: note[id] } });
+      await api(`/api/v1/portal/approvals/${id}`, { method: "POST", body: { approve, note: note[id], stars: approve ? stars[id] : undefined } });
       notify.success(approve ? t("portal.approved") : t("portal.changesSent"));
       setNote({ ...note, [id]: undefined });
       await qc.invalidateQueries({ queryKey: HOME });
@@ -109,6 +113,8 @@ export function PortalHome() {
                   </div>
                 </div>
               ) : (
+                <div className="space-y-3">
+                <StarRating label={t("stars.client")} value={stars[a.workItemId] ?? null} onChange={(n) => setStars({ ...stars, [a.workItemId]: n })} testId="portal-stars" />
                 <div className="flex flex-wrap gap-2">
                   <Button className="h-12 flex-1 sm:flex-none" onClick={() => decide(a.workItemId, true)} data-testid="portal-approve">
                     <Check aria-hidden="true" />
@@ -118,6 +124,7 @@ export function PortalHome() {
                     <RotateCcw aria-hidden="true" />
                     {t("portal.changes")}
                   </Button>
+                </div>
                 </div>
               )}
             </li>

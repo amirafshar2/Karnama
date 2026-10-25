@@ -241,10 +241,56 @@ internal sealed class LeadConfiguration : IEntityTypeConfiguration<Karnama.Domai
     public void Configure(EntityTypeBuilder<Karnama.Domain.Crm.Lead> b)
     {
         b.ToTable("leads");
-        b.Property(x => x.Name).HasMaxLength(60).IsRequired();
-        b.Property(x => x.Phone).HasMaxLength(20).IsRequired();
+        b.Property(x => x.Name).HasMaxLength(80).IsRequired();
+        b.Property(x => x.Phone).HasMaxLength(20);
+        b.Property(x => x.Business).HasMaxLength(80);
+        b.Property(x => x.Industry).HasMaxLength(60);
+        b.Property(x => x.City).HasMaxLength(40);
+        b.Property(x => x.Instagram).HasMaxLength(60);
+        b.Property(x => x.Message).HasMaxLength(1000);
+        // Kept the N10 column name (website page the request came from).
+        b.Property(x => x.Origin).HasColumnName("Source").HasMaxLength(200);
+        b.Property(x => x.Note).HasMaxLength(2000);
+        b.Property(x => x.LostReason).HasMaxLength(300);
+        b.Property(x => x.Tags).AsJson();
         b.Property(x => x.Version).IsRowVersion();
-        b.HasIndex(x => new { x.Phone, x.CreatedAt });
-        b.HasIndex(x => x.Status);
+        b.HasIndex(x => x.Phone);
+        b.HasIndex(x => new { x.OwnerId, x.StageId });
+        b.HasIndex(x => x.NextFollowUpAt);
+        b.HasIndex(x => x.MessengerChatId);
+        b.HasOne<Karnama.Domain.Crm.LeadStage>().WithMany().HasForeignKey(x => x.StageId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Karnama.Domain.Crm.LeadSource>().WithMany().HasForeignKey(x => x.SourceId).OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+internal sealed class LeadStageConfiguration : IEntityTypeConfiguration<Karnama.Domain.Crm.LeadStage>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Crm.LeadStage> b)
+    {
+        b.ToTable("lead_stages");
+        b.Property(x => x.Name).HasMaxLength(40).IsRequired();
+    }
+}
+
+internal sealed class LeadSourceConfiguration : IEntityTypeConfiguration<Karnama.Domain.Crm.LeadSource>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Crm.LeadSource> b)
+    {
+        b.ToTable("lead_sources");
+        b.Property(x => x.Name).HasMaxLength(40).IsRequired();
+        b.HasIndex(x => x.Name).IsUnique();
+    }
+}
+
+internal sealed class LeadActivityConfiguration : IEntityTypeConfiguration<Karnama.Domain.Crm.LeadActivity>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Crm.LeadActivity> b)
+    {
+        b.ToTable("lead_activities");
+        b.Property(x => x.Id).UseIdentityAlwaysColumn();
+        b.Property(x => x.Note).HasMaxLength(1000);
+        b.HasIndex(x => new { x.LeadId, x.Id });
+        b.HasIndex(x => new { x.Kind, x.At });
+        b.HasOne<Karnama.Domain.Crm.Lead>().WithMany().HasForeignKey(x => x.LeadId).OnDelete(DeleteBehavior.Cascade);
     }
 }

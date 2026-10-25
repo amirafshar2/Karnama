@@ -27,12 +27,6 @@ internal static class DemoSiteSeed
                 db.CaseStudies.Add(c);
             }
         }
-        if (!await db.Leads.AnyAsync(ct))
-        {
-            var now = DateTimeOffset.UtcNow;
-            db.Leads.Add(Lead.Create("خانم کاظمی (نمونه)", "09000000201", "گالری صنایع دستی", "برای پیج گالری‌مان مدیریت کامل می‌خواهیم.", "/", now.AddHours(-3)).Value!);
-            db.Leads.Add(Lead.Create("آقای نوری (نمونه)", "09000000202", "باشگاه ورزشی", "قیمت پکیج ریلز را می‌خواستم.", "/packages", now.AddDays(-1)).Value!);
-        }
         await db.SaveChangesAsync(ct);
     }
 }

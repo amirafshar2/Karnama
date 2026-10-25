@@ -6,7 +6,7 @@ test.describe("demo install", () => {
     await page.goto(`${DEMO_URL}/login`);
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.getByTestId("login-phone")).toBeVisible();
-    for (const r of ["admin", "editor", "writer", "client"]) await expect(page.getByTestId(`demo-${r}`)).toBeVisible();
+    for (const r of ["admin", "editor", "writer", "client", "marketer"]) await expect(page.getByTestId(`demo-${r}`)).toBeVisible();
     const box = await page.getByTestId("demo-admin").boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(48);
     await shot(page, info, "login");

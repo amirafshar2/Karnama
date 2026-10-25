@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@/lib/query";
-import { ArrowRight, Clapperboard, Loader2, PenLine, Shield, Store, type LucideIcon } from "lucide-react";
+import { ArrowRight, Clapperboard, Loader2, PenLine, PhoneCall, Shield, Store, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -31,7 +31,7 @@ type VerifyResponse =
   | { step: "completed"; session: Session }
   | { step: "twoFactorRequired" | "twoFactorSetupRequired"; twoFactorToken: string };
 
-const DEMO_ICONS: Record<string, LucideIcon> = { shield: Shield, clapperboard: Clapperboard, "pen-line": PenLine, store: Store };
+const DEMO_ICONS: Record<string, LucideIcon> = { shield: Shield, clapperboard: Clapperboard, "pen-line": PenLine, store: Store, phone: PhoneCall };
 
 export function LoginScreen() {
   const { t } = useI18n();

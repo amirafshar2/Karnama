@@ -53,7 +53,7 @@ export function totp(secretBase32: string, at = Date.now()) {
   return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
 
-export async function demoLogin(page: Page, role: "admin" | "editor" | "writer" | "client") {
+export async function demoLogin(page: Page, role: "admin" | "editor" | "writer" | "client" | "marketer") {
   await page.goto(`${DEMO_URL}/login`);
   await page.getByTestId(`demo-${role}`).click();
   await expect(page).toHaveURL(/\/dashboard/);

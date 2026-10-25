@@ -59,6 +59,9 @@ public interface IAppDbContext
     DbSet<Karnama.Domain.Content.BlogSlugRedirect> BlogSlugRedirects { get; }
     DbSet<Karnama.Domain.Content.CaseStudy> CaseStudies { get; }
     DbSet<Karnama.Domain.Crm.Lead> Leads { get; }
+    DbSet<Karnama.Domain.Crm.LeadStage> LeadStages { get; }
+    DbSet<Karnama.Domain.Crm.LeadSource> LeadSources { get; }
+    DbSet<Karnama.Domain.Crm.LeadActivity> LeadActivities { get; }
     DbSet<ClientCredential> ClientCredentials { get; }
     DbSet<Karnama.Domain.Media.MediaAsset> MediaAssets { get; }
     DbSet<Karnama.Domain.Chat.Conversation> Conversations { get; }

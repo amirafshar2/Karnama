@@ -36,6 +36,11 @@ public sealed class WorkItem : AuditableEntity
     public int RevisionCount { get; private set; }
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? SubmittedAt { get; private set; }
+    /// <summary>First hand-in (reports: "on time" is the worker's first delivery, not a later fix after feedback).</summary>
+    public DateTimeOffset? FirstSubmittedAt { get; private set; }
+    /// <summary>Optional 1–5 stars from a manager on finished work, and from the client when approving (PROMPT2 §11).</summary>
+    public byte? ManagerStars { get; private set; }
+    public byte? ClientStars { get; private set; }
     public DateTimeOffset? DoneAt { get; private set; }
     public uint Version { get; private set; }
 
@@ -94,6 +99,9 @@ public sealed class WorkItem : AuditableEntity
         if (target == WorkStatus.ChangesRequested) RevisionCount++;
         if (target == WorkStatus.InProgress && StartedAt is null) StartedAt = now;
         if (target is WorkStatus.InReview or WorkStatus.ClientReview) SubmittedAt = now;
+        // Straight to Done (no review step) also counts as the hand-in.
+        if (target is WorkStatus.InReview or WorkStatus.ClientReview || (target == WorkStatus.Done && actor == WorkActor.Assignee))
+            FirstSubmittedAt ??= now;
         DoneAt = target == WorkStatus.Done ? now : null;
         Status = target;
         if (rank is { } nr) Rank = nr;
@@ -128,6 +136,21 @@ public sealed class WorkItem : AuditableEntity
     public WorkStatus NextAfterReview() => NeedsClientApproval ? WorkStatus.ClientReview : WorkStatus.Done;
 
     public void Cancel() { if (IsOpen) Status = WorkStatus.Cancelled; }
+
+    public Result RateByManager(int stars)
+    {
+        if (Status != WorkStatus.Done) return Error.Conflict("work.notDone", "فقط کار تمام‌شده امتیاز می‌گیرد.");
+        if (stars is < 1 or > 5) return Error.Validation("work.stars", "امتیاز ۱ تا ۵ ستاره است.");
+        ManagerStars = (byte)stars;
+        return Result.Success();
+    }
+
+    public Result RateByClient(int stars)
+    {
+        if (stars is < 1 or > 5) return Error.Validation("work.stars", "امتیاز ۱ تا ۵ ستاره است.");
+        ClientStars = (byte)stars;
+        return Result.Success();
+    }
 
     public void Delete(Guid? actor, DateTimeOffset now) => MarkDeleted(actor, now);
 }

@@ -90,11 +90,11 @@ public sealed class SiteTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "ربات", phone = "09121119999", website = "http://spam" })).StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         var admin = await As("admin");
-        var leads = await Ok(await admin.GetAsync("/api/v1/leads?limit=100"));
+        var leads = await Ok(await admin.GetAsync("/api/v1/crm/leads?limit=100"));
         leads.GetProperty("items").EnumerateArray().Count(l => l.GetProperty("phone").GetString() == "09121112233").Should().Be(1);
         leads.GetProperty("items").EnumerateArray().Should().NotContain(l => l.GetProperty("phone").GetString() == "09121119999");
-        (await Ok(await admin.GetAsync("/api/v1/notifications"))).GetProperty("items").EnumerateArray().Should().Contain(n => n.GetProperty("kind").GetString() == "lead.new");
-        (await (await As("editor")).GetAsync("/api/v1/leads")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Ok(await admin.GetAsync("/api/v1/notifications"))).GetProperty("items").EnumerateArray().Should().Contain(n => n.GetProperty("kind").GetString() == "crm.newLead");
+        (await (await As("editor")).GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     private static byte[] Png() => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");

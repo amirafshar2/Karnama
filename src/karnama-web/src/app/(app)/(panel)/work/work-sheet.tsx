@@ -15,9 +15,12 @@ import type { TextKey } from "@/lib/i18n/registry";
 import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { faM4 } from "@/lib/i18n/fa-m4";
+import { faN8 } from "@/lib/i18n/fa-n8";
+import { StarRating, StarsShown } from "@/components/app/stars";
 import { registerTexts } from "@/lib/i18n/registry";
 
 registerTexts(faM4);
+registerTexts(faN8);
 import type { WorkDetail, WorkStatus } from "@/lib/work-types";
 
 /** One card in full: brief, actions the person may take, assignee, files and the conversation. */
@@ -122,6 +125,22 @@ export function WorkSheet({ id, onClose }: { id: string; onClose: () => void }) 
             </section>
 
             {d.card.assigneeId === me?.id && d.card.status !== "done" && <TimerButton workItemId={id} />}
+
+            {d.canRate && (
+              <div className="space-y-1 rounded-lg border p-3">
+                <StarRating label={t("stars.manager")} value={d.managerStars} disabled={busy} testId="work-stars" onChange={async (stars) => {
+                  try {
+                    await api(`/api/v1/work/${id}/rating`, { method: "POST", body: { stars } });
+                    notify.success(t("stars.saved"));
+                    refresh();
+                  } catch (e) {
+                    notify.error(errorMessage(e));
+                  }
+                }} />
+                <p className="text-xs text-muted-foreground">{t("stars.managerHelp")}</p>
+                {d.clientStars && <p className="text-sm">{t("rpt.client")}: <StarsShown value={d.clientStars} /></p>}
+              </div>
+            )}
 
             {d.canAssign && <AssignBox id={id} current={d.card.assigneeId} version={d.card.version} onDone={refresh} />}
             {!d.canAssign && (

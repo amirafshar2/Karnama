@@ -1668,33 +1668,84 @@ namespace Karnama.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<long?>("Budget")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Business")
-                        .HasColumnType("text");
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Message")
-                        .HasColumnType("text");
+                    b.Property<DateTimeOffset?>("FollowUpRemindedFor")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
+                    b.Property<string>("Industry")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
 
+                    b.Property<string>("Instagram")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset>("LastActivityAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LostReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<long?>("MessengerChatId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset?>("NextFollowUpAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Note")
-                        .HasColumnType("text");
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Origin")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("Source");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Phone")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<string>("Source")
-                        .HasColumnType("text");
+                    b.Property<Guid?>("SourceId")
+                        .HasColumnType("uuid");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("StageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1707,11 +1758,118 @@ namespace Karnama.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("MessengerChatId");
 
-                    b.HasIndex("Phone", "CreatedAt");
+                    b.HasIndex("NextFollowUpAt");
+
+                    b.HasIndex("Phone");
+
+                    b.HasIndex("SourceId");
+
+                    b.HasIndex("StageId");
+
+                    b.HasIndex("OwnerId", "StageId");
 
                     b.ToTable("leads", (string)null);
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Crm.LeadActivity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("Channel")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Direction")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("FromId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("LeadId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int?>("Outcome")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ToId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Kind", "At");
+
+                    b.HasIndex("LeadId", "Id");
+
+                    b.ToTable("lead_activities", (string)null);
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Crm.LeadSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("lead_sources", (string)null);
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Crm.LeadStage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("lead_stages", (string)null);
                 });
 
             modelBuilder.Entity("Karnama.Domain.Files.FileAsset", b =>
@@ -2748,6 +2906,9 @@ namespace Karnama.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ClientId")
                         .HasColumnType("uuid");
 
+                    b.Property<byte?>("ClientStars")
+                        .HasColumnType("smallint");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2769,8 +2930,14 @@ namespace Karnama.Infrastructure.Persistence.Migrations
                     b.Property<int>("EstimatedMinutes")
                         .HasColumnType("integer");
 
+                    b.Property<DateTimeOffset?>("FirstSubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
+
+                    b.Property<byte?>("ManagerStars")
+                        .HasColumnType("smallint");
 
                     b.Property<bool>("NeedsAdminReview")
                         .HasColumnType("boolean");
@@ -2981,6 +3148,29 @@ namespace Karnama.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("PackageId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Crm.Lead", b =>
+                {
+                    b.HasOne("Karnama.Domain.Crm.LeadSource", null)
+                        .WithMany()
+                        .HasForeignKey("SourceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Karnama.Domain.Crm.LeadStage", null)
+                        .WithMany()
+                        .HasForeignKey("StageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Crm.LeadActivity", b =>
+                {
+                    b.HasOne("Karnama.Domain.Crm.Lead", null)
+                        .WithMany()
+                        .HasForeignKey("LeadId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

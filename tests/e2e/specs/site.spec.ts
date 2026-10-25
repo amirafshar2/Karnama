@@ -34,8 +34,8 @@ test.describe("N10: public website (home, packages, portfolio, consultation)", (
     await shot(page, info, "n10-case");
 
     await demoLogin(page, "admin");
-    await navTo(page, mobile, "leads");
-    await expect(page.getByTestId("leads")).toContainText(`مهمان ${info.project.name}`);
+    await navTo(page, mobile, "crm");
+    await expect(page.getByTestId("crm-board")).toContainText(`مهمان ${info.project.name}`);
     await shot(page, info, "n10-leads");
   });
 

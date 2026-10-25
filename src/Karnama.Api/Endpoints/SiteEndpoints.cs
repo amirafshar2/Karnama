@@ -1,7 +1,6 @@
 using Karnama.Api.Infrastructure;
 using Karnama.Application.Common;
 using Karnama.Application.Site;
-using Karnama.Domain.Crm;
 using Karnama.Domain.Identity;
 
 namespace Karnama.Api.Endpoints;
@@ -51,9 +50,5 @@ internal static class SiteEndpoints
             return Results.Stream(r.Value!.Stream, r.Value.ContentType);
         });
 
-        var leads = app.MapGroup("/api/v1/leads").WithTags("Leads").RequirePermission(Permissions.LeadsManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
-        leads.MapGet("/", async (string? cursor, int? limit, string? q, string? status, PublicSiteService svc, HttpContext http, CancellationToken ct) =>
-            (await svc.LeadsAsync(new KeysetQuery(cursor, limit ?? 30, q), CatalogEndpoints.E<LeadStatus>(status), ct)).ToHttp(http));
-        leads.MapPut("/{id:guid}", async (Guid id, UpdateLeadRequest body, PublicSiteService svc, HttpContext http, CancellationToken ct) => (await svc.UpdateLeadAsync(id, body, ct)).ToHttp(http));
     }
 }

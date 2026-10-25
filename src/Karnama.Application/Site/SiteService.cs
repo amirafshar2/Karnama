@@ -42,8 +42,6 @@ public sealed record SaveCaseRequest(string BusinessName, string? Slug, string? 
 public sealed record PublishCaseRequest(bool Published);
 
 public sealed record LeadRequest(string Name, string Phone, string? Business, string? Message, string? Source, string? Website);
-public sealed record LeadDto(Guid Id, string Name, string Phone, string? Business, string? Message, string? Source, LeadStatus Status, string? Note, DateTimeOffset CreatedAt, uint Version);
-public sealed record UpdateLeadRequest(LeadStatus Status, string? Note);
 
 public sealed class LeadRequestValidator : AbstractValidator<LeadRequest>
 {
@@ -58,7 +56,7 @@ public sealed class LeadRequestValidator : AbstractValidator<LeadRequest>
 }
 
 /// <summary>The public website's data (N10): home page, packages, portfolio, consultation requests. Read-only for visitors.</summary>
-public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteContentStore content, TimeProvider clock, Notify.Notifier notifier, ICurrentUser me)
+public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteContentStore content, TimeProvider clock, Crm.CrmService crm)
 {
     private string? Url(string? id) => id is null ? null : media.PublicUrl(id);
 
@@ -139,42 +137,18 @@ public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteC
         return list;
     }
 
-    /// <summary>Consultation form → a lead + an important notification to whoever manages leads.</summary>
+    /// <summary>Consultation form → a CRM lead (or a message added to the open lead with that phone) + notifications.</summary>
     public async Task<Result> LeadAsync(LeadRequest r, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(r.Website)) return Result.Success();   // honeypot: bots fill every field; pretend it worked
-        var created = Lead.Create(r.Name, r.Phone, r.Business, r.Message, r.Source, clock.GetUtcNow());
-        if (created.IsFailure) return created.Error!;
-        var lead = created.Value!;
+        if (!PhoneNumber.TryNormalize(r.Phone, out var phone)) return Error.Validation("leads.phone", "شماره‌ی موبایل درست نیست (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
+        var name = (r.Name ?? "").Trim();
+        if (name.Length is < 2 or > 60) return Error.Validation("leads.name", "نام را بنویسید.");
         // The same phone within an hour is one request (double taps, impatient visitors).
-        if (await db.Leads.AnyAsync(l => l.Phone == lead.Phone && l.CreatedAt > lead.CreatedAt.AddHours(-1), ct)) return Result.Success();
-        db.Leads.Add(lead);
-        var who = await notifier.StaffWithAsync(Permissions.LeadsManage, PermissionScope.All, ct);
-        await notifier.NotifyAsync(who, "lead.new", $"درخواست مشاوره: {lead.Name}", lead.Business ?? lead.Message, "/leads", true, $"lead:{lead.Id:N}", ct);
-        await db.SaveChangesAsync(ct);
+        var hourAgo = clock.GetUtcNow().AddHours(-1);
+        if (await db.Leads.AnyAsync(l => l.Phone == phone && l.CreatedAt > hourAgo, ct)) return Result.Success();
+        await crm.IngestAsync(name, phone, r.Business, r.Message, r.Source, "فرم سایت", null, ct);
         return Result.Success();
-    }
-
-    // ---- Admin: leads ----
-    private bool CanLeads => me.Kind == UserKind.Staff && me.Has(Permissions.LeadsManage, PermissionScope.All);
-
-    public async Task<Result<KeysetPage<LeadDto>>> LeadsAsync(KeysetQuery q, LeadStatus? status, CancellationToken ct)
-    {
-        if (!CanLeads) return Error.Forbidden();
-        var query = db.Leads.AsNoTracking();
-        if (status is { } s) query = query.Where(l => l.Status == s);
-        if (!string.IsNullOrWhiteSpace(q.Search)) query = query.Where(l => EF.Functions.ILike(l.Name, "%" + q.Search.Trim() + "%") || l.Phone.Contains(q.Search.Trim()));
-        return await Keyset.PageAsync(query, q, x => x.Select(l => new LeadDto(l.Id, l.Name, l.Phone, l.Business, l.Message, l.Source, l.Status, l.Note, l.CreatedAt, l.Version)), x => x.Id, ct);
-    }
-
-    public async Task<Result<LeadDto>> UpdateLeadAsync(Guid id, UpdateLeadRequest r, CancellationToken ct)
-    {
-        if (!CanLeads) return Error.Forbidden();
-        var l = await db.Leads.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (l is null) return Error.NotFound();
-        l.Update(r.Status, r.Note, clock.GetUtcNow());
-        await db.SaveChangesAsync(ct);
-        return new LeadDto(l.Id, l.Name, l.Phone, l.Business, l.Message, l.Source, l.Status, l.Note, l.CreatedAt, l.Version);
     }
 }
 
