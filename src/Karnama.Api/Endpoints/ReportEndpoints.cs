@@ -9,7 +9,7 @@ internal static class ReportEndpoints
 {
     public static void MapReports(this IEndpointRouteBuilder app)
     {
-        var g = app.MapGroup("/api/v1/reports").WithTags("Reports").RequireAuthorization().AddEndpointFilter<ValidationFilter>();
+        var g = app.MapGroup("/api/v1/reports").WithTags("Reports").RequireAuthorization().AddEndpointFilter<ValidationFilter>().RequireRateLimiting(RateLimits.Heavy);
         g.MapGet("/work", async (DateOnly from, DateOnly to, Guid? user, PerformanceService svc, HttpContext http, CancellationToken ct) => (await svc.WorkAsync(from, to, user, ct)).ToHttp(http));
         g.MapGet("/work/{userId:guid}", async (Guid userId, DateOnly from, DateOnly to, PerformanceService svc, HttpContext http, CancellationToken ct) =>
             (await svc.DetailsAsync(userId, from, to, ct)).ToHttp(http));

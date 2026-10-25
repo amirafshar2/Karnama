@@ -6,6 +6,7 @@ export const faM3 = {
   "work.overdue": "دیرشده‌ها",
   "work.allClients": "همه‌ی مشتری‌ها",
   "work.empty": "کاری در این ستون نیست.",
+  "work.showAllDone": "نمایش همه ({count})",
   "work.emptyBoard": "هنوز کاری نیست. از صفحه‌ی سفارش‌ها یک سفارش ثبت کنید.",
   "work.col.waiting": "در صف",
   "work.col.todo": "برای انجام",
@@ -100,4 +101,6 @@ export const faM3 = {
   "orders.fileFieldHelp": "فایل‌ها را بعد از ثبت، در صفحه‌ی سفارش اضافه کنید.",
   "orders.all": "همه",
   "orders.open": "باز کردن",
+  "orders.priorityHelp": "«فوری» یعنی تیم باید زودتر از بقیه سراغش برود.",
+  "orders.noteHelp": "هر نکته‌ای که تیم باید بداند؛ مثلاً «رنگ‌ها مثل پست قبلی باشد».",
 } as const;

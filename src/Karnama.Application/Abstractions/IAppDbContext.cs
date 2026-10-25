@@ -67,6 +67,7 @@ public interface IAppDbContext
     DbSet<Karnama.Domain.Assets.AssetAssignment> AssetAssignments { get; }
     DbSet<Karnama.Domain.Assets.AssetEvent> AssetEvents { get; }
     DbSet<Karnama.Domain.Assets.AssetPhoto> AssetPhotos { get; }
+    DbSet<Karnama.Domain.Content.HelpArticle> HelpArticles { get; }
     DbSet<ClientCredential> ClientCredentials { get; }
     DbSet<Karnama.Domain.Media.MediaAsset> MediaAssets { get; }
     DbSet<Karnama.Domain.Chat.Conversation> Conversations { get; }

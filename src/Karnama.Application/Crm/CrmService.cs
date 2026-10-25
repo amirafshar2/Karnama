@@ -386,7 +386,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         if (!CanUse) return Error.Forbidden();
         var l = await Visible().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (l is null) return NotFound;
-        if (l.ClientId is { } done) return new ConvertedDto(done, true);
+        if (l.ClientId is { } done) return new ConvertedDto(done, SeesAll || CanAssign);
         if (l.Phone is null) return Error.Validation("crm.noPhone", "برای تبدیل به مشتری، شماره‌ی موبایل لازم است.");
         var now = clock.GetUtcNow();
         var existing = await db.Clients.FirstOrDefaultAsync(c => c.Mobile == l.Phone, ct);
@@ -415,7 +415,8 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         await notifier.NotifyAsync(managers.Where(m => m != Me), "crm.won", $"مشتری تازه: {l.Business ?? l.Name}", "پکیج مناسب را در صفحه‌ی مشتری تخصیص دهید.", "/clients", false,
             $"crm-won:{l.Id:N}", ct);
         await SaveAndPingAsync(l, ct);
-        return new ConvertedDto(clientId, existing is not null);
+        // Marketers don't learn whether a number already belongs to a client.
+        return new ConvertedDto(clientId, existing is not null && (SeesAll || CanAssign));
     }
 
     // ================= inbound (website form, bot) =================
@@ -506,15 +507,24 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         var marketerIds = SeesAll ? await notifier.StaffWithAsync(Permissions.CrmLeads, PermissionScope.Own, ct) : [Me];
         var names = await db.Users.AsNoTracking().Where(u => marketerIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
         var settings = await SettingsAsync(ct);
-        // Sales: packages of the clients a marketer converted, sold in the range.
-        var converted = await Visible().AsNoTracking().Where(l => l.ClientId != null && l.OwnerId != null).Select(l => new { l.OwnerId, l.ClientId }).ToListAsync(ct);
+        // Sales: packages of the clients a marketer brought in, sold in the range. Only clients this conversion created
+        // count, and only packages from the conversion on — linking a lead to an existing client earns nothing.
+        var converted = await Visible().AsNoTracking().Where(l => l.ClientId != null && l.OwnerId != null).Select(l => new { l.Id, l.OwnerId, l.ClientId }).ToListAsync(ct);
+        var convertedIds = converted.Select(c => c.Id).ToList();
+        var convertedAt = (await db.LeadActivities.AsNoTracking().Where(a => convertedIds.Contains(a.LeadId) && a.Kind == ActivityKind.Converted)
+            .Select(a => new { a.LeadId, a.At }).ToListAsync(ct)).GroupBy(a => a.LeadId).ToDictionary(g => g.Key, g => g.Min(a => a.At));
         var clientIds = converted.Select(c => c.ClientId!.Value).Distinct().ToList();
-        var sales = await db.ClientPackages.AsNoTracking().Where(p => clientIds.Contains(p.ClientId) && p.StartsAt >= start && p.StartsAt < end && p.Status != ClientPackageStatus.Cancelled)
-            .Select(p => new { p.ClientId, p.Price }).ToListAsync(ct);
+        var clientCreated = await db.Clients.AsNoTracking().Where(c => clientIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.CreatedAt, ct);
+        var credited = converted
+            .Where(c => convertedAt.TryGetValue(c.Id, out var at) && clientCreated.TryGetValue(c.ClientId!.Value, out var made) && made >= at.AddMinutes(-5))
+            .Select(c => new { c.OwnerId, ClientId = c.ClientId!.Value, From = convertedAt[c.Id] }).ToList();
+        var creditedIds = credited.Select(c => c.ClientId).Distinct().ToList();
+        var sales = await db.ClientPackages.AsNoTracking().Where(p => creditedIds.Contains(p.ClientId) && p.StartsAt >= start && p.StartsAt < end && p.Status != ClientPackageStatus.Cancelled)
+            .Select(p => new { p.ClientId, p.Price, p.StartsAt }).ToListAsync(ct);
         var marketers = marketerIds.Distinct().Select(id =>
         {
-            var mine = converted.Where(c => c.OwnerId == id).Select(c => c.ClientId!.Value).ToHashSet();
-            var total = sales.Where(s => mine.Contains(s.ClientId)).Sum(s => s.Price);
+            var mine = credited.Where(c => c.OwnerId == id).ToDictionary(c => c.ClientId, c => c.From);
+            var total = sales.Where(s => mine.TryGetValue(s.ClientId, out var from) && s.StartsAt >= from.AddMinutes(-5)).Sum(s => s.Price);
             var myCalls = calls.Where(c => c.ActorId == id).ToList();
             return new MarketerReportDto(id, names.GetValueOrDefault(id, "—"), leads.Count(l => l.OwnerId == id), myCalls.Count, myCalls.Sum(c => c.DurationSeconds ?? 0) / 60,
                 closed.Count(l => l.OwnerId == id && won.Contains(l.StageId)), closed.Count(l => l.OwnerId == id && lost.Contains(l.StageId)), total,

@@ -21,6 +21,8 @@ const WorkSheet = dynamic(() => import("./work-sheet").then((m) => m.WorkSheet),
 
 const BOARD = ["work-board"];
 
+const DONE_SHOWN = 12;
+
 export default function WorkBoardPage() {
   const allowed = useRequire([{ code: "work.view", scope: "assigned" }]);
   const { t, formatNumber, formatDate } = useI18n();
@@ -32,6 +34,8 @@ export default function WorkBoardPage() {
   const [open, setOpen] = useState<string | null>(null);
   const [mobileCol, setMobileCol] = useState<WorkStatus>("todo");
   const [dragOver, setDragOver] = useState<WorkStatus | null>(null);
+  // Finished work piles up; the column shows the latest few so the board stays short and easy to drop onto.
+  const [allDone, setAllDone] = useState(false);
 
   const params = new URLSearchParams();
   if (mine) params.set("mine", "true");
@@ -151,7 +155,7 @@ export default function WorkBoardPage() {
           const card = board.data?.find((c) => c.id === e.dataTransfer.getData("text/plain"));
           if (card) void move(card, status);
         }}
-        className={cn("flex w-72 shrink-0 flex-col rounded-xl bg-muted/50 p-2 transition-colors", dragOver === status && "bg-accent/40 ring-2 ring-accent")}
+        className={cn("flex w-72 shrink-0 flex-col self-start rounded-xl bg-muted/50 p-2 transition-colors", dragOver === status && "bg-accent/40 ring-2 ring-accent")}
         data-testid={`col-${status}`}
       >
         <h2 id={`col-${status}`} className="flex items-center justify-between px-2 py-2 text-sm font-bold">
@@ -159,8 +163,15 @@ export default function WorkBoardPage() {
           <span className="rounded-full bg-background px-2 text-xs font-medium">{formatNumber(cards.length)}</span>
         </h2>
         <ul className="flex min-h-24 flex-col gap-2">
-          {cards.map(renderCard)}
+          {(status === "done" && !allDone ? cards.slice(0, DONE_SHOWN) : cards).map(renderCard)}
           {cards.length === 0 && <li className="px-2 py-6 text-center text-xs text-muted-foreground">{t("work.empty")}</li>}
+          {status === "done" && !allDone && cards.length > DONE_SHOWN && (
+            <li>
+              <button type="button" className="min-h-11 w-full rounded-lg border border-dashed text-sm hover:bg-background" onClick={() => setAllDone(true)} data-testid="work-done-all">
+                {t("work.showAllDone", { count: formatNumber(cards.length) })}
+              </button>
+            </li>
+          )}
         </ul>
       </section>
     );

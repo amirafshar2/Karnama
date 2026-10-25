@@ -2252,3 +2252,257 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE TABLE asset_categories (
+        "Id" uuid NOT NULL,
+        "Name" character varying(40) NOT NULL,
+        "SortOrder" integer NOT NULL,
+        "IsActive" boolean NOT NULL,
+        CONSTRAINT "PK_asset_categories" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE TABLE assets (
+        "Id" uuid NOT NULL,
+        "Name" character varying(80) NOT NULL,
+        "CategoryId" uuid NOT NULL,
+        "Brand" character varying(40),
+        "Model" character varying(60),
+        "Serial" character varying(60),
+        "Tag" character varying(30) NOT NULL,
+        "PurchasedOn" date,
+        "PurchasePrice" bigint,
+        "WarrantyUntil" date,
+        "Note" character varying(1000),
+        "Status" integer NOT NULL,
+        "HolderId" uuid,
+        "WarrantyNoticeDays" integer,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "CreatedBy" uuid,
+        "UpdatedAt" timestamp with time zone,
+        "UpdatedBy" uuid,
+        "IsDeleted" boolean NOT NULL,
+        "DeletedAt" timestamp with time zone,
+        "DeletedBy" uuid,
+        CONSTRAINT "PK_assets" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_assets_asset_categories_CategoryId" FOREIGN KEY ("CategoryId") REFERENCES asset_categories ("Id") ON DELETE RESTRICT
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE TABLE asset_assignments (
+        "Id" uuid NOT NULL,
+        "AssetId" uuid NOT NULL,
+        "UserId" uuid NOT NULL,
+        "HandedBy" uuid NOT NULL,
+        "HandedAt" timestamp with time zone NOT NULL,
+        "ExpectedReturn" date,
+        "ConditionOut" character varying(500),
+        "Accessories" jsonb NOT NULL,
+        "AcceptedAt" timestamp with time zone,
+        "State" integer NOT NULL,
+        "ReturnedAt" timestamp with time zone,
+        "ConditionIn" character varying(500),
+        "Damage" character varying(1000),
+        "ReturnConfirmedBy" uuid,
+        "TransferToId" uuid,
+        "OverdueNoticeOn" timestamp with time zone,
+        CONSTRAINT "PK_asset_assignments" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_asset_assignments_assets_AssetId" FOREIGN KEY ("AssetId") REFERENCES assets ("Id") ON DELETE RESTRICT
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE TABLE asset_events (
+        "Id" bigint GENERATED ALWAYS AS IDENTITY,
+        "AssetId" uuid NOT NULL,
+        "AssignmentId" uuid,
+        "ActorId" uuid,
+        "Kind" integer NOT NULL,
+        "UserId" uuid,
+        "Note" character varying(1000),
+        "At" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_asset_events" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_asset_events_assets_AssetId" FOREIGN KEY ("AssetId") REFERENCES assets ("Id") ON DELETE RESTRICT
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE TABLE asset_photos (
+        "Id" uuid NOT NULL,
+        "AssetId" uuid NOT NULL,
+        "AssignmentId" uuid,
+        "Stage" integer NOT NULL,
+        "FileKey" character varying(200) NOT NULL,
+        "ContentType" character varying(60) NOT NULL,
+        "Size" bigint NOT NULL,
+        "UploadedBy" uuid,
+        "At" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_asset_photos" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_asset_photos_assets_AssetId" FOREIGN KEY ("AssetId") REFERENCES assets ("Id") ON DELETE RESTRICT
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_asset_assignments_TransferToId" ON asset_assignments ("TransferToId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_asset_assignments_UserId_State" ON asset_assignments ("UserId", "State");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE UNIQUE INDEX ux_asset_assignments_open ON asset_assignments ("AssetId") WHERE "State" IN (1, 2, 3);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE UNIQUE INDEX "IX_asset_categories_Name" ON asset_categories ("Name");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_asset_events_AssetId_Id" ON asset_events ("AssetId", "Id");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_asset_photos_AssetId_At" ON asset_photos ("AssetId", "At");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_asset_photos_AssignmentId" ON asset_photos ("AssignmentId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_assets_CategoryId" ON assets ("CategoryId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_assets_HolderId" ON assets ("HolderId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_assets_Serial" ON assets ("Serial");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE INDEX "IX_assets_Status" ON assets ("Status");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    CREATE UNIQUE INDEX "IX_assets_Tag" ON assets ("Tag") WHERE "IsDeleted" = false;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025220424_N3Assets') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025220424_N3Assets', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025223116_N12Help') THEN
+    CREATE TABLE help_articles (
+        "Id" uuid NOT NULL,
+        "Title" character varying(120) NOT NULL,
+        "Slug" character varying(80) NOT NULL,
+        "Category" character varying(40) NOT NULL,
+        "Audience" integer NOT NULL,
+        "PageKey" character varying(60),
+        "ContentJson" text NOT NULL,
+        "ContentHtml" text NOT NULL,
+        "PlainText" text NOT NULL,
+        "SortOrder" integer NOT NULL,
+        "IsPublished" boolean NOT NULL,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "CreatedBy" uuid,
+        "UpdatedAt" timestamp with time zone,
+        "UpdatedBy" uuid,
+        "IsDeleted" boolean NOT NULL,
+        "DeletedAt" timestamp with time zone,
+        "DeletedBy" uuid,
+        CONSTRAINT "PK_help_articles" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025223116_N12Help') THEN
+    CREATE INDEX "IX_help_articles_IsPublished_SortOrder" ON help_articles ("IsPublished", "SortOrder");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025223116_N12Help') THEN
+    CREATE UNIQUE INDEX "IX_help_articles_Slug" ON help_articles ("Slug") WHERE "IsDeleted" = false;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025223116_N12Help') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025223116_N12Help', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+

@@ -89,7 +89,7 @@ export function PublishEditor({ job, initial, onClose, onSaved }: { job?: Publis
     <EditorSheet title={job ? t("publish.edit") : t("publish.new")} onClose={onClose} onSubmit={closed ? onClose : submit} busy={busy} error={error} wide testId="publish-editor">
       <div className="grid gap-5 sm:grid-cols-2">
         <SelectField
-          label={t("publish.client")}
+          label={t("publish.client")} help={t("publish.clientHelp")}
           value={clientId}
           onChange={(v) => {
             setClientId(v);
@@ -111,11 +111,11 @@ export function PublishEditor({ job, initial, onClose, onSaved }: { job?: Publis
           }))}
           testId="publish-page"
         />
-        <JalaliDateField label={t("publish.day")} value={day} onChange={setDay} testId="publish-day" />
-        <TextField label={t("publish.time")} type="time" dir="ltr" value={time} onChange={setTime} testId="publish-time" />
+        <JalaliDateField label={t("publish.day")} help={t("publish.dayHelp")} value={day} onChange={setDay} testId="publish-day" />
+        <TextField label={t("publish.time")} help={t("publish.timeHelp")} type="time" dir="ltr" value={time} onChange={setTime} testId="publish-time" />
       </div>
       <SelectField
-        label={t("publish.order")}
+        label={t("publish.order")} help={t("publish.orderHelp")}
         value={orderId}
         optional
         onChange={(v) => {
@@ -147,7 +147,7 @@ export function PublishEditor({ job, initial, onClose, onSaved }: { job?: Publis
           </ul>
         </fieldset>
       )}
-      <TextArea label={t("publish.caption")} value={caption} onChange={setCaption} rows={6} testId="publish-caption" />
+      <TextArea label={t("publish.caption")} help={t("publish.captionHelp")} value={caption} onChange={setCaption} rows={6} testId="publish-caption" />
       <TextField label={t("publish.hashtags")} help={t("publish.hashtagsHelp")} value={tags} onChange={setTags} optional testId="publish-tags" />
 
       {job && !closed && (
@@ -155,7 +155,7 @@ export function PublishEditor({ job, initial, onClose, onSaved }: { job?: Publis
           {job.management === "agencyManaged" && (
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-56 flex-1">
-                <TextField label={t("publish.postUrl")} dir="ltr" value={postUrl} onChange={setPostUrl} optional placeholder="https://" testId="publish-url" />
+                <TextField label={t("publish.postUrl")} help={t("publish.postUrlHelp")} dir="ltr" value={postUrl} onChange={setPostUrl} optional placeholder="https://" testId="publish-url" />
               </div>
               <Button type="button" className="h-12" onClick={() => void act("published", { postUrl: postUrl || null }, t("publish.done"))} data-testid="publish-mark">
                 <CheckCircle2 aria-hidden="true" />

@@ -8,7 +8,13 @@ test.describe("M5: leave, absence, calendar and report", () => {
     await writer.goto(`${DEMO_URL}/attendance`);
     await expect(writer.getByTestId("my-leave")).toBeVisible();
     // Cancel anything pending from an earlier device run so the dates don't overlap.
-    for (const b of await writer.getByRole("button", { name: "لغو درخواست" }).all()) await b.click();
+    // Cancelling one re-renders the list, so always take the first remaining one.
+    const cancel = writer.getByRole("button", { name: "لغو درخواست" });
+    for (let i = 0; i < 20 && (await cancel.count()) > 0; i++) {
+      const before = await cancel.count();
+      await cancel.first().click();
+      await expect(cancel).toHaveCount(before - 1);
+    }
     await writer.getByTestId("leave-open").click();
     await writer.getByTestId("leave-type").selectOption({ index: 1 });
     await writer.getByText("ساعتی", { exact: true }).click();

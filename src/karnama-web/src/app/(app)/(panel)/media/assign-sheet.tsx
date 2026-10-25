@@ -65,7 +65,7 @@ export function AssignSheet({ media, onClose, onDone }: { media: Media; onClose:
           </fieldset>
           {mode === "worker" ? (
             <SelectField
-              label={t("media.pickPerson")}
+              label={t("media.pickPerson")} help={t("media.pickPersonHelp")}
               value={personId}
               onChange={setPersonId}
               testId="media-person"

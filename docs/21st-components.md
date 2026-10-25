@@ -80,3 +80,6 @@
 | نمودار روزانه‌ی گزارش (N8) | `app/(app)/(panel)/reports/day-chart.tsx` | SVG دست‌ساز | ✅ |
 
 گزینه‌های 21st برای ستاره (کوئری `rating`, `star rating`): ۱) Rating (@originui) ۲) Star Rating (@shadcn-ext) ۳) Feedback rating — با رسیدن کلید 21st جایگزین می‌شود؛ ورودی/خروجی (عدد ۱ تا ۵) تغییری نمی‌کند.
+| تور اول (N12) | `components/help/tour.tsx` | Spotlight + کارت دست‌ساز | ✅ |
+
+گزینه‌های 21st برای تور (کوئری `onboarding tour`, `product tour`): ۱) Onboarding Tour ۲) Spotlight Tour ۳) Feature Tour — با رسیدن کلید 21st جایگزین می‌شود؛ قدم‌ها و متن‌ها تغییری نمی‌کنند.

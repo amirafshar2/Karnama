@@ -21,6 +21,9 @@ import { cn } from "@/lib/utils";
 
 // Only iPhone/iPad Safari users ever see it, so it is not part of the first download.
 const IosInstallHint = dynamic(() => import("@/components/app/pwa").then((m) => m.IosInstallHint), { ssr: false });
+// Help ("؟" + first-run tour) loads after the page itself, so it never slows the first screen.
+const PageHelp = dynamic(() => import("@/components/help/page-help").then((m) => m.PageHelp), { ssr: false, loading: () => <span className="size-11" /> });
+const TourHost = dynamic(() => import("@/components/help/tour").then((m) => m.TourHost), { ssr: false });
 
 export function PanelShell({ children }: { children: React.ReactNode }) {
   const { status, me, logout, reloadMe } = useAuth();
@@ -76,6 +79,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
         <header className="safe-top sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/90 px-4 backdrop-blur">
           <BrandMark className="text-base md:hidden" />
           <span className="ms-auto truncate text-sm text-muted-foreground">{me.displayName}</span>
+          <PageHelp />
           <BellButton />
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 md:px-8 md:pb-10">{children}</main>
@@ -83,6 +87,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile: bottom navigation (thumb reach, 48px+ targets); more than 5 sections → 4 + "More". */}
       <BottomNav items={items} isActive={isActive} />
+      <TourHost />
     </div>
   );
 }

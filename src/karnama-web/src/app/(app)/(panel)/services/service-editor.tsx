@@ -94,7 +94,7 @@ function ServiceForm({ id, onClose, onSaved, initial }: Props & { initial: Servi
             <NumberField label={t("crud.sortOrder")} help={t("crud.sortOrderHelp")} value={s.sortOrder} onChange={(v) => set({ sortOrder: v ?? 0 })} />
           </div>
           <Toggle label={t("services.consumes")} help={t("services.consumesHelp")} checked={s.consumesQuota} onChange={(v) => set({ consumesQuota: v })} />
-          <Toggle label={t("users.active")} checked={s.isActive} onChange={(v) => set({ isActive: v })} />
+          <Toggle label={t("users.active")} help={t("services.activeHelp")} checked={s.isActive} onChange={(v) => set({ isActive: v })} />
 
           <section className="space-y-3" aria-labelledby="stages-h">
             <h3 id="stages-h" className="text-lg font-bold">
@@ -109,14 +109,14 @@ function ServiceForm({ id, onClose, onSaved, initial }: Props & { initial: Servi
                     <RowTools onUp={() => set({ stages: move(s.stages, i, -1) })} onDown={() => set({ stages: move(s.stages, i, 1) })} onRemove={() => set({ stages: s.stages.filter((_, j) => j !== i) })} />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField label={t("services.stageName")} value={st.name[lang] ?? ""} onChange={(v) => setStage(i, { name: { ...st.name, [lang]: v } })} testId={`stage-name-${i}`} />
+                    <TextField label={t("services.stageName")} help={t("services.stageNameHelp")} value={st.name[lang] ?? ""} onChange={(v) => setStage(i, { name: { ...st.name, [lang]: v } })} testId={`stage-name-${i}`} />
                     <SelectField label={t("services.stageRole")} help={t("services.stageRoleHelp")} value={st.roleId ?? ""} onChange={(v) => setStage(i, { roleId: v || null })} options={roleOptions} optional />
                     <NumberField label={t("services.stageMinutes")} help={t("services.stageMinutesHelp")} value={st.estimatedMinutes} onChange={(v) => setStage(i, { estimatedMinutes: v ?? 0 })} min={0} />
-                    <NumberField label={t("services.stageSla")} value={st.slaHours} onChange={(v) => setStage(i, { slaHours: v })} optional min={1} />
+                    <NumberField label={t("services.stageSla")} help={t("services.stageSlaHelp")} value={st.slaHours} onChange={(v) => setStage(i, { slaHours: v })} optional min={1} />
                   </div>
                   <div className="flex flex-wrap gap-x-6">
-                    <Toggle label={t("services.stageReview")} checked={st.needsAdminReview} onChange={(v) => setStage(i, { needsAdminReview: v })} />
-                    <Toggle label={t("services.stageClient")} checked={st.needsClientApproval} onChange={(v) => setStage(i, { needsClientApproval: v })} />
+                    <Toggle label={t("services.stageReview")} help={t("services.stageReviewHelp")} checked={st.needsAdminReview} onChange={(v) => setStage(i, { needsAdminReview: v })} />
+                    <Toggle label={t("services.stageClient")} help={t("services.stageClientHelp")} checked={st.needsClientApproval} onChange={(v) => setStage(i, { needsClientApproval: v })} />
                   </div>
                 </li>
               ))}
@@ -139,14 +139,14 @@ function ServiceForm({ id, onClose, onSaved, initial }: Props & { initial: Servi
                     <RowTools onUp={() => set({ form: move(s.form, i, -1) })} onDown={() => set({ form: move(s.form, i, 1) })} onRemove={() => set({ form: s.form.filter((_, j) => j !== i) })} />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <TextField label={t("services.fieldLabel")} value={f.label[lang] ?? ""} onChange={(v) => setField(i, { label: { ...f.label, [lang]: v } })} testId={`field-label-${i}`} />
+                    <TextField label={t("services.fieldLabel")} help={t("services.fieldLabelHelp")} value={f.label[lang] ?? ""} onChange={(v) => setField(i, { label: { ...f.label, [lang]: v } })} testId={`field-label-${i}`} />
                     <TextField label={t("services.fieldKey")} help={t("services.fieldKeyHelp")} value={f.key} onChange={(v) => setField(i, { key: v })} dir="ltr" testId={`field-key-${i}`} />
-                    <SelectField label={t("services.fieldType")} value={f.type} onChange={(v) => setField(i, { type: v })} options={TYPES.map((x) => ({ value: x, label: t(`services.type.${x}` as TextKey) }))} />
+                    <SelectField label={t("services.fieldType")} help={t("services.fieldTypeHelp")} value={f.type} onChange={(v) => setField(i, { type: v })} options={TYPES.map((x) => ({ value: x, label: t(`services.type.${x}` as TextKey) }))} />
                   </div>
                   {(f.type === "select" || f.type === "multiselect") && (
                     <OptionsEditor value={f.options ?? []} lang={lang} onChange={(options) => setField(i, { options })} label={t("services.fieldOptions")} />
                   )}
-                  <Toggle label={t("services.fieldRequired")} checked={f.required} onChange={(v) => setField(i, { required: v })} />
+                  <Toggle label={t("services.fieldRequired")} help={t("services.fieldRequiredHelp")} checked={f.required} onChange={(v) => setField(i, { required: v })} />
                 </li>
               ))}
             </ul>

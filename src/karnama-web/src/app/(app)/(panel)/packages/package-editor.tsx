@@ -142,7 +142,7 @@ function PackageForm({ id, onClose, onSaved, initial }: Props & { initial: Pkg }
             <TextField label={t("packages.sku")} help={t("packages.skuHelp")} value={p.sku} onChange={(v) => set({ sku: v })} dir="ltr" testId="package-sku" />
             <TextField label={t("packages.category")} help={t("packages.categoryHelp")} value={p.category ?? ""} onChange={(v) => set({ category: v || null })} optional />
             <TextField label={t("packages.short")} help={t("packages.shortHelp")} value={p.shortDescription[lang] ?? ""} onChange={(v) => set({ shortDescription: { ...p.shortDescription, [lang]: v } })} optional />
-            <SelectField label={t("packages.status")} value={p.status} onChange={(v) => set({ status: v })} options={opts(t, "packages.status", ["draft", "active", "archived"])} testId="package-status" />
+            <SelectField label={t("packages.status")} help={t("packages.statusHelp")} value={p.status} onChange={(v) => set({ status: v })} options={opts(t, "packages.status", ["draft", "active", "archived"])} testId="package-status" />
           </Section>
 
           <Section title={t("packages.section.price")}>
@@ -150,14 +150,14 @@ function PackageForm({ id, onClose, onSaved, initial }: Props & { initial: Pkg }
             <NumberField label={t("packages.special")} help={t("packages.specialHelp")} value={toToman(p.specialPrice)} onChange={(v) => set({ specialPrice: toRial(v) })} optional min={0} />
             {p.specialPrice !== null && (
               <>
-                <JalaliDateField label={t("packages.specialFrom")} value={p.specialFrom} onChange={(v) => set({ specialFrom: v })} optional />
-                <JalaliDateField label={t("packages.specialTo")} value={p.specialTo} onChange={(v) => set({ specialTo: v })} optional />
+                <JalaliDateField label={t("packages.specialFrom")} help={t("packages.specialFromHelp")} value={p.specialFrom} onChange={(v) => set({ specialFrom: v })} optional />
+                <JalaliDateField label={t("packages.specialTo")} help={t("packages.specialToHelp")} value={p.specialTo} onChange={(v) => set({ specialTo: v })} optional />
               </>
             )}
-            <SelectField label={t("packages.period")} value={p.period} onChange={(v) => set({ period: v })} options={opts(t, "packages.period", ["monthly", "quarterly", "oneTime"])} />
+            <SelectField label={t("packages.period")} help={t("packages.periodHelp")} value={p.period} onChange={(v) => set({ period: v })} options={opts(t, "packages.period", ["monthly", "quarterly", "oneTime"])} />
             <NumberField label={t("packages.validity")} help={t("packages.validityHelp")} value={p.validityDays} onChange={(v) => set({ validityDays: v ?? 30 })} min={1} max={3650} testId="package-validity" />
             <JalaliDateField label={t("packages.saleFrom")} help={t("packages.saleHelp")} value={p.saleFrom} onChange={(v) => set({ saleFrom: v })} optional />
-            <JalaliDateField label={t("packages.saleTo")} value={p.saleTo} onChange={(v) => set({ saleTo: v })} optional />
+            <JalaliDateField label={t("packages.saleTo")} help={t("packages.saleToHelp")} value={p.saleTo} onChange={(v) => set({ saleTo: v })} optional />
             <NumberField label={t("packages.capacity")} help={t("packages.capacityHelp")} value={p.capacity} onChange={(v) => set({ capacity: v })} optional min={1} />
           </Section>
 
@@ -168,10 +168,10 @@ function PackageForm({ id, onClose, onSaved, initial }: Props & { initial: Pkg }
               {p.quotas.map((q, i) => (
                 <div key={i} className="flex items-end gap-2" data-testid={`quota-${i}`}>
                   <div className="flex-1">
-                    <SelectField label={t("services.title")} value={q.serviceTypeId} onChange={(v) => set({ quotas: p.quotas.map((x, j) => (j === i ? { ...x, serviceTypeId: v } : x)) })} options={serviceOptions} optional />
+                    <SelectField label={t("services.title")} help={t("packages.quotaServiceHelp")} value={q.serviceTypeId} onChange={(v) => set({ quotas: p.quotas.map((x, j) => (j === i ? { ...x, serviceTypeId: v } : x)) })} options={serviceOptions} optional />
                   </div>
                   <div className="w-28">
-                    <NumberField label="#" value={q.count} onChange={(v) => set({ quotas: p.quotas.map((x, j) => (j === i ? { ...x, count: v ?? 0 } : x)) })} min={0} max={1000} />
+                    <NumberField label="#" help={t("packages.quotaCountHelp")} value={q.count} onChange={(v) => set({ quotas: p.quotas.map((x, j) => (j === i ? { ...x, count: v ?? 0 } : x)) })} min={0} max={1000} />
                   </div>
                   <Button type="button" variant="ghost" size="icon" className="mb-0.5 size-12 text-destructive" aria-label={t("crud.remove")} onClick={() => set({ quotas: p.quotas.filter((_, j) => j !== i) })}>
                     <Trash2 aria-hidden="true" />
@@ -196,10 +196,10 @@ function PackageForm({ id, onClose, onSaved, initial }: Props & { initial: Pkg }
             </fieldset>
             <div className="grid gap-5 sm:grid-cols-2">
               <SelectField label={t("packages.access")} help={t("packages.accessHelp")} value={p.access} onChange={(v) => set({ access: v })} options={opts(t, "packages.access", ["fullAccess", "usernameOnly"])} />
-              <SelectField label={t("packages.management")} value={p.defaultManagement} onChange={(v) => set({ defaultManagement: v })} options={opts(t, "clients.management", ["agencyManaged", "clientManaged"])} />
-              <NumberField label={t("packages.consult")} value={p.consultSessions} onChange={(v) => set({ consultSessions: v ?? 0 })} min={0} />
-              <NumberField label={t("packages.revisions")} value={p.revisionsPerItem} onChange={(v) => set({ revisionsPerItem: v ?? 0 })} min={0} />
-              <NumberField label={t("packages.delivery")} value={p.deliveryHours} onChange={(v) => set({ deliveryHours: v ?? 0 })} min={0} />
+              <SelectField label={t("packages.management")} help={t("packages.managementHelp")} value={p.defaultManagement} onChange={(v) => set({ defaultManagement: v })} options={opts(t, "clients.management", ["agencyManaged", "clientManaged"])} />
+              <NumberField label={t("packages.consult")} help={t("packages.consultHelp")} value={p.consultSessions} onChange={(v) => set({ consultSessions: v ?? 0 })} min={0} />
+              <NumberField label={t("packages.revisions")} help={t("packages.revisionsHelp")} value={p.revisionsPerItem} onChange={(v) => set({ revisionsPerItem: v ?? 0 })} min={0} />
+              <NumberField label={t("packages.delivery")} help={t("packages.deliveryHelp")} value={p.deliveryHours} onChange={(v) => set({ deliveryHours: v ?? 0 })} min={0} />
             </div>
           </Section>
 
@@ -210,8 +210,8 @@ function PackageForm({ id, onClose, onSaved, initial }: Props & { initial: Pkg }
           </Section>
 
           <Section title={t("packages.section.site")}>
-            <Toggle label={t("packages.showOnSite")} checked={p.showOnSite} onChange={(v) => set({ showOnSite: v })} />
-            <SelectField label={t("packages.badge")} value={p.badge} onChange={(v) => set({ badge: v })} options={opts(t, "packages.badge", ["none", "bestSeller", "new"])} />
+            <Toggle label={t("packages.showOnSite")} help={t("packages.showOnSiteHelp")} checked={p.showOnSite} onChange={(v) => set({ showOnSite: v })} />
+            <SelectField label={t("packages.badge")} help={t("packages.badgeHelp")} value={p.badge} onChange={(v) => set({ badge: v })} options={opts(t, "packages.badge", ["none", "bestSeller", "new"])} />
             <TextField label={t("packages.slug")} help={t("packages.slugHelp")} value={p.slug} onChange={(v) => set({ slug: v })} optional />
             <NumberField label={t("crud.sortOrder")} help={t("crud.sortOrderHelp")} value={p.sortOrder} onChange={(v) => set({ sortOrder: v ?? 0 })} />
             <TextField label={t("packages.seoTitle")} help={t("packages.seoTitleHelp")} value={p.seoTitle ?? ""} onChange={(v) => set({ seoTitle: v })} maxLength={70} optional />

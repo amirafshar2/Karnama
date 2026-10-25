@@ -16,6 +16,15 @@ public sealed class BlogSeoTests
     private static JsonObject H(int l, string t) => new() { ["type"] = "heading", ["attrs"] = new JsonObject { ["level"] = l }, ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = t }) };
     private static JsonArray LinkMark(string href) => new(new JsonObject { ["type"] = "link", ["attrs"] = new JsonObject { ["href"] = href } });
 
+    [Theory]
+    [InlineData("/\t/evil.example")]
+    [InlineData("/\n/evil.example")]
+    [InlineData("//evil.example")]
+    [InlineData("/\\evil.example")]
+    [InlineData("javascript:alert(1)")]
+    public void Unsafe_links_are_dropped(string href) =>
+        Karnama.Application.Blog.TiptapRenderer.SafeHref(href).Should().BeNull();
+
     [Fact]
     public void Renderer_encodes_text_and_drops_dangerous_links_images_and_unknown_nodes()
     {

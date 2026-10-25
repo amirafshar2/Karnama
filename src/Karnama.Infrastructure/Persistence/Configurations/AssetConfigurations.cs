@@ -76,3 +76,17 @@ internal sealed class AssetPhotoConfiguration : IEntityTypeConfiguration<AssetPh
         b.HasOne<Asset>().WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+internal sealed class HelpArticleConfiguration : IEntityTypeConfiguration<Karnama.Domain.Content.HelpArticle>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Content.HelpArticle> b)
+    {
+        b.ToTable("help_articles");
+        b.Property(x => x.Title).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Slug).HasMaxLength(80).IsRequired();
+        b.Property(x => x.Category).HasMaxLength(40).IsRequired();
+        b.Property(x => x.PageKey).HasMaxLength(60);
+        b.HasIndex(x => x.Slug).IsUnique().HasFilter("\"IsDeleted\" = false");
+        b.HasIndex(x => new { x.IsPublished, x.SortOrder });
+    }
+}

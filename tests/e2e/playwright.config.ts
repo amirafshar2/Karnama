@@ -20,6 +20,11 @@ export default defineConfig({
     geolocation: { latitude: 29.61005, longitude: 52.53002, accuracy: 20 },
     permissions: ["geolocation"],
     trace: "retain-on-failure",
+    // The first-run tour would cover the screen in every test; it has its own spec (help.spec.ts) that turns it back on.
+    storageState: {
+      cookies: [],
+      origins: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"].map((origin) => ({ origin, localStorage: [{ name: "karnama.tour.off", value: "1" }] })),
+    },
     actionTimeout: 15_000,
   },
   projects: [

@@ -47,6 +47,7 @@ NEXT_DIST_DIR=.next-empty NEXT_PUBLIC_API_BASE=http://localhost:5081 NEXT_PUBLIC
 # The Android app's web part (static export, CLIENT_KIND=android), served like the app would load it.
 rm -rf out && BUILD_TARGET=mobile NEXT_PUBLIC_CLIENT=android NEXT_PUBLIC_API_BASE=http://localhost:5080 NEXT_PUBLIC_HUB_BASE=http://localhost:5080 npx next build > "$LOGS/web-app-build.log" 2>&1
 node ../../tools/bundle-size.mjs .next-demo
+node ../../tools/check-help.mjs
 ( NEXT_DIST_DIR=.next-demo npx next start -p 3000 > "$LOGS/web-demo.log" 2>&1 & )
 ( NEXT_DIST_DIR=.next-empty npx next start -p 3001 > "$LOGS/web-empty.log" 2>&1 & )
 ( "$(command -v python3 || command -v python)" -m http.server 3002 --bind 127.0.0.1 --directory out > "$LOGS/web-app.log" 2>&1 & )

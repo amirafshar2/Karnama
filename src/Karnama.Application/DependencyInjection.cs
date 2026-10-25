@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<Chat.ChatService>();
         services.AddScoped<Crm.CrmService>();
         services.AddScoped<Assets.AssetService>();
+        services.AddScoped<Help.HelpService>();
         services.AddScoped<Reports.PerformanceService>();
         services.AddScoped<Notify.PackageExpiryJob>();
         services.AddScoped<Publishing.PublishService>();

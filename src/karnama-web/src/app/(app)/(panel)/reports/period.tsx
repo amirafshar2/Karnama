@@ -34,10 +34,10 @@ export function PeriodPicker({ from, to, onChange }: { from: string | null; to: 
     <fieldset className="flex flex-wrap items-end gap-3" data-print-hide>
       <legend className="sr-only">{t("rpt.period")}</legend>
       <div className="w-44">
-        <JalaliDateField label={t("rpt.from")} value={from} onChange={(v) => onChange(v, to)} />
+        <JalaliDateField label={t("rpt.from")} help={t("rpt.fromHelp")} value={from} onChange={(v) => onChange(v, to)} />
       </div>
       <div className="w-44">
-        <JalaliDateField label={t("rpt.to")} value={to} onChange={(v) => onChange(from, v)} />
+        <JalaliDateField label={t("rpt.to")} help={t("rpt.toHelp")} value={to} onChange={(v) => onChange(from, v)} />
       </div>
       <div className="flex flex-wrap gap-1.5 pb-0.5">
         {shortcuts.map(([k, f]) => (

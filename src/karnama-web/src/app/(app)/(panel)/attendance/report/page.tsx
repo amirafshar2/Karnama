@@ -52,10 +52,10 @@ export default function AttendanceReportPage() {
       </header>
       <div className="flex flex-wrap items-end gap-4">
         <div className="w-48">
-          <JalaliDateField label={t("rep.from")} value={from} onChange={setFrom} />
+          <JalaliDateField label={t("rep.from")} help={t("rep.fromHelp")} value={from} onChange={setFrom} />
         </div>
         <div className="w-48">
-          <JalaliDateField label={t("rep.to")} value={to} onChange={setTo} />
+          <JalaliDateField label={t("rep.to")} help={t("rep.toHelp")} value={to} onChange={setTo} />
         </div>
         <Button variant="outline" className="h-12 md:h-11" disabled={!range} onClick={download} data-testid="report-excel">
           <Download aria-hidden="true" />

@@ -73,4 +73,7 @@ export const faN8 = {
   "stars.managerHelp": "در امتیاز ماهانه‌ی انجام‌دهنده اثر دارد.",
   "stars.saved": "امتیاز ثبت شد.",
   "stars.client": "به این کار چند ستاره می‌دهید؟ (اختیاری)",
+  "rpt.fromHelp": "اولین روز بازه.",
+  "rpt.toHelp": "آخرین روز بازه.",
+  "score.weightHelp": "عدد بزرگ‌تر یعنی اثر بیشتر؛ مثلاً ۲۰.",
 } as const;

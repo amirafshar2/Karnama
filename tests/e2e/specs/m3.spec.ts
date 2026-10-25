@@ -37,7 +37,8 @@ test.describe("M3: orders and the live work board", () => {
 
     // The new card is on the board in "to do"
     await page.goto(`${DEMO_URL}/work`);
-    const card = page.locator("[data-testid^=card-]", { hasText: `سفارش تست ${run}` }).filter({ visible: true });
+    // The first stage is the one that can start now (later stages wait in the queue column).
+    const card = (mobile ? page : page.getByTestId("col-todo")).locator("[data-testid^=card-]", { hasText: `سفارش تست ${run}` }).filter({ visible: true });
     if (mobile) await page.getByTestId("tab-todo").click();
     await expect(card.first()).toBeVisible();
 

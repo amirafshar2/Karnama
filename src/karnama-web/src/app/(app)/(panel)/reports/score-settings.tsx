@@ -48,7 +48,7 @@ export function ScoreSettingsView() {
       <div className="grid gap-4 sm:grid-cols-2">
         {KEYS.map((k) => (
           <div key={k}>
-            <NumberField label={t(`score.ind.${k}` as TextKey)} value={v.weights[k]} min={0} max={100}
+            <NumberField label={t(`score.ind.${k}` as TextKey)} help={t("score.weightHelp")} value={v.weights[k]} min={0} max={100}
               onChange={(n) => setDraft({ ...v, weights: { ...v.weights, [k]: n ?? 0 } })} testId={`weight-${k}`} />
             <p className="mt-1 text-xs text-muted-foreground">{sum > 0 ? `${formatNumber(Math.round((v.weights[k] / sum) * 100))}٪` : "—"}</p>
           </div>

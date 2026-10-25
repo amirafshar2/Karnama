@@ -152,6 +152,21 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
     }
 
     [Fact]
+    public async Task Linking_a_lead_to_an_existing_client_earns_the_marketer_nothing_and_reveals_nothing()
+    {
+        var marketer = await As("marketer");
+        var range = $"from={DateTime.UtcNow.AddDays(-360):yyyy-MM-dd}&to={DateTime.UtcNow.AddDays(1):yyyy-MM-dd}";
+        long Sales(JsonElement r) => r.GetProperty("marketers").EnumerateArray().Single().GetProperty("sales").GetInt64();
+        var before = Sales(await Ok(await marketer.GetAsync($"/api/v1/crm/report?{range}")));
+        // The demo café (09000000004) already has a paid package.
+        var lead = await Ok(await marketer.PostAsJsonAsync("/api/v1/crm/leads", new { name = "کافه را می‌شناسم", phone = "09000000004" }));
+        var id = lead.GetProperty("lead").GetProperty("id").GetGuid();
+        var converted = await Ok(await marketer.PostAsync($"/api/v1/crm/leads/{id}/convert", null));
+        converted.GetProperty("existing").GetBoolean().Should().BeFalse("a marketer must not learn that the number is already a client");
+        Sales(await Ok(await marketer.GetAsync($"/api/v1/crm/report?{range}"))).Should().Be(before);
+    }
+
+    [Fact]
     public async Task Website_form_and_bot_messages_become_leads_without_duplicates()
     {
         var anon = _f.CreateClient();

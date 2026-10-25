@@ -52,18 +52,18 @@ export function AssetEditor({ asset, onClose, onSaved }: { asset: AssetDetail | 
   return (
     <EditorSheet title={a ? t("as.edit") : t("as.new")} onClose={onClose} onSubmit={save} busy={busy} error={error} loading={!cats.data && !cats.error} testId="as-editor">
       <TextField label={t("as.name")} help={t("as.nameHelp")} value={name} onChange={setName} testId="as-name" />
-      <SelectField label={t("as.category")} value={categoryId} onChange={setCategoryId} testId="as-category"
+      <SelectField label={t("as.category")} help={t("as.categoryHelp")} value={categoryId} onChange={setCategoryId} testId="as-category"
         options={(cats.data ?? []).filter((c) => c.isActive || c.id === categoryId).map((c) => ({ value: c.id, label: c.name }))} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField label={t("as.brand")} value={brand} onChange={setBrand} optional dir="auto" />
-        <TextField label={t("as.model")} value={model} onChange={setModel} optional dir="auto" />
-        <TextField label={t("as.serial")} value={serial} onChange={setSerial} optional dir="ltr" testId="as-serial" />
+        <TextField label={t("as.brand")} help={t("as.brandHelp")} value={brand} onChange={setBrand} optional dir="auto" />
+        <TextField label={t("as.model")} help={t("as.modelHelp")} value={model} onChange={setModel} optional dir="auto" />
+        <TextField label={t("as.serial")} help={t("as.serialHelp")} value={serial} onChange={setSerial} optional dir="ltr" testId="as-serial" />
         <TextField label={t("as.tag")} help={t("as.tagHelp")} value={tag} onChange={setTag} optional dir="ltr" testId="as-tag" />
-        <JalaliDateField label={t("as.purchasedOn")} value={purchasedOn} onChange={setPurchasedOn} optional />
-        <JalaliDateField label={t("as.warranty")} value={warranty} onChange={setWarranty} optional testId="as-warranty" />
+        <JalaliDateField label={t("as.purchasedOn")} help={t("as.purchasedOnHelp")} value={purchasedOn} onChange={setPurchasedOn} optional />
+        <JalaliDateField label={t("as.warranty")} help={t("as.warrantyHelp")} value={warranty} onChange={setWarranty} optional testId="as-warranty" />
       </div>
-      <NumberField label={t("as.price")} value={price} onChange={setPrice} optional min={0} />
-      <TextArea label={t("as.note")} value={note} onChange={setNote} optional />
+      <NumberField label={t("as.price")} help={t("as.priceHelp")} value={price} onChange={setPrice} optional min={0} />
+      <TextArea label={t("as.note")} help={t("as.noteHelp")} value={note} onChange={setNote} optional />
     </EditorSheet>
   );
 }

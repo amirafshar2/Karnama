@@ -95,31 +95,31 @@ function Editor({ initial }: { initial: HomeContent }) {
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{c.seoDescription || "—"}</p>
         </div>
         <div className="space-y-1">
-          <TextField label={L("home.seoTitle")} value={c.seoTitle} onChange={(v) => set({ seoTitle: v })} testId="home-seo-title" />
+          <TextField label={L("home.seoTitle")} help={L("home.seoTitleHelp")} value={c.seoTitle} onChange={(v) => set({ seoTitle: v })} testId="home-seo-title" />
           <Counter n={c.seoTitle.length} min={1} max={60} />
         </div>
         <div className="space-y-1">
-          <TextArea label={L("home.seoDescription")} value={c.seoDescription} onChange={(v) => set({ seoDescription: v })} rows={3} testId="home-seo-desc" />
+          <TextArea label={L("home.seoDescription")} help={L("home.seoDescriptionHelp")} value={c.seoDescription} onChange={(v) => set({ seoDescription: v })} rows={3} testId="home-seo-desc" />
           <Counter n={c.seoDescription.length} min={50} max={160} />
         </div>
       </Section>
 
       <Section title={t("home.hero")}>
         <TextField label={L("home.heroTitle")} help={L("home.heroTitleHelp")} value={c.heroTitle} onChange={(v) => set({ heroTitle: v })} testId="home-hero-title" />
-        <TextArea label={L("home.heroSubtitle")} value={c.heroSubtitle} onChange={(v) => set({ heroSubtitle: v })} rows={3} optional />
-        <TextField label={L("home.ctaLabel")} value={c.ctaLabel} onChange={(v) => set({ ctaLabel: v })} />
+        <TextArea label={L("home.heroSubtitle")} help={L("home.heroSubtitleHelp")} value={c.heroSubtitle} onChange={(v) => set({ heroSubtitle: v })} rows={3} optional />
+        <TextField label={L("home.ctaLabel")} help={L("home.ctaLabelHelp")} value={c.ctaLabel} onChange={(v) => set({ ctaLabel: v })} />
       </Section>
 
       <Section title={t("home.show")}>
-        <Toggle label={L("home.showPackages")} checked={c.showPackages} onChange={(v) => set({ showPackages: v })} />
-        <Toggle label={L("home.showCases")} checked={c.showCases} onChange={(v) => set({ showCases: v })} />
-        <Toggle label={L("home.showBlog")} checked={c.showBlog} onChange={(v) => set({ showBlog: v })} />
+        <Toggle label={L("home.showPackages")} help={L("home.showPackagesHelp")} checked={c.showPackages} onChange={(v) => set({ showPackages: v })} />
+        <Toggle label={L("home.showCases")} help={L("home.showCasesHelp")} checked={c.showCases} onChange={(v) => set({ showCases: v })} />
+        <Toggle label={L("home.showBlog")} help={L("home.showBlogHelp")} checked={c.showBlog} onChange={(v) => set({ showBlog: v })} />
       </Section>
 
       <Section title={t("home.sections")}>
         <div className="grid gap-4 sm:grid-cols-2">
           {(["servicesTitle", "casesTitle", "packagesTitle", "processTitle", "testimonialsTitle", "blogTitle", "faqTitle"] as const).map((k) => (
-            <TextField key={k} label={L(`home.${k}` as TextKey)} value={c[k]} onChange={(v) => set({ [k]: v } as Partial<HomeContent>)} />
+            <TextField key={k} label={L(`home.${k}` as TextKey)} help={L("home.sectionTitleHelp")} value={c[k]} onChange={(v) => set({ [k]: v } as Partial<HomeContent>)} />
           ))}
         </div>
       </Section>
@@ -134,8 +134,8 @@ function Editor({ initial }: { initial: HomeContent }) {
                   <Trash2 className="size-4" aria-hidden="true" />
                 </Button>
               </div>
-              <TextField label={L("home.stepTitle")} value={s.title} onChange={(v) => set({ process: c.process.map((x, j) => (j === i ? { ...x, title: v } : x)) })} />
-              <TextArea label={L("home.stepBody")} value={s.body} onChange={(v) => set({ process: c.process.map((x, j) => (j === i ? { ...x, body: v } : x)) })} rows={2} />
+              <TextField label={L("home.stepTitle")} help={L("home.stepTitleHelp")} value={s.title} onChange={(v) => set({ process: c.process.map((x, j) => (j === i ? { ...x, title: v } : x)) })} />
+              <TextArea label={L("home.stepBody")} help={L("home.stepBodyHelp")} value={s.body} onChange={(v) => set({ process: c.process.map((x, j) => (j === i ? { ...x, body: v } : x)) })} rows={2} />
             </li>
           ))}
         </ol>
@@ -156,8 +156,8 @@ function Editor({ initial }: { initial: HomeContent }) {
                   <Trash2 className="size-4" aria-hidden="true" />
                 </Button>
               </div>
-              <TextField label={L("home.question")} value={f.question} onChange={(v) => set({ faq: c.faq.map((x, j) => (j === i ? { ...x, question: v } : x)) })} />
-              <TextArea label={L("home.answer")} value={f.answer} onChange={(v) => set({ faq: c.faq.map((x, j) => (j === i ? { ...x, answer: v } : x)) })} rows={3} />
+              <TextField label={L("home.question")} help={L("home.questionHelp")} value={f.question} onChange={(v) => set({ faq: c.faq.map((x, j) => (j === i ? { ...x, question: v } : x)) })} />
+              <TextArea label={L("home.answer")} help={L("home.answerHelp")} value={f.answer} onChange={(v) => set({ faq: c.faq.map((x, j) => (j === i ? { ...x, answer: v } : x)) })} rows={3} />
             </li>
           ))}
         </ul>
@@ -170,21 +170,21 @@ function Editor({ initial }: { initial: HomeContent }) {
       </Section>
 
       <Section title={t("home.consult")}>
-        <TextField label={L("home.consultTitle")} value={c.consultTitle} onChange={(v) => set({ consultTitle: v })} />
-        <TextArea label={L("home.consultText")} value={c.consultText} onChange={(v) => set({ consultText: v })} rows={2} />
+        <TextField label={L("home.consultTitle")} help={L("home.consultTitleHelp")} value={c.consultTitle} onChange={(v) => set({ consultTitle: v })} />
+        <TextArea label={L("home.consultText")} help={L("home.consultTextHelp")} value={c.consultText} onChange={(v) => set({ consultText: v })} rows={2} />
       </Section>
 
       <Section title={t("home.contact")} help={t("home.mapHelp")}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextField label={L("home.phone")} dir="ltr" value={c.contact.phone ?? ""} onChange={(v) => setContact({ phone: nz(v) })} optional testId="home-phone" />
-          <TextField label={L("home.city")} value={c.contact.city ?? ""} onChange={(v) => setContact({ city: nz(v) })} optional />
-          <TextField label={L("home.address")} value={c.contact.address ?? ""} onChange={(v) => setContact({ address: nz(v) })} optional />
+          <TextField label={L("home.phone")} help={L("home.phoneHelp")} dir="ltr" value={c.contact.phone ?? ""} onChange={(v) => setContact({ phone: nz(v) })} optional testId="home-phone" />
+          <TextField label={L("home.city")} help={L("home.cityHelp")} value={c.contact.city ?? ""} onChange={(v) => setContact({ city: nz(v) })} optional />
+          <TextField label={L("home.address")} help={L("home.addressHelp")} value={c.contact.address ?? ""} onChange={(v) => setContact({ address: nz(v) })} optional />
           <TextField label={L("home.hours")} help={L("home.hoursHelp")} value={c.contact.hours ?? ""} onChange={(v) => setContact({ hours: nz(v) })} optional />
-          <TextField label={L("home.email")} dir="ltr" value={c.contact.email ?? ""} onChange={(v) => setContact({ email: nz(v) })} optional />
-          <TextField label={L("home.instagram")} dir="ltr" value={c.contact.instagram ?? ""} onChange={(v) => setContact({ instagram: nz(v) })} optional />
-          <TextField label={L("home.telegram")} dir="ltr" value={c.contact.telegram ?? ""} onChange={(v) => setContact({ telegram: nz(v) })} optional />
-          <TextField label={L("home.neshan")} dir="ltr" value={c.contact.neshanUrl ?? ""} onChange={(v) => setContact({ neshanUrl: nz(v) })} optional placeholder="https://nshn.ir/..." />
-          <TextField label={L("home.balad")} dir="ltr" value={c.contact.baladUrl ?? ""} onChange={(v) => setContact({ baladUrl: nz(v) })} optional placeholder="https://balad.ir/..." />
+          <TextField label={L("home.email")} help={L("home.emailHelp")} dir="ltr" value={c.contact.email ?? ""} onChange={(v) => setContact({ email: nz(v) })} optional />
+          <TextField label={L("home.instagram")} help={L("home.instagramHelp")} dir="ltr" value={c.contact.instagram ?? ""} onChange={(v) => setContact({ instagram: nz(v) })} optional />
+          <TextField label={L("home.telegram")} help={L("home.telegramHelp")} dir="ltr" value={c.contact.telegram ?? ""} onChange={(v) => setContact({ telegram: nz(v) })} optional />
+          <TextField label={L("home.neshan")} help={L("home.mapHelp")} dir="ltr" value={c.contact.neshanUrl ?? ""} onChange={(v) => setContact({ neshanUrl: nz(v) })} optional placeholder="https://nshn.ir/..." />
+          <TextField label={L("home.balad")} help={L("home.mapHelp")} dir="ltr" value={c.contact.baladUrl ?? ""} onChange={(v) => setContact({ baladUrl: nz(v) })} optional placeholder="https://balad.ir/..." />
         </div>
       </Section>
 

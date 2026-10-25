@@ -55,7 +55,7 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         return new WorkDetailDto((await CardsAsync([w], ct))[0], await orders.ToDtoAsync(order, ct),
             comments.Select(c => new CommentDto(c.Id, c.AuthorName, c.FromClient, c.Visibility, c.Body, c.CreatedAt, c.AuthorId == access.Me)).ToList(),
             files.Select(Files.FileService.ToDto).ToList(), moves, access.CanAssign, access.CanTalkToClient,
-            w.ManagerStars, w.ClientStars, w.Status == WorkStatus.Done && me.Has(Permissions.WorkReview, PermissionScope.All));
+            w.ManagerStars, w.ClientStars, w.Status == WorkStatus.Done && me.Has(Permissions.WorkReview, PermissionScope.All) && w.AssigneeId != me.UserId);
     }
 
     private WorkActor? ActorFor(WorkItem w) =>
@@ -69,6 +69,8 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         if (!me.Has(Permissions.WorkReview, PermissionScope.All)) return Error.Forbidden();
         var w = await db.WorkItems.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
+        // Stars feed the assignee's score: nobody rates their own work.
+        if (w.AssigneeId == me.UserId) return Error.Forbidden("work.rateSelf", "به کار خودتان نمی‌توانید امتیاز بدهید.");
         var r = w.RateByManager(stars);
         if (r.IsFailure) return r;
         audit.Add("work.rated", nameof(WorkItem), w.Id.ToString(), new { stars });

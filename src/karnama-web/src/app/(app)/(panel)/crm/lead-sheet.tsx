@@ -88,20 +88,20 @@ function Sheet({ callSeconds, stages, canAssign, onClose, onChanged, onCalling, 
         </blockquote>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField label={t("crm.name")} value={form.name} onChange={(v) => set({ name: v })} testId="crm-name" />
+        <TextField label={t("crm.name")} help={t("crm.nameHelp")} value={form.name} onChange={(v) => set({ name: v })} testId="crm-name" />
         <TextField label={t("crm.phone")} help={t("crm.phoneHelp")} value={form.phone} onChange={(v) => set({ phone: v })} dir="ltr" inputMode="tel" testId="crm-phone" />
-        <TextField label={t("crm.business")} value={form.business} onChange={(v) => set({ business: v })} optional testId="crm-business" />
-        <TextField label={t("crm.industry")} value={form.industry} onChange={(v) => set({ industry: v })} optional />
-        <TextField label={t("crm.city")} value={form.city} onChange={(v) => set({ city: v })} optional />
-        <TextField label={t("crm.instagram")} value={form.instagram} onChange={(v) => set({ instagram: v })} dir="ltr" optional />
-        <SelectField label={t("crm.source")} value={form.sourceId} onChange={(v) => set({ sourceId: v })} optional options={(sources.data ?? []).filter((s) => s.isActive || s.id === form.sourceId).map((s) => ({ value: s.id, label: s.name }))} testId="crm-source" />
-        <NumberField label={t("crm.budget")} value={form.budget} onChange={(v) => set({ budget: v })} optional min={0} />
+        <TextField label={t("crm.business")} help={t("crm.businessHelp")} value={form.business} onChange={(v) => set({ business: v })} optional testId="crm-business" />
+        <TextField label={t("crm.industry")} help={t("crm.industryHelp")} value={form.industry} onChange={(v) => set({ industry: v })} optional />
+        <TextField label={t("crm.city")} help={t("crm.cityHelp")} value={form.city} onChange={(v) => set({ city: v })} optional />
+        <TextField label={t("crm.instagram")} help={t("crm.instagramHelp")} value={form.instagram} onChange={(v) => set({ instagram: v })} dir="ltr" optional />
+        <SelectField label={t("crm.source")} help={t("crm.sourceHelp")} value={form.sourceId} onChange={(v) => set({ sourceId: v })} optional options={(sources.data ?? []).filter((s) => s.isActive || s.id === form.sourceId).map((s) => ({ value: s.id, label: s.name }))} testId="crm-source" />
+        <NumberField label={t("crm.budget")} help={t("crm.budgetHelp")} value={form.budget} onChange={(v) => set({ budget: v })} optional min={0} />
         <TextField label={t("crm.tags")} help={t("crm.tagsHelp")} value={form.tags} onChange={(v) => set({ tags: v })} optional />
         {canAssign && !l && (
-          <SelectField label={t("crm.owner")} value={form.ownerId} onChange={(v) => set({ ownerId: v })} optional options={(marketers.data ?? []).map((m) => ({ value: m.id, label: m.name }))} testId="crm-owner" />
+          <SelectField label={t("crm.owner")} help={t("crm.ownerHelp")} value={form.ownerId} onChange={(v) => set({ ownerId: v })} optional options={(marketers.data ?? []).map((m) => ({ value: m.id, label: m.name }))} testId="crm-owner" />
         )}
       </div>
-      <TextArea label={t("crm.note")} value={form.note} onChange={(v) => set({ note: v })} optional />
+      <TextArea label={t("crm.note")} value={form.note} help={t("crm.noteHelp")} onChange={(v) => set({ note: v })} optional />
       {d && <Timeline items={d.activities} />}
     </EditorSheet>
   );
@@ -173,7 +173,7 @@ function Actions({ d, stages, canAssign, marketers, callSeconds, onCalling, onDo
       )}
       {panel === "stage" && <StageForm d={d} stages={stages} onSaved={(x) => { onDone(x); setPanel(null); notify.success(t("crm.moved")); }} />}
       {panel === "assign" && (
-        <SelectField label={t("crm.owner")} value={l.ownerId ?? ""} optional testId="crm-assign"
+        <SelectField label={t("crm.owner")} help={t("crm.ownerHelp")} value={l.ownerId ?? ""} optional testId="crm-assign"
           onChange={(v) => run(() => api<LeadDetail>(`/api/v1/crm/leads/${l.id}/assign`, { method: "POST", body: { ownerId: v || null } }), t("crm.assigned"), onDone)}
           options={marketers.map((m) => ({ value: m.id, label: `${m.name} (${m.openLeads})` }))} />
       )}
@@ -203,7 +203,7 @@ function FollowUpPicker({ value, onPick }: { value: string | null; onPick: (iso:
         ))}
       </div>
       <div className="flex flex-wrap items-end gap-2">
-        <div className="w-44"><JalaliDateField label={t("crm.followUpDay")} value={day} onChange={setDay} testId="crm-follow-day" /></div>
+        <div className="w-44"><JalaliDateField label={t("crm.followUpDay")} help={t("crm.nextFollowUpHelp")} value={day} onChange={setDay} testId="crm-follow-day" /></div>
         <label className="space-y-1 text-sm font-medium">
           <span className="block">{t("crm.followUpTime")}</span>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-12 rounded-md border bg-background px-2 md:h-11" dir="ltr" data-testid="crm-follow-time" />
@@ -242,8 +242,8 @@ function CallForm({ leadId, seconds, onSaved }: { leadId: string; seconds?: numb
     <div className="space-y-3" data-testid="crm-call-form">
       {seconds !== undefined && <p className="rounded-md bg-amber-100 p-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">{t("crm.callResultHelp")}</p>}
       <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField label={t("crm.direction")} value={direction} onChange={setDirection} options={(["outgoing", "incoming"] as const).map((x) => ({ value: x, label: t(`crm.direction.${x}`) }))} />
-        <NumberField label={t("crm.duration")} value={minutes} onChange={setMinutes} optional min={0} max={360} testId="crm-call-minutes" />
+        <SelectField label={t("crm.direction")} help={t("crm.directionHelp")} value={direction} onChange={setDirection} options={(["outgoing", "incoming"] as const).map((x) => ({ value: x, label: t(`crm.direction.${x}`) }))} />
+        <NumberField label={t("crm.duration")} help={t("crm.durationHelp")} value={minutes} onChange={setMinutes} optional min={0} max={360} testId="crm-call-minutes" />
       </div>
       <fieldset>
         <legend className="mb-2 text-sm font-bold">{t("crm.outcome")}</legend>
@@ -256,7 +256,7 @@ function CallForm({ leadId, seconds, onSaved }: { leadId: string; seconds?: numb
           ))}
         </div>
       </fieldset>
-      <TextArea label={t("crm.note")} value={note} onChange={setNote} rows={2} optional testId="crm-call-note" />
+      <TextArea label={t("crm.note")} value={note} onChange={setNote} rows={2} optional testId="crm-call-note" help={t("crm.callNoteHelp")} />
       {(outcome === "later" || outcome === "noAnswer" || outcome === "interested") && <FollowUpInline value={follow} onChange={setFollow} />}
       <Button type="button" className="h-11" disabled={!outcome || busy} onClick={save} data-testid="crm-call-save">{t("crm.saveCall")}</Button>
     </div>
@@ -269,7 +269,7 @@ function FollowUpInline({ value, onChange }: { value: string | null; onChange: (
   const [time, setTime] = useState("10:00");
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <div className="w-44"><JalaliDateField label={t("crm.nextFollowUp")} value={day} optional onChange={(v) => { setDay(v); onChange(v ? tehran(v, time) : null); }} /></div>
+      <div className="w-44"><JalaliDateField label={t("crm.nextFollowUp")} help={t("crm.nextFollowUpHelp")} value={day} optional onChange={(v) => { setDay(v); onChange(v ? tehran(v, time) : null); }} /></div>
       <label className="space-y-1 text-sm font-medium">
         <span className="block">{t("crm.followUpTime")}</span>
         <input type="time" value={time} onChange={(e) => { setTime(e.target.value); if (day) onChange(tehran(day, e.target.value)); }} className="h-12 rounded-md border bg-background px-2 md:h-11" dir="ltr" />
@@ -295,12 +295,12 @@ function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: (x: LeadDe
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField label={t("crm.activity")} value={kind} onChange={setKind} options={(["message", "meeting", "email", "note"] as const).map((x) => ({ value: x, label: t(`crm.activity.${x}`) }))} />
+        <SelectField label={t("crm.activity")} help={t("crm.activityHelp")} value={kind} onChange={setKind} options={(["message", "meeting", "email", "note"] as const).map((x) => ({ value: x, label: t(`crm.activity.${x}`) }))} />
         {kind === "message" && (
-          <SelectField label={t("crm.channel")} value={channel} onChange={setChannel} options={(["whatsApp", "telegram", "bale", "instagram", "sms"] as const).map((x) => ({ value: x, label: t(`crm.channel.${x}`) }))} />
+          <SelectField label={t("crm.channel")} help={t("crm.channelHelp")} value={channel} onChange={setChannel} options={(["whatsApp", "telegram", "bale", "instagram", "sms"] as const).map((x) => ({ value: x, label: t(`crm.channel.${x}`) }))} />
         )}
       </div>
-      <TextArea label={t("crm.note")} value={note} onChange={setNote} rows={2} optional />
+      <TextArea label={t("crm.note")} value={note} onChange={setNote} rows={2} optional help={t("crm.activityNoteHelp")} />
       <FollowUpInline value={follow} onChange={setFollow} />
       <Button type="button" className="h-11" onClick={save}>{t("crm.saveActivity")}</Button>
     </div>
@@ -322,8 +322,8 @@ function StageForm({ d, stages, onSaved }: { d: LeadDetail; stages: Stage[]; onS
   };
   return (
     <div className="space-y-3">
-      <SelectField label={t("crm.stage")} value={stageId} onChange={setStageId} options={stages.filter((s) => s.isActive).map((s) => ({ value: s.id, label: s.name }))} testId="crm-stage" />
-      {stage?.kind === "lost" && <TextField label={t("crm.lostReason")} value={reason} onChange={setReason} testId="crm-lost-reason" />}
+      <SelectField label={t("crm.stage")} help={t("crm.stageHelp")} value={stageId} onChange={setStageId} options={stages.filter((s) => s.isActive).map((s) => ({ value: s.id, label: s.name }))} testId="crm-stage" />
+      {stage?.kind === "lost" && <TextField label={t("crm.lostReason")} help={t("crm.lostReasonHelp")} value={reason} onChange={setReason} testId="crm-lost-reason" />}
       <Button type="button" className="h-11" disabled={stageId === d.lead.stageId && stage?.kind !== "lost"} onClick={save} data-testid="crm-stage-save">{t("crm.move")}</Button>
     </div>
   );

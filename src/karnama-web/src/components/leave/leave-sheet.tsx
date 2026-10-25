@@ -46,7 +46,7 @@ export function LeaveSheet({ onClose, onSaved, canRegisterForOthers }: { onClose
       {canRegisterForOthers && (
         <SelectField label={t("leave.forUser")} help={t("leave.forUserHelp")} value={forUser} onChange={setForUser} optional options={(users.data?.items ?? []).map((u) => ({ value: u.id, label: u.displayName }))} />
       )}
-      <SelectField label={t("leave.type")} value={typeId} onChange={setTypeId} optional options={(types.data ?? []).filter((x) => x.isActive).map((x) => ({ value: x.id, label: x.name }))} testId="leave-type" />
+      <SelectField label={t("leave.type")} help={t("leave.typeHelp")} value={typeId} onChange={setTypeId} optional options={(types.data ?? []).filter((x) => x.isActive).map((x) => ({ value: x.id, label: x.name }))} testId="leave-type" />
       {type?.needsDocument && <p className="text-sm text-amber-700">{t("leave.needsDocument")}</p>}
       <div className="flex gap-2" role="radiogroup">
         {[false, true].map((h) => (
@@ -56,14 +56,14 @@ export function LeaveSheet({ onClose, onSaved, canRegisterForOthers }: { onClose
           </label>
         ))}
       </div>
-      <JalaliDateField label={hourly ? t("leave.day") : t("leave.fromDay")} value={fromDay} onChange={setFromDay} testId="leave-from" />
+      <JalaliDateField label={hourly ? t("leave.day") : t("leave.fromDay")} help={hourly ? t("leave.dayHelp") : t("leave.fromDayHelp")} value={fromDay} onChange={setFromDay} testId="leave-from" />
       {hourly ? (
         <div className="grid grid-cols-2 gap-4">
-          <TextField label={t("leave.fromTime")} value={fromTime} onChange={setFromTime} dir="ltr" placeholder="10:00" testId="leave-from-time" />
-          <TextField label={t("leave.toTime")} value={toTime} onChange={setToTime} dir="ltr" placeholder="12:00" testId="leave-to-time" />
+          <TextField label={t("leave.fromTime")} help={t("leave.fromTimeHelp")} value={fromTime} onChange={setFromTime} dir="ltr" placeholder="10:00" testId="leave-from-time" />
+          <TextField label={t("leave.toTime")} help={t("leave.toTimeHelp")} value={toTime} onChange={setToTime} dir="ltr" placeholder="12:00" testId="leave-to-time" />
         </div>
       ) : (
-        <JalaliDateField label={t("leave.toDay")} value={toDay} onChange={setToDay} optional testId="leave-to" />
+        <JalaliDateField label={t("leave.toDay")} help={t("leave.toDayHelp")} value={toDay} onChange={setToDay} optional testId="leave-to" />
       )}
       <TextArea label={t("leave.reason")} help={t("leave.reasonHelp")} value={reason} onChange={setReason} testId="leave-reason" />
     </EditorSheet>

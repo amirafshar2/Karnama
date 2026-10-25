@@ -185,7 +185,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         var past = assignments.Where(x => !x.IsOpen && (SeesAll || x.UserId == Me)).Select(Map).ToList();
         var history = events.Where(e => SeesAll || e.UserId == Me || e.ActorId == Me)
             .Select(e => new EventDto(e.Id, e.Kind, e.ActorId is { } ac ? names.GetValueOrDefault(ac) : null, e.UserId is { } u ? names.GetValueOrDefault(u) : null, e.Note, e.At)).ToList();
-        return new AssetDetailDto(item, a.PurchasedOn, SeesAll ? a.PurchasePrice : null, a.Note, current is null ? null : Map(current), past, history,
+        return new AssetDetailDto(item, a.PurchasedOn, SeesAll ? a.PurchasePrice : null, SeesAll ? a.Note : null, current is null ? null : Map(current), past, history,
             SeesAll ? photos : photos.Where(p => p.Stage == AssetPhotoStage.Profile || (current is not null && p.AssignmentId == current.Id)).ToList(), can);
     }
 
@@ -353,6 +353,8 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         OnAssignmentAsync(assignmentId, async (a, x, now) =>
         {
             if (!CanAssign) return Error.Forbidden();
+            // The return of your own equipment is confirmed by someone else (a manager can, an assigner can't self-approve).
+            if (x.UserId == Me && !CanManage) return Error.Forbidden("assets.selfReturn", "برگشت تجهیزی که دست خودتان است را همکار دیگری تأیید می‌کند.");
             var r = x.ConfirmReturn(a, Me, req.Status, req.Condition, req.Damage, now);
             if (r.IsFailure) return r;
             db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.Returned, now, x.Id, x.UserId, Join(x.ConditionIn, x.Damage, req.Status == AssetStatus.Available ? null : StatusName(req.Status))));

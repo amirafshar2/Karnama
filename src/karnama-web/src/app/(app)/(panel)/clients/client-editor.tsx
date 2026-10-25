@@ -101,7 +101,7 @@ function ClientForm({ id, onClose, onSaved, onChanged, initial }: Props & { init
             <TextField label={t("clients.contact")} help={t("clients.contactHelp")} value={c.contactName ?? ""} onChange={(v) => set({ contactName: v || null })} optional />
             {c.mobile !== null && <TextField label={t("clients.mobile")} help={t("clients.mobileHelp")} value={c.mobile} onChange={(v) => set({ mobile: v })} dir="ltr" inputMode="tel" testId="client-mobile" />}
             <TextField label={t("clients.city")} help={t("clients.cityHelp")} value={c.city ?? ""} onChange={(v) => set({ city: v || null })} optional />
-            <SelectField label={t("clients.status")} value={c.status} onChange={(v) => set({ status: v })} options={(["active", "paused", "ended"] as const).map((s) => ({ value: s, label: t(`clients.status.${s}` as TextKey) }))} />
+            <SelectField label={t("clients.status")} help={t("clients.statusHelp")} value={c.status} onChange={(v) => set({ status: v })} options={(["active", "paused", "ended"] as const).map((s) => ({ value: s, label: t(`clients.status.${s}` as TextKey) }))} />
           </div>
           <TextArea label={t("clients.note")} help={t("clients.noteHelp")} value={c.internalNote ?? ""} onChange={(v) => set({ internalNote: v || null })} optional />
 
@@ -110,9 +110,9 @@ function ClientForm({ id, onClose, onSaved, onChanged, initial }: Props & { init
             <p className="text-sm text-muted-foreground">{t("clients.accountsHelp")}</p>
             {c.accounts.map((a, i) => (
               <div key={i} className="grid items-end gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_1fr_1fr_auto]" data-testid={`account-${i}`}>
-                <SelectField label={t("clients.platform")} value={a.platformId} onChange={(v) => setAccount(i, { platformId: v })} options={platformOptions} optional />
-                <TextField label={t("clients.handle")} value={a.handle} onChange={(v) => setAccount(i, { handle: v })} dir="ltr" />
-                <SelectField label={t("clients.management")} value={a.management} onChange={(v) => setAccount(i, { management: v })} options={(["agencyManaged", "clientManaged"] as const).map((s) => ({ value: s, label: t(`clients.management.${s}` as TextKey) }))} />
+                <SelectField label={t("clients.platform")} help={t("clients.platformHelp")} value={a.platformId} onChange={(v) => setAccount(i, { platformId: v })} options={platformOptions} optional />
+                <TextField label={t("clients.handle")} help={t("clients.handleHelp")} value={a.handle} onChange={(v) => setAccount(i, { handle: v })} dir="ltr" />
+                <SelectField label={t("clients.management")} help={t("clients.managementHelp")} value={a.management} onChange={(v) => setAccount(i, { management: v })} options={(["agencyManaged", "clientManaged"] as const).map((s) => ({ value: s, label: t(`clients.management.${s}` as TextKey) }))} />
                 <Button type="button" variant="ghost" size="icon" className="size-12 text-destructive" aria-label={t("crud.remove")} onClick={() => set({ accounts: c.accounts.filter((_, j) => j !== i) })}>
                   <Trash2 aria-hidden="true" />
                 </Button>
@@ -208,7 +208,7 @@ function PackagesPanel({ client, onChange }: { client: Client; onChange: (c: Cli
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">{t("clients.assignHelp")}</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <SelectField label={t("clients.package")} value={packageId} onChange={setPackageId} optional testId="assign-package" options={(packages.data?.items ?? []).map((p) => ({ value: p.id, label: `${p.name} — ${t("crud.toman", { amount: formatNumber(p.effectivePrice / 10) })}` }))} />
+          <SelectField label={t("clients.package")} help={t("clients.packageHelp")} value={packageId} onChange={setPackageId} optional testId="assign-package" options={(packages.data?.items ?? []).map((p) => ({ value: p.id, label: `${p.name} — ${t("crud.toman", { amount: formatNumber(p.effectivePrice / 10) })}` }))} />
           <JalaliDateField label={t("clients.assignStart")} help={t("clients.assignStartHelp")} value={start} onChange={setStart} optional />
         </div>
         <Button type="button" className="h-12 md:h-11" disabled={!packageId || working} onClick={() => run(() => api<Client>(`/api/v1/clients/${client.id}/packages`, { method: "POST", body: { packageId, startsAt: start, note: null } }), t("clients.assigned"))} data-testid="assign-submit">

@@ -77,4 +77,10 @@ export const faM6 = {
   "portalMsg.placeholder": "پیام برای آژانس…",
   "portalMsg.send": "فرستادن",
   "portalMsg.sent": "پیام فرستاده شد.",
+  "publish.clientHelp": "پست برای پیج کدام مشتری است.",
+  "publish.dayHelp": "روزی که پست باید منتشر شود.",
+  "publish.timeHelp": "مثلاً 19:00؛ سر همین ساعت یادآوری می‌فرستیم.",
+  "publish.orderHelp": "اگر پست از یک سفارش است انتخاب کنید تا فایل‌هایش همین‌جا بیاید.",
+  "publish.captionHelp": "متنی که زیر پست نوشته می‌شود.",
+  "publish.postUrlHelp": "بعد از انتشار، لینک پست را اینجا بچسبانید؛ مثلاً https://instagram.com/p/abc.",
 } as const;

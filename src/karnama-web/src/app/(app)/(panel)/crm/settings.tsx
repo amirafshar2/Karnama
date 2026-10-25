@@ -60,9 +60,9 @@ export function CrmSettingsPanel() {
       {v && (
         <section className="space-y-3 rounded-xl border p-4 lg:col-span-2">
           <h2 className="font-bold">{t("crm.settings.general")}</h2>
-          <Toggle label={t("crm.settings.autoAssign")} checked={v.autoAssign} onChange={(x) => setS({ ...v, autoAssign: x })} testId="crm-auto-assign" />
-          <Toggle label={t("crm.settings.commission")} checked={v.commissionEnabled} onChange={(x) => setS({ ...v, commissionEnabled: x })} />
-          {v.commissionEnabled && <div className="w-48"><NumberField label={t("crm.settings.commissionPercent")} value={v.commissionPercent} onChange={(x) => setS({ ...v, commissionPercent: x ?? 0 })} min={0} max={50} /></div>}
+          <Toggle label={t("crm.settings.autoAssign")} help={t("crm.settings.autoAssignHelp")} checked={v.autoAssign} onChange={(x) => setS({ ...v, autoAssign: x })} testId="crm-auto-assign" />
+          <Toggle label={t("crm.settings.commission")} help={t("crm.settings.commissionHelp")} checked={v.commissionEnabled} onChange={(x) => setS({ ...v, commissionEnabled: x })} />
+          {v.commissionEnabled && <div className="w-48"><NumberField label={t("crm.settings.commissionPercent")} help={t("crm.settings.commissionPercentHelp")} value={v.commissionPercent} onChange={(x) => setS({ ...v, commissionPercent: x ?? 0 })} min={0} max={50} /></div>}
           <Button className="h-11" onClick={() => save(() => api("/api/v1/crm/settings", { method: "PUT", body: v }), ["crm-settings"])} data-testid="crm-settings-save">{t("common.save")}</Button>
         </section>
       )}

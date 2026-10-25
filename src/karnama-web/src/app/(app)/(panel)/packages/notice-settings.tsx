@@ -77,9 +77,9 @@ function Form({ initial, onClose }: { initial: Settings; onClose: () => void }) 
           </div>
         )}
       </fieldset>
-      <Toggle label={t("notices.onEndDay")} checked={s.onEndDay} onChange={(v) => setS({ ...s, onEndDay: v })} testId="notices-endday" />
-      <Toggle label={t("notices.quota")} checked={s.quotaUsedUp} onChange={(v) => setS({ ...s, quotaUsedUp: v })} />
-      <Toggle label={t("notices.contractEnd")} checked={s.contractEndPasswords} onChange={(v) => setS({ ...s, contractEndPasswords: v })} />
+      <Toggle label={t("notices.onEndDay")} help={t("notices.onEndDayHelp")} checked={s.onEndDay} onChange={(v) => setS({ ...s, onEndDay: v })} testId="notices-endday" />
+      <Toggle label={t("notices.quota")} help={t("notices.quotaHelp")} checked={s.quotaUsedUp} onChange={(v) => setS({ ...s, quotaUsedUp: v })} />
+      <Toggle label={t("notices.contractEnd")} help={t("notices.contractEndHelp")} checked={s.contractEndPasswords} onChange={(v) => setS({ ...s, contractEndPasswords: v })} />
     </EditorSheet>
   );
 }

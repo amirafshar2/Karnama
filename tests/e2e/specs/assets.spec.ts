@@ -63,7 +63,7 @@ test.describe("N3: equipment", () => {
     await page.getByTestId("as-scan").click();
     await page.getByTestId("qr-manual").fill("KN-0003");
     await page.getByTestId("qr-manual").blur();
-    await expect(page.getByTestId("as-sheet")).toContainText("مک‌بوک");
+    await expect(page.getByRole("dialog")).toContainText("مک‌بوک");
     await page.keyboard.press("Escape");
     await page.getByTestId("as-scan").click();
     await page.getByTestId("qr-manual").fill("KN-0001");

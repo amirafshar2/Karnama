@@ -54,6 +54,8 @@ export function totp(secretBase32: string, at = Date.now()) {
 }
 
 export async function demoLogin(page: Page, role: "admin" | "editor" | "writer" | "client" | "marketer") {
+  // Contexts made with browser.newContext() don't get the config's storage state: keep the tour off here too.
+  await page.addInitScript(() => { try { if (!sessionStorage.getItem("tour-on")) localStorage.setItem("karnama.tour.off", "1"); } catch { /* ignore */ } });
   await page.goto(`${DEMO_URL}/login`);
   await page.getByTestId(`demo-${role}`).click();
   await expect(page).toHaveURL(/\/dashboard/);

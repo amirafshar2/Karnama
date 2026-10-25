@@ -396,7 +396,7 @@ function CredentialForm({ mode, initial, accounts, onClose, onSaved }: { mode: M
         </p>
         <p className="text-muted-foreground">{t("vault.tipBody")}</p>
       </aside>
-      <SelectField label={t("vault.platform")} value={platformId} onChange={setPlatformId} options={platformOptions} testId="vault-platform" />
+      <SelectField label={t("vault.platform")} help={t("vault.platformHelp")} value={platformId} onChange={setPlatformId} options={platformOptions} testId="vault-platform" />
       <TextField label={t("vault.handle")} help={t("vault.handleHelp")} value={handle} onChange={setHandle} dir="ltr" autoComplete="off" testId="vault-handle" />
       <Toggle label={t("vault.businessSuite")} help={t("vault.businessSuiteHelp")} checked={suite} onChange={setSuite} testId="vault-suite" />
       {!removeSecret && (
@@ -419,8 +419,8 @@ function CredentialForm({ mode, initial, accounts, onClose, onSaved }: { mode: M
             </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label={t("vault.recoveryEmail")} value={email} onChange={setEmail} dir="ltr" type="email" autoComplete="off" optional testId="vault-email" />
-            <TextField label={t("vault.recoveryPhone")} value={phone} onChange={setPhone} dir="ltr" inputMode="tel" autoComplete="off" optional />
+            <TextField label={t("vault.recoveryEmail")} help={t("vault.recoveryEmailHelp")} value={email} onChange={setEmail} dir="ltr" type="email" autoComplete="off" optional testId="vault-email" />
+            <TextField label={t("vault.recoveryPhone")} help={t("vault.recoveryPhoneHelp")} value={phone} onChange={setPhone} dir="ltr" inputMode="tel" autoComplete="off" optional />
           </div>
           <TextArea label={t("vault.twoFactorNote")} help={t("vault.twoFactorNoteHelp")} value={note} onChange={setNote} rows={2} optional />
         </>

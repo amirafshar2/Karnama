@@ -221,6 +221,8 @@ public static partial class TiptapRenderer
     {
         href = href?.Trim();
         if (string.IsNullOrEmpty(href) || href.Length > 1000) return null;
+        // Browsers drop tabs/newlines inside URLs, so "/\t/evil.example" would become "//evil.example".
+        if (href.Any(char.IsControl)) return null;
         if (href.StartsWith('/') && !href.StartsWith("//", StringComparison.Ordinal) && !href.Contains('\\')) return (href, true);
         if (href.StartsWith('#')) return (href, true);
         if (!Uri.TryCreate(href, UriKind.Absolute, out var u)) return null;

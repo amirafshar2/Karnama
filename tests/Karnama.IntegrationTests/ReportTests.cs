@@ -107,6 +107,10 @@ public sealed class ReportTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         (await admin.PostAsJsonAsync($"/api/v1/work/{open}/rating", new { stars = 4 })).StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await admin.PostAsJsonAsync($"/api/v1/work/{done}/rating", new { stars = 9 })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{done}/rating", new { stars = 4 }));
+        // Nobody rates their own work (the stars feed their score).
+        var adminId = await Db(db => db.Users.Where(u => u.Phone == "09000000001").Select(u => u.Id).FirstAsync());
+        await Db(db => db.WorkItems.Where(w => w.Id == done).ExecuteUpdateAsync(x => x.SetProperty(w => w.AssigneeId, adminId)));
+        (await admin.PostAsJsonAsync($"/api/v1/work/{done}/rating", new { stars = 5 })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await Db(db => db.WorkItems.Where(w => w.Id == done).Select(w => w.ManagerStars).FirstAsync())).Should().Be(4);
     }
 }

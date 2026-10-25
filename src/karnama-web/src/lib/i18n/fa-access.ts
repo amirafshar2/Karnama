@@ -20,6 +20,7 @@ export const faAccess = {
   "permGroup.chat": "گفتگو",
   "permGroup.crm": "فروش و سرنخ‌ها",
   "permGroup.assets": "تجهیزات",
+  "permGroup.scores": "امتیاز کارگرها",
   "perm.work.view": "دیدن کارها",
   "perm.work.create": "ساختن کار",
   "perm.work.assign": "سپردن کار به افراد",

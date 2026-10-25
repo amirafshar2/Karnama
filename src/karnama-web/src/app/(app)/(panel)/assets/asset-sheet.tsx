@@ -227,10 +227,10 @@ function Actions({ d, mode, setMode, busy, run, refresh }: { d: AssetDetail; mod
     return (
       <div className="space-y-3 rounded-lg border p-3">
         {mode === "confirm" && (
-          <SelectField label={t("as.confirmReturnHelp")} value={next} onChange={setNext} testId="as-return-status"
+          <SelectField label={t("as.confirmReturnHelp")} help={t("as.returnStatusHelp")} value={next} onChange={setNext} testId="as-return-status"
             options={(["available", "inRepair", "lost"] as AssetStatus[]).map((s) => ({ value: s, label: t(`as.status.${s}` as TextKey) }))} />
         )}
-        <TextField label={mode === "decline" ? t("as.note") : t("as.conditionIn")} value={note} onChange={setNote} optional testId="as-return-condition" />
+        <TextField label={mode === "decline" ? t("as.note") : t("as.conditionIn")} help={mode === "decline" ? t("as.declineNoteHelp") : t("as.conditionInHelp")} value={note} onChange={setNote} optional testId="as-return-condition" />
         {(mode === "return" || mode === "confirm") && <TextArea label={t("as.damage")} help={t("as.damageHelp")} value={damage} onChange={setDamage} optional testId="as-return-damage" />}
         {(mode === "return" || mode === "confirm") && (
           <div className="flex gap-2 overflow-x-auto">
@@ -292,7 +292,7 @@ function PeoplePicker({ value, onChange, exclude }: { value: string; onChange: (
   const { t } = useI18n();
   const people = useQuery({ queryKey: ["asset-people"], queryFn: () => api<Person[]>("/api/v1/assets/people") });
   return (
-    <SelectField label={t("as.handoverTo")} value={value} onChange={onChange} testId="as-person"
+    <SelectField label={t("as.handoverTo")} help={t("as.handoverToHelp")} value={value} onChange={onChange} testId="as-person"
       options={(people.data ?? []).filter((p) => p.id !== exclude).map((p) => ({ value: p.id, label: p.name }))} />
   );
 }
@@ -329,9 +329,9 @@ function StatusForm({ d, busy, run, onCancel }: { d: AssetDetail; busy: boolean;
   const [note, setNote] = useState("");
   return (
     <div className="space-y-3 rounded-lg border p-3">
-      <SelectField label={t("as.setStatus")} value={s} onChange={setS} testId="as-status-select"
+      <SelectField label={t("as.setStatus")} help={t("as.setStatusHelp")} value={s} onChange={setS} testId="as-status-select"
         options={STATUSES.filter((x) => x !== "assigned").map((x) => ({ value: x, label: t(`as.status.${x}` as TextKey) }))} />
-      <TextField label={t("as.note")} value={note} onChange={setNote} optional />
+      <TextField label={t("as.note")} help={t("as.statusNoteHelp")} value={note} onChange={setNote} optional />
       <div className="flex gap-2">
         <Button className="h-11" disabled={busy} data-testid="as-status-save" onClick={() => run(`/api/v1/assets/${d.asset.id}/status`, { status: s, note: note || null }, t("as.statusChanged"))}>{t("common.save")}</Button>
         <Button variant="ghost" className="h-11" onClick={onCancel}>{t("common.cancel")}</Button>

@@ -19,7 +19,8 @@ export function ScoresView({ range }: { range: string }) {
   const [open, setOpen] = useState<string | null>(null);
   if (q.error) return <ErrorText error={q.error} />;
   if (!q.data) return <div className="h-64 animate-pulse rounded-xl bg-muted" />;
-  const s = q.data;
+  // People with no finished work in the period (managers, the owner) only clutter the ranking.
+  const s = { ...q.data, people: q.data.people.filter((p) => p.samples > 0 || p.userId === me?.id) };
   const mine = s.people.find((p) => p.userId === me?.id);
   const shown = open ?? (s.people.length === 1 ? s.people[0].userId : null);
 

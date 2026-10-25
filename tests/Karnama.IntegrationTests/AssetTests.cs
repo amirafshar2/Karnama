@@ -119,6 +119,12 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         (await admin.PostAsJsonAsync("/api/v1/assets", new { name = "تکراری", categoryId = AssetDefaults.Camera, tag = a.GetProperty("asset").GetProperty("tag").GetString() }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await admin.DeleteAsync($"/api/v1/assets/{Id(a)}")).StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        // The holder sees the item but not the manager's internal note or the price.
+        await Ok(await admin.PutAsJsonAsync($"/api/v1/assets/{Id(a)}", new { name = "میکروفون دید", categoryId = AssetDefaults.Camera, note = "از فروشگاه X با تخفیف", purchasePrice = 5_000_000, version = Version(h) }));
+        var mine = await Ok(await (await As("editor")).GetAsync($"/api/v1/assets/{Id(a)}"));
+        mine.GetProperty("note").ValueKind.Should().Be(JsonValueKind.Null);
+        mine.GetProperty("purchasePrice").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [Fact]

@@ -35,11 +35,11 @@ export function PlatformEditor({ platform, lang, onClose, onSaved }: { platform:
   };
   return (
     <EditorSheet title={platform ? t("common.edit") : t("platforms.new")} onClose={onClose} onSubmit={submit} busy={busy} error={error} testId="platform-editor">
-      <TextField label={t("platforms.name")} value={name} onChange={setName} testId="platform-name" />
+      <TextField label={t("platforms.name")} help={t("platforms.nameHelp")} value={name} onChange={setName} testId="platform-name" />
       <TextField label={t("platforms.key")} help={t("platforms.keyHelp")} value={key} onChange={setKey} dir="ltr" testId="platform-key" />
       <TextField label={t("platforms.url")} help={t("platforms.urlHelp")} value={url} onChange={setUrl} dir="ltr" optional />
       <NumberField label={t("crud.sortOrder")} help={t("crud.sortOrderHelp")} value={sort} onChange={setSort} />
-      <Toggle label={t("users.active")} checked={active} onChange={setActive} />
+      <Toggle label={t("users.active")} help={t("platforms.activeHelp")} checked={active} onChange={setActive} />
     </EditorSheet>
   );
 }

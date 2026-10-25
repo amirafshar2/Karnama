@@ -32,6 +32,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         }
         await db.SaveChangesAsync(ct);
         await AttendanceSeed.SeedAsync(db, options.Value.Mode == SeedMode.Demo, ct);
+        await HelpSeed.SeedAsync(db, ct);
 
         if (options.Value.Mode == SeedMode.Demo)
         {

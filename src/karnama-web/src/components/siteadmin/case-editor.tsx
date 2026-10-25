@@ -81,25 +81,25 @@ export function CaseEditor({ item, onClose, onSaved }: { item: CaseItem | null; 
   return (
     <EditorSheet title={item ? t("cases.edit") : t("cases.new")} onClose={onClose} onSubmit={save} busy={busy} error={error} wide testId="case-editor">
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField label={L("cases.business")} value={f.businessName} onChange={(v) => set({ businessName: v })} testId="case-name" />
-        <TextField label={L("cases.industry")} value={f.industry ?? ""} onChange={(v) => set({ industry: nz(v) })} optional />
-        <TextField label={L("cases.city")} value={f.city ?? ""} onChange={(v) => set({ city: nz(v) })} optional />
-        <TextField label={L("cases.handle")} dir="ltr" value={f.handle ?? ""} onChange={(v) => set({ handle: nz(v) })} optional />
-        <JalaliDateField label={L("cases.from")} value={day(f.from)} onChange={(v) => set({ from: toDate(v) })} optional />
-        <JalaliDateField label={L("cases.to")} value={day(f.to)} onChange={(v) => set({ to: toDate(v) })} optional />
+        <TextField label={L("cases.business")} help={L("cases.businessHelp")} value={f.businessName} onChange={(v) => set({ businessName: v })} testId="case-name" />
+        <TextField label={L("cases.industry")} help={L("cases.industryHelp")} value={f.industry ?? ""} onChange={(v) => set({ industry: nz(v) })} optional />
+        <TextField label={L("cases.city")} help={L("cases.cityHelp")} value={f.city ?? ""} onChange={(v) => set({ city: nz(v) })} optional />
+        <TextField label={L("cases.handle")} help={L("cases.handleHelp")} dir="ltr" value={f.handle ?? ""} onChange={(v) => set({ handle: nz(v) })} optional />
+        <JalaliDateField label={L("cases.from")} help={L("cases.fromHelp")} value={day(f.from)} onChange={(v) => set({ from: toDate(v) })} optional />
+        <JalaliDateField label={L("cases.to")} help={L("cases.toHelp")} value={day(f.to)} onChange={(v) => set({ to: toDate(v) })} optional />
       </div>
       <TextField label={L("cases.services")} help={L("cases.servicesHelp")} value={f.services.join("، ")} onChange={(v) => set({ services: v.split(/[,،]/).map((x) => x.trim()).filter(Boolean) })} optional />
-      <TextArea label={L("cases.summary")} value={f.summary ?? ""} onChange={(v) => set({ summary: nz(v) })} rows={3} optional />
+      <TextArea label={L("cases.summary")} help={L("cases.summaryHelp")} value={f.summary ?? ""} onChange={(v) => set({ summary: nz(v) })} rows={3} optional />
 
       <fieldset className="space-y-4 rounded-lg border p-4">
         <legend className="px-1 font-bold">{t("cases.numbers")}</legend>
         <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField label={L("cases.followersBefore")} value={f.followersBefore} onChange={(v) => set({ followersBefore: v })} optional min={0} testId="case-fb" />
-          <NumberField label={L("cases.followersAfter")} value={f.followersAfter} onChange={(v) => set({ followersAfter: v })} optional min={0} testId="case-fa" />
-          <NumberField label={L("cases.revenueBefore")} value={tomanOf(f.revenueBefore)} onChange={(v) => set({ revenueBefore: rial(v) })} optional min={0} />
-          <NumberField label={L("cases.revenueAfter")} value={tomanOf(f.revenueAfter)} onChange={(v) => set({ revenueAfter: rial(v) })} optional min={0} />
+          <NumberField label={L("cases.followersBefore")} help={L("cases.followersBeforeHelp")} value={f.followersBefore} onChange={(v) => set({ followersBefore: v })} optional min={0} testId="case-fb" />
+          <NumberField label={L("cases.followersAfter")} help={L("cases.followersAfterHelp")} value={f.followersAfter} onChange={(v) => set({ followersAfter: v })} optional min={0} testId="case-fa" />
+          <NumberField label={L("cases.revenueBefore")} help={L("cases.revenueBeforeHelp")} value={tomanOf(f.revenueBefore)} onChange={(v) => set({ revenueBefore: rial(v) })} optional min={0} />
+          <NumberField label={L("cases.revenueAfter")} help={L("cases.revenueAfterHelp")} value={tomanOf(f.revenueAfter)} onChange={(v) => set({ revenueAfter: rial(v) })} optional min={0} />
         </div>
-        <Toggle label={L("cases.revenueAsPercent")} checked={f.revenueAsPercent} onChange={(v) => set({ revenueAsPercent: v })} />
+        <Toggle label={L("cases.revenueAsPercent")} help={L("cases.revenueAsPercentHelp")} checked={f.revenueAsPercent} onChange={(v) => set({ revenueAsPercent: v })} />
         <TextField label={L("cases.source")} help={L("cases.sourceHelp")} value={f.source ?? ""} onChange={(v) => set({ source: nz(v) })} optional />
         <div className="space-y-2">
           <p className="text-sm font-medium">{t("cases.metrics")}</p>
@@ -167,10 +167,10 @@ export function CaseEditor({ item, onClose, onSaved }: { item: CaseItem | null; 
       </fieldset>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextArea label={L("cases.quote")} value={f.quote ?? ""} onChange={(v) => set({ quote: nz(v) })} rows={3} optional />
+        <TextArea label={L("cases.quote")} help={L("cases.quoteHelp")} value={f.quote ?? ""} onChange={(v) => set({ quote: nz(v) })} rows={3} optional />
         <div className="space-y-5">
-          <TextField label={L("cases.quoteBy")} value={f.quoteBy ?? ""} onChange={(v) => set({ quoteBy: nz(v) })} optional />
-          <TextField label={L("cases.video")} dir="ltr" value={f.videoUrl ?? ""} onChange={(v) => set({ videoUrl: nz(v) })} optional placeholder="https://" />
+          <TextField label={L("cases.quoteBy")} help={L("cases.quoteByHelp")} value={f.quoteBy ?? ""} onChange={(v) => set({ quoteBy: nz(v) })} optional />
+          <TextField label={L("cases.video")} help={L("cases.videoHelp")} dir="ltr" value={f.videoUrl ?? ""} onChange={(v) => set({ videoUrl: nz(v) })} optional placeholder="https://" />
         </div>
       </div>
       <div className="space-y-2">
@@ -202,11 +202,11 @@ export function CaseEditor({ item, onClose, onSaved }: { item: CaseItem | null; 
             </a>
           )}
         </div>
-        <Toggle label={L("cases.consentObtained")} checked={f.consentObtained} onChange={(v) => set({ consentObtained: v })} />
+        <Toggle label={L("cases.consentObtained")} help={L("cases.consentObtainedHelp")} checked={f.consentObtained} onChange={(v) => set({ consentObtained: v })} />
       </fieldset>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Toggle label={L("cases.featured")} checked={f.featured} onChange={(v) => set({ featured: v })} />
-        <NumberField label={L("cases.sort")} value={f.sortOrder} onChange={(v) => set({ sortOrder: v ?? 0 })} min={0} />
+        <Toggle label={L("cases.featured")} help={L("cases.featuredHelp")} checked={f.featured} onChange={(v) => set({ featured: v })} />
+        <NumberField label={L("cases.sort")} help={L("cases.sortHelp")} value={f.sortOrder} onChange={(v) => set({ sortOrder: v ?? 0 })} min={0} />
       </div>
     </EditorSheet>
   );

@@ -40,4 +40,5 @@ export const faN5 = {
   "media.kind.videoNote": "ویدیوی دایره‌ای",
   "media.mb": "{size} مگابایت",
   "media.kb": "{size} کیلوبایت",
+  "media.pickPersonHelp": "ربات فایل را در تلگرام همین همکار می‌فرستد؛ اگر «تلگرام وصل نیست»، اول باید وصل کند.",
 } as const;

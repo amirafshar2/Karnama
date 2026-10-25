@@ -137,6 +137,8 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
     {
         if (!SeesAllScores && !SeesOwnScore) return Error.Forbidden();
         if (to < from || to.DayNumber - from.DayNumber > 370) return Error.Validation("report.range", "بازه حداکثر یک سال.");
+        // Workers look at their own score: a quarter is enough and keeps the team-wide calculation light.
+        if (!SeesAllScores && to.DayNumber - from.DayNumber > 92) return Error.Validation("report.range", "بازه حداکثر ۹۲ روز.");
         var settings = await SettingsAsync(ct);
         // Volume is relative to the team, so the whole team is always computed; what is shown depends on the viewer.
         var data = await LoadAsync(from, to, await PeopleAsync(true, null, ct), ct);
@@ -287,7 +289,7 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
 
             // Volume: weighted by service (a reel weighs more than a story), relative to the busiest person in the period.
             int? volume = maxVolume > 0 ? Clamp(100 * volumes[p.Id] / maxVolume) : null;
-            indicators.Add(new IndicatorDto("volume", volume, $"{Fa(done.Count)} کار تمام‌شده (وزن‌دار: {volumes[p.Id]:0.#})", w.Volume,
+            indicators.Add(new IndicatorDto("volume", volume, $"{Fa(done.Count)} کار تمام‌شده (وزن‌دار: {FaD(volumes[p.Id], "0.#")})", w.Volume,
                 "حجم نسبت به پرکارترین نفر همین بازه سنجیده می‌شود."));
 
             // Discipline: lateness and unexcused absence.
@@ -300,10 +302,10 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
 
             var managerStars = done.Where(x => x.ManagerStars is not null).Select(x => (double)x.ManagerStars!.Value).ToList();
             int? manager = managerStars.Count == 0 ? null : Clamp(managerStars.Average() * 20);
-            indicators.Add(new IndicatorDto("manager", manager, managerStars.Count == 0 ? "امتیازی ثبت نشده" : $"میانگین {managerStars.Average():0.0} از ۵", w.Manager, "امتیاز مدیر روی کارهای تمام‌شده."));
+            indicators.Add(new IndicatorDto("manager", manager, managerStars.Count == 0 ? "امتیازی ثبت نشده" : $"میانگین {FaD(managerStars.Average(), "0.0")} از ۵", w.Manager, "امتیاز مدیر روی کارهای تمام‌شده."));
             var clientStars = done.Where(x => x.ClientStars is not null).Select(x => (double)x.ClientStars!.Value).ToList();
             int? client = clientStars.Count == 0 ? null : Clamp(clientStars.Average() * 20);
-            indicators.Add(new IndicatorDto("client", client, clientStars.Count == 0 ? "امتیازی ثبت نشده" : $"میانگین {clientStars.Average():0.0} از ۵", w.Client, "امتیاز مشتری بعد از تأیید محتوا."));
+            indicators.Add(new IndicatorDto("client", client, clientStars.Count == 0 ? "امتیازی ثبت نشده" : $"میانگین {FaD(clientStars.Average(), "0.0")} از ۵", w.Client, "امتیاز مشتری بعد از تأیید محتوا."));
 
             var counted = indicators.Where(i => i.Score is not null && i.Weight > 0).ToList();
             int? total = enough && counted.Count > 0 ? (int)Math.Round(counted.Sum(i => (double)i.Score!.Value * i.Weight) / counted.Sum(i => i.Weight)) : null;
@@ -320,5 +322,7 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
     }
 
     private static int Clamp(double v) => (int)Math.Round(Math.Clamp(v, 0, 100));
+    private static string FaD(double n, string format) =>
+        string.Concat(n.ToString(format, CultureInfo.InvariantCulture).Select(c => char.IsAsciiDigit(c) ? (char)('۰' + (c - '0')) : c == '.' ? '٫' : c));
     private static string Fa(long n) => string.Concat(n.ToString(CultureInfo.InvariantCulture).Select(c => char.IsAsciiDigit(c) ? (char)('۰' + (c - '0')) : c));
 }

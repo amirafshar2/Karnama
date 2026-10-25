@@ -36,10 +36,10 @@ export function PortalNewOrder({ onClose, onCreated }: { onClose: () => void; on
   };
   return (
     <EditorSheet title={t("portal.new")} description={t("portal.newHelp")} onClose={onClose} onSubmit={submit} busy={busy} error={error} testId="portal-order">
-      <SelectField label={t("orders.service")} value={serviceId} onChange={(v) => { setServiceId(v); setAnswers({}); }} optional options={(services.data ?? []).map((s) => ({ value: s.id, label: s.name }))} testId="portal-service" />
+      <SelectField label={t("orders.service")} help={t("orders.serviceHelp")} value={serviceId} onChange={(v) => { setServiceId(v); setAnswers({}); }} optional options={(services.data ?? []).map((s) => ({ value: s.id, label: s.name }))} testId="portal-service" />
       {form.data && <DynamicForm fields={form.data.fields} value={answers} onChange={setAnswers} fileHelp={t("orders.fileFieldHelp")} />}
       <TextField label={t("orders.titleField")} help={t("orders.titleHelp")} value={title} onChange={setTitle} optional />
-      <TextArea label={t("orders.note")} value={note} onChange={setNote} optional />
+      <TextArea label={t("orders.note")} help={t("orders.noteHelp")} value={note} onChange={setNote} optional />
     </EditorSheet>
   );
 }

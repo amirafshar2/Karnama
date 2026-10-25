@@ -26,8 +26,8 @@ export function Report({ seesAll }: { seesAll: boolean }) {
   return (
     <section className="space-y-6" data-testid="crm-report">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-44"><JalaliDateField label={t("crm.report.from")} value={from} onChange={setFrom} /></div>
-        <div className="w-44"><JalaliDateField label={t("crm.report.to")} value={to} onChange={setTo} /></div>
+        <div className="w-44"><JalaliDateField label={t("crm.report.from")} help={t("crm.report.fromHelp")} value={from} onChange={setFrom} /></div>
+        <div className="w-44"><JalaliDateField label={t("crm.report.to")} help={t("crm.report.toHelp")} value={to} onChange={setTo} /></div>
       </div>
       <ErrorText error={report.error} />
       {r && (

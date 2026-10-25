@@ -59,10 +59,10 @@ export function OrderCreate({ onClose, onCreated }: { onClose: () => void; onCre
       {form.data && <DynamicForm fields={form.data.fields} value={answers} onChange={setAnswers} fileHelp={t("orders.fileFieldHelp")} />}
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField label={t("orders.titleField")} help={t("orders.titleHelp")} value={title} onChange={setTitle} optional testId="order-title" />
-        <SelectField label={t("orders.priority")} value={priority} onChange={setPriority} options={(["normal", "high", "urgent"] as const).map((p) => ({ value: p, label: t(`orders.priority.${p}` as TextKey) }))} />
+        <SelectField label={t("orders.priority")} help={t("orders.priorityHelp")} value={priority} onChange={setPriority} options={(["normal", "high", "urgent"] as const).map((p) => ({ value: p, label: t(`orders.priority.${p}` as TextKey) }))} />
         <JalaliDateField label={t("orders.deadline")} help={t("orders.deadlineHelp")} value={deadline} onChange={setDeadline} optional />
       </div>
-      <TextArea label={t("orders.note")} value={note} onChange={setNote} optional />
+      <TextArea label={t("orders.note")} help={t("orders.noteHelp")} value={note} onChange={setNote} optional />
       <Toggle label={t("orders.autoAccept")} help={t("orders.autoAcceptHelp")} checked={autoAccept} onChange={setAutoAccept} testId="order-auto" />
     </EditorSheet>
   );

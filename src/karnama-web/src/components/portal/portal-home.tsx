@@ -71,7 +71,7 @@ export function PortalHome() {
         </Button>
       </header>
 
-      <section aria-labelledby="appr" className="space-y-3">
+      <section aria-labelledby="appr" className="space-y-3" data-tour="approvals">
         <h2 id="appr" className="text-lg font-bold">
           {t("portal.approvals")} {h.approvals.length > 0 && <span className="ms-1 rounded-full bg-accent px-2 text-sm text-accent-foreground">{formatNumber(h.approvals.length)}</span>}
         </h2>
@@ -134,7 +134,7 @@ export function PortalHome() {
 
       <PortalPublishing />
 
-      <section aria-labelledby="pkg" className="space-y-3 rounded-xl border bg-card p-5">
+      <section aria-labelledby="pkg" className="space-y-3 rounded-xl border bg-card p-5" data-tour="package">
         <h2 id="pkg" className="text-lg font-bold">
           {t("portal.package")}
         </h2>

@@ -86,11 +86,11 @@ export function SetupForms({ setup }: { setup: Setup }) {
           ))}
         </ul>
         <div className="grid gap-4 sm:grid-cols-3">
-          <NumberField label={t("setup.att.break")} value={brk} onChange={setBrk} min={0} max={240} />
+          <NumberField label={t("setup.att.break")} help={t("setup.att.breakHelp")} value={brk} onChange={setBrk} min={0} max={240} />
           <NumberField label={t("setup.att.grace")} help={t("setup.att.graceHelp")} value={grace} onChange={setGrace} min={0} max={120} />
-          <NumberField label={t("setup.att.weekly")} value={weekly} onChange={setWeekly} min={0} max={80} />
+          <NumberField label={t("setup.att.weekly")} help={t("setup.att.weeklyHelp")} value={weekly} onChange={setWeekly} min={0} max={80} />
         </div>
-        <Toggle label={t("setup.att.flexible")} checked={flexible} onChange={setFlexible} />
+        <Toggle label={t("setup.att.flexible")} help={t("setup.att.flexibleHelp")} checked={flexible} onChange={setFlexible} />
         <Button
           className="h-11"
           onClick={() =>
@@ -135,11 +135,11 @@ export function SetupForms({ setup }: { setup: Setup }) {
           )}
         </div>
         <h3 className="pt-2 font-bold">{t("setup.att.options")}</h3>
-        <Toggle label={t("setup.att.autoClockIn")} checked={s.autoClockInOnTimer} onChange={(v) => setS({ ...s, autoClockInOnTimer: v })} />
+        <Toggle label={t("setup.att.autoClockIn")} help={t("setup.att.autoClockInHelp")} checked={s.autoClockInOnTimer} onChange={(v) => setS({ ...s, autoClockInOnTimer: v })} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField label={t("setup.att.tolerance")} value={s.offlineToleranceMinutes} onChange={(v) => setS({ ...s, offlineToleranceMinutes: v ?? 10 })} min={1} max={120} />
-          <NumberField label={t("setup.att.forgotten")} value={s.forgottenAfterHours} onChange={(v) => setS({ ...s, forgottenAfterHours: v ?? 4 })} min={1} max={24} />
-          <NumberField label={t("setup.leave.reasonHours")} value={s.absenceReasonHours ?? 48} onChange={(v) => setS({ ...s, absenceReasonHours: v ?? 48 })} min={1} max={240} />
+          <NumberField label={t("setup.att.tolerance")} help={t("setup.att.toleranceHelp")} value={s.offlineToleranceMinutes} onChange={(v) => setS({ ...s, offlineToleranceMinutes: v ?? 10 })} min={1} max={120} />
+          <NumberField label={t("setup.att.forgotten")} help={t("setup.att.forgottenHelp")} value={s.forgottenAfterHours} onChange={(v) => setS({ ...s, forgottenAfterHours: v ?? 4 })} min={1} max={24} />
+          <NumberField label={t("setup.leave.reasonHours")} help={t("setup.leave.reasonHoursHelp")} value={s.absenceReasonHours ?? 48} onChange={(v) => setS({ ...s, absenceReasonHours: v ?? 48 })} min={1} max={240} />
         </div>
         <Button className="h-11" onClick={() => run(() => api("/api/v1/attendance/setup/settings", { method: "PUT", body: s }))} data-testid="settings-save">
           {t("common.save")}
@@ -178,10 +178,10 @@ export function SetupForms({ setup }: { setup: Setup }) {
           ))}
         </ul>
         <div className="grid gap-3 sm:grid-cols-4">
-          <TextField label={t("setup.att.placeName")} value={place.name} onChange={(v) => setPlace({ ...place, name: v })} />
-          <TextField label="Lat" value={place.lat} onChange={(v) => setPlace({ ...place, lat: v })} dir="ltr" />
-          <TextField label="Lng" value={place.lng} onChange={(v) => setPlace({ ...place, lng: v })} dir="ltr" />
-          <NumberField label={t("setup.att.radius")} value={place.radius} onChange={(v) => setPlace({ ...place, radius: v })} min={20} max={5000} />
+          <TextField label={t("setup.att.placeName")} help={t("setup.att.placeNameHelp")} value={place.name} onChange={(v) => setPlace({ ...place, name: v })} />
+          <TextField label="Lat" help={t("setup.att.latHelp")} value={place.lat} onChange={(v) => setPlace({ ...place, lat: v })} dir="ltr" />
+          <TextField label="Lng" help={t("setup.att.lngHelp")} value={place.lng} onChange={(v) => setPlace({ ...place, lng: v })} dir="ltr" />
+          <NumberField label={t("setup.att.radius")} help={t("setup.att.radiusHelp")} value={place.radius} onChange={(v) => setPlace({ ...place, radius: v })} min={20} max={5000} />
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -215,8 +215,8 @@ export function SetupForms({ setup }: { setup: Setup }) {
           ))}
         </ul>
         <div className="grid gap-3 sm:grid-cols-2">
-          <JalaliDateField label={t("setup.att.date")} value={holiday.date} onChange={(v) => setHoliday({ ...holiday, date: v })} />
-          <TextField label={t("setup.att.holidayName")} value={holiday.name} onChange={(v) => setHoliday({ ...holiday, name: v })} />
+          <JalaliDateField label={t("setup.att.date")} help={t("setup.att.dateHelp")} value={holiday.date} onChange={(v) => setHoliday({ ...holiday, date: v })} />
+          <TextField label={t("setup.att.holidayName")} help={t("setup.att.holidayNameHelp")} value={holiday.name} onChange={(v) => setHoliday({ ...holiday, name: v })} />
         </div>
         <Button className="h-11" onClick={() => run(() => api("/api/v1/attendance/setup/holidays", { method: "POST", body: { date: holiday.date?.slice(0, 10), name: holiday.name } }))}>
           <Plus aria-hidden="true" />
@@ -236,7 +236,7 @@ function PolicyRow({ policy, roles, onSave }: { policy: Setup["policies"][number
   return (
     <div className="space-y-3 rounded-lg border p-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <TextField label={t("setup.att.policyName")} value={name} onChange={setName} />
+        <TextField label={t("setup.att.policyName")} help={t("setup.att.policyNameHelp")} value={name} onChange={setName} />
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor={`rule-${policy.id}`}>
             {t("att.howTitle")}
@@ -257,7 +257,7 @@ function PolicyRow({ policy, roles, onSave }: { policy: Setup["policies"][number
           </label>
         ))}
       </div>
-      <Toggle label={t("setup.att.ruleDefault")} checked={isDefault} onChange={setDefault} />
+      <Toggle label={t("setup.att.ruleDefault")} help={t("setup.att.ruleDefaultHelp")} checked={isDefault} onChange={setDefault} />
       <Button className="h-10" onClick={() => onSave({ name, rule, roleIds, userIds: policy.userIds, isDefault })}>
         {t("common.save")}
       </Button>
@@ -307,10 +307,10 @@ function LeaveTypeRowEditor({ row, onSave }: { row: LeaveTypeRow; onSave: (b: Om
   return (
     <li className="flex flex-wrap items-end gap-3 rounded-lg border p-3">
       <div className="w-48">
-        <TextField label={t("leave.type")} value={r.name} onChange={(v) => setR({ ...r, name: v })} />
+        <TextField label={t("leave.type")} help={t("setup.leave.typeNameHelp")} value={r.name} onChange={(v) => setR({ ...r, name: v })} />
       </div>
       <div className="w-28">
-        <NumberField label={t("setup.leave.days")} value={r.annualDays} onChange={(v) => setR({ ...r, annualDays: v })} optional min={0} max={365} />
+        <NumberField label={t("setup.leave.days")} help={t("setup.leave.daysHelp")} value={r.annualDays} onChange={(v) => setR({ ...r, annualDays: v })} optional min={0} max={365} />
       </div>
       <label className="flex min-h-11 items-center gap-2 text-sm">
         <input type="checkbox" className="size-5" checked={r.paid} onChange={(e) => setR({ ...r, paid: e.target.checked })} />
