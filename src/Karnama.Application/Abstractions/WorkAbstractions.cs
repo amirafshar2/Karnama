@@ -18,3 +18,9 @@ public interface IFileStore
     Stream OpenRead(string key);
     Task DeleteAsync(string key, CancellationToken ct);
 }
+
+/// <summary>Facts about the current HTTP request the application may use (client IP for the office-network check).</summary>
+public interface IRequestContext
+{
+    System.Net.IPAddress? RemoteIp { get; }
+}

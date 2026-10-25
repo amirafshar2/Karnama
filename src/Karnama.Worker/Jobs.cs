@@ -18,11 +18,28 @@ public sealed class MaintenanceJobs(IAppDbContext db, TimeProvider clock, ILogge
     }
 }
 
+/// <summary>Attendance housekeeping (docs/PROMPT.md §6.6): forgotten clock-outs are closed and flagged, never guessed.</summary>
+public sealed class AttendanceJobs(Karnama.Application.Attendance.AttendanceAdminService attendance, ILogger<AttendanceJobs> logger)
+{
+    [AutomaticRetry(Attempts = 3)]
+    public async Task CloseForgottenAsync(CancellationToken ct)
+    {
+        var n = await attendance.CloseForgottenAsync(ct);
+        if (n > 0) logger.LogInformation("Closed {Count} forgotten shifts for review", n);
+    }
+}
+
+internal sealed class NoRequestContext : IRequestContext
+{
+    public System.Net.IPAddress? RemoteIp => null;
+}
+
 internal sealed class JobRegistrar(IRecurringJobManager jobs) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
         jobs.AddOrUpdate<MaintenanceJobs>("purge-auth", j => j.PurgeExpiredAuthDataAsync(CancellationToken.None), Cron.Hourly());
+        jobs.AddOrUpdate<AttendanceJobs>("close-forgotten-shifts", j => j.CloseForgottenAsync(CancellationToken.None), "*/30 * * * *");
         return Task.CompletedTask;
     }
 

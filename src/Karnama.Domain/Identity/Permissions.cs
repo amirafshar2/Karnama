@@ -40,6 +40,8 @@ public static class Permissions
 
     public const string AttendanceSelf = "attendance.self";
     public const string AttendanceView = "attendance.view";
+    public const string AttendancePoliciesManage = "attendance.policies.manage";
+    public const string AttendanceKiosk = "attendance.kiosk";
     public const string AttendanceApprove = "attendance.approve";
     public const string AttendanceCorrect = "attendance.correct";
 
@@ -85,6 +87,8 @@ public static class Permissions
 
         new(AttendanceSelf, "attendance", [PermissionScope.Own]),
         new(AttendanceView, "attendance", OwnOrAll),
+        new(AttendancePoliciesManage, "attendance", AllOnly),
+        new(AttendanceKiosk, "attendance", AllOnly),
         new(AttendanceApprove, "attendance", AllOnly),
         new(AttendanceCorrect, "attendance", AllOnly),
 

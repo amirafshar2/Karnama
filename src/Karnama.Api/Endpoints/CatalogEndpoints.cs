@@ -56,6 +56,9 @@ internal static class CatalogEndpoints
         // ---- Service types (form builder + workflow) ----
         app.MapGet("/api/v1/services/options", async (ServiceTypeService svc, CancellationToken ct) =>
             Results.Ok((await svc.OptionsAsync(ct)).Select(o => new { o.Id, o.Name }))).WithTags("Services").RequireAuthorization();
+        // The order form of an active service, for whoever places orders (admin with orders.create, or a portal client).
+        app.MapGet("/api/v1/services/{id:guid}/form", async (Guid id, ServiceTypeService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.FormAsync(id, ct)).ToHttp(http)).WithTags("Services").RequireAuthorization();
         var services = app.MapGroup("/api/v1/services").WithTags("Services")
             .RequirePermission(Permissions.ServicesManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
         services.MapGet("/", async (string? cursor, int? limit, string? q, bool? includeDeleted, ServiceTypeService svc, CancellationToken ct) =>

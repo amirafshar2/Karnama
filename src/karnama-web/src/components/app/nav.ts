@@ -1,4 +1,4 @@
-import { Boxes, Briefcase, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { Boxes, Briefcase, ClipboardList, KanbanSquare, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
 import type { TextKey } from "@/lib/i18n/registry";
 import { hasPermission, type Me, type Scope } from "@/lib/types";
 
@@ -13,6 +13,8 @@ export type NavItem = {
 /** Menu is built from the user's permissions; new modules add their entries here as they ship. */
 export const NAV: NavItem[] = [
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/work", label: "nav.work", icon: KanbanSquare, anyOf: [{ code: "work.view", scope: "assigned" }] },
+  { href: "/orders", label: "nav.orders", icon: ClipboardList, anyOf: [{ code: "orders.view", scope: "assigned" }] },
   { href: "/clients", label: "nav.clients", icon: Briefcase, anyOf: [{ code: "clients.view", scope: "assigned" }] },
   { href: "/packages", label: "nav.packages", icon: Package, anyOf: [{ code: "packages.view", scope: "all" }] },
   { href: "/users", label: "nav.users", icon: Users, anyOf: [{ code: "users.manage", scope: "all" }] },

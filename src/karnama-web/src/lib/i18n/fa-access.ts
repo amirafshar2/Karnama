@@ -33,6 +33,8 @@ export const faAccess = {
   "perm.attendance.view": "دیدن حضور و غیاب",
   "perm.attendance.approve": "تأیید مرخصی و غیبت",
   "perm.attendance.correct": "اصلاح ساعت کار",
+  "perm.attendance.policies.manage": "تنظیم برنامه‌ی کاری و روش‌های ورود",
+  "perm.attendance.kiosk": "نمایش QR ورود در دفتر (کیوسک)",
   "perm.services.manage": "مدیریت انواع خدمت",
   "perm.reports.view": "دیدن گزارش‌ها",
   "perm.reports.export": "خروجی Excel و PDF",

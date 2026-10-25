@@ -20,6 +20,8 @@ public sealed class HistoryService(IAppDbContext db, ICurrentUser me)
         ["ServiceType"] = Permissions.ServicesManage,
         ["Platform"] = Permissions.SettingsManage,
         ["SiteSetting"] = Permissions.SettingsManage,
+        ["Order"] = Permissions.OrdersManage,
+        ["WorkItem"] = Permissions.WorkReview,
     };
 
     public async Task<Result<IReadOnlyList<HistoryEntryDto>>> GetAsync(string entityType, Guid id, CancellationToken ct)

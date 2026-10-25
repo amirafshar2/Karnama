@@ -44,6 +44,8 @@ export function CrudList<T extends Base>({
   canDelete = () => true,
   extraActions,
   filters,
+  editLabel,
+  deletable = true,
 }: {
   testId: string;
   title: string;
@@ -63,6 +65,10 @@ export function CrudList<T extends Base>({
   canDelete?: (item: T) => boolean;
   extraActions?: (item: T) => React.ReactNode;
   filters?: React.ReactNode;
+  /** "Open" instead of "Edit" for records that are viewed more than edited (orders). */
+  editLabel?: string;
+  /** False for records that are never soft-deleted from a list (no "show deleted" switch). */
+  deletable?: boolean;
 }) {
   const { t } = useI18n();
   const errorMessage = useErrorMessage();
@@ -145,7 +151,7 @@ export function CrudList<T extends Base>({
           <>
             {onEdit && (
               <Button size="sm" variant="ghost" className="h-12 md:h-10" onClick={() => onEdit(item)} data-testid={`${testId}-edit-${item.id}`}>
-                {t("common.edit")}
+                {editLabel ?? t("common.edit")}
               </Button>
             )}
             {extraActions?.(item)}
@@ -201,10 +207,12 @@ export function CrudList<T extends Base>({
           />
         </div>
         {filters}
-        <label className="flex min-h-12 cursor-pointer items-center gap-2 text-sm font-medium">
-          <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} className="size-5 accent-[var(--foreground)]" data-testid={`${testId}-show-deleted`} />
-          {t("crud.showDeleted")}
-        </label>
+        {deletable && (
+          <label className="flex min-h-12 cursor-pointer items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} className="size-5 accent-[var(--foreground)]" data-testid={`${testId}-show-deleted`} />
+            {t("crud.showDeleted")}
+          </label>
+        )}
       </div>
 
       {list.isLoading && (
@@ -304,7 +312,7 @@ function HistoryPanel({ type, id, name, onClose }: { type: string; id: string; n
   }, [type, id]);
   const label = (action: string) => {
     const verb = action.split(".").pop() ?? "";
-    const known = ["created", "updated", "deleted", "restored", "assigned", "cancelled", "portalEnabled", "cover"];
+    const known = ["created", "updated", "deleted", "restored", "assigned", "cancelled", "portalEnabled", "cover", "accepted", "rejected", "moved"];
     return known.includes(verb) ? t(`crud.verb.${verb}` as Parameters<typeof t>[0]) : action;
   };
   return (

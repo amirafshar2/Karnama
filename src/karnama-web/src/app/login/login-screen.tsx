@@ -16,6 +16,10 @@ import { api, ApiError, type Session } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toLatinDigits, useI18n } from "@/lib/i18n/provider";
 import type { DemoAccount } from "@/lib/types";
+import { faAuth } from "@/lib/i18n/fa-pages";
+import { registerTexts as registerPageTexts } from "@/lib/i18n/registry";
+
+registerPageTexts(faAuth);
 
 type Step =
   | { kind: "phone" }

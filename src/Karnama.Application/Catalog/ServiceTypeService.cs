@@ -14,6 +14,8 @@ public sealed record ServiceTypeDto(
     Guid Id, IReadOnlyDictionary<string, string> NameValues, string? Description, string? Icon, long? BasePrice, bool ConsumesQuota,
     int Weight, int SortOrder, bool IsActive, IReadOnlyList<FormField> Form, int FormVersion, IReadOnlyList<StageDto> Stages, bool IsDeleted, uint Version);
 
+public sealed record ServiceFormDto(Guid Id, string Name, int Version, IReadOnlyList<FormField> Fields);
+
 public sealed record UpsertServiceTypeRequest(
     Dictionary<string, string> Name, string? Description, string? Icon, long? BasePrice, bool ConsumesQuota, int Weight, int SortOrder,
     bool IsActive, List<FormField>? Form, List<StageDto> Stages, uint? Version);
@@ -49,7 +51,14 @@ public sealed class ServiceTypeService(IAppDbContext db, ICurrentUser me, IAudit
         return rows.Select(r => (r.Id, r.Name.Get(me.LanguageCode))).ToList();
     }
 
-    public async Task<Result<ServiceTypeDto>> GetAsync(Guid id, CancellationToken ct)
+    public async Task<Result<ServiceFormDto>> FormAsync(Guid id, CancellationToken ct)
+    {
+        var s = await db.ServiceTypes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
+        if (s is null) return Error.NotFound("services.notFound", "خدمت پیدا نشد.");
+        return new ServiceFormDto(s.Id, s.Name.Get(me.LanguageCode), s.FormVersion, FormSchema.Parse(s.FormSchemaJson));
+    }
+
+        public async Task<Result<ServiceTypeDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var s = await db.ServiceTypes.IgnoreQueryFilters().AsNoTracking().Include(x => x.Stages).FirstOrDefaultAsync(x => x.Id == id, ct);
         return s is null ? Error.NotFound("services.notFound", "خدمت پیدا نشد.") : ToDto(s);

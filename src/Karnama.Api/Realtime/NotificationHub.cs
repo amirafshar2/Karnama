@@ -20,6 +20,7 @@ public sealed record ChangeMessage(long Seq, string Kind, Guid Id, IReadOnlyList
 public static class HubGroups
 {
     public const string AllWork = "work:all";
+    public const string AllPresence = "presence:all";
     public static string User(Guid id) => $"user:{id:N}";
     public static string Client(Guid id) => $"client:{id:N}";
 }
@@ -35,6 +36,8 @@ public sealed class NotificationHub(ICurrentUser me, WorkAccess access) : Hub<IN
     {
         if (me.UserId is { } id) await Groups.AddToGroupAsync(Context.ConnectionId, HubGroups.User(id));
         if (access.SeesAllWork) await Groups.AddToGroupAsync(Context.ConnectionId, HubGroups.AllWork);
+        if (me.Kind == Karnama.Domain.Identity.UserKind.Staff && me.Has(Karnama.Domain.Identity.Permissions.AttendanceView, Karnama.Domain.Identity.PermissionScope.All))
+            await Groups.AddToGroupAsync(Context.ConnectionId, HubGroups.AllPresence);
         if (await access.PortalClientIdAsync(Context.ConnectionAborted) is { } clientId && clientId != Guid.Empty)
             await Groups.AddToGroupAsync(Context.ConnectionId, HubGroups.Client(clientId));
         await base.OnConnectedAsync();
@@ -51,7 +54,8 @@ internal sealed class SignalRRealtimeNotifier(IHubContext<NotificationHub, INoti
         foreach (var c in changes)
         {
             var msg = new ChangeMessage(c.Seq, c.Kind, c.Id, c.Fields);
-            var groups = new List<string> { HubGroups.AllWork };
+            // Presence (who is in, on break, timers) goes to attendance managers and the person; everything else to work managers.
+            var groups = new List<string> { c.Kind == "presence" ? HubGroups.AllPresence : HubGroups.AllWork };
             if (c.AssigneeId is { } a) groups.Add(HubGroups.User(a));
             if (c.PreviousAssigneeId is { } p) groups.Add(HubGroups.User(p));
             if (c.ClientId is { } cl) groups.Add(HubGroups.Client(cl));

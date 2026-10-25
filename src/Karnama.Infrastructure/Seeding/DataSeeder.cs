@@ -24,6 +24,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         var (owner, client) = await SeedSystemRolesAsync(ct);
         await SeedPlatformsAsync(ct);
         await db.SaveChangesAsync(ct);
+        await AttendanceSeed.SeedAsync(db, options.Value.Mode == SeedMode.Demo, ct);
 
         if (options.Value.Mode == SeedMode.Demo)
         {

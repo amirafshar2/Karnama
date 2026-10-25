@@ -53,3 +53,9 @@ internal sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
         return result;
     }
 }
+
+internal sealed class HttpRequestContext(IHttpContextAccessor accessor) : IRequestContext
+{
+    /// <summary>Client IP after UseForwardedHeaders (only trusted proxies may set X-Forwarded-For).</summary>
+    public System.Net.IPAddress? RemoteIp => accessor.HttpContext?.Connection.RemoteIpAddress;
+}

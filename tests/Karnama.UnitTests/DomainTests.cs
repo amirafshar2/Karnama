@@ -176,3 +176,43 @@ public class SlugTests
     [InlineData("a//b__c", "a-b-c")]
     public void Makes_readable_slugs(string input, string expected) => Slug.From(input).Should().Be(expected);
 }
+
+public class AttendanceDomainTests
+{
+    [Theory]
+    [InlineData("OfficeNetwork & (RotatingQr | BiometricDevice)", true)]
+    [InlineData("Geofence & Selfie", true)]
+    [InlineData("OfficeNetwork &", false)]
+    [InlineData("Office; DROP TABLE", false)]
+    [InlineData("Teleport", false)]
+    public void Policy_rules_parse_only_known_methods(string rule, bool valid) =>
+        Karnama.Domain.Attendance.PolicyRule.Parse(rule).IsSuccess.Should().Be(valid);
+
+    [Fact]
+    public void Policy_rule_evaluates_and_before_or()
+    {
+        var rule = Karnama.Domain.Attendance.PolicyRule.Parse("OfficeNetwork & (RotatingQr | BiometricDevice)").Value!;
+        rule.Evaluate(m => m is "OfficeNetwork" or "RotatingQr").Should().BeTrue();
+        rule.Evaluate(m => m is "RotatingQr").Should().BeFalse();
+        rule.Evaluate(m => m is "OfficeNetwork").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Forgotten_shift_is_closed_at_the_scheduled_end_and_flagged()
+    {
+        var start = new DateTimeOffset(2026, 10, 25, 5, 30, 0, TimeSpan.Zero);
+        var s = Karnama.Domain.Attendance.Shift.Open(Guid.NewGuid(), new DateOnly(2026, 10, 25), start, [], Karnama.Domain.Attendance.Trust.Green, false, null, false, 0);
+        s.StartBreak(start.AddHours(3));
+        s.AutoClose(start.AddHours(8));
+        s.NeedsReview.Should().BeTrue();
+        s.WorkedMinutes(start.AddDays(1)).Should().Be(180);   // the open break until auto-close is not paid work
+    }
+
+    [Fact]
+    public void Kiosk_and_place_distance()
+    {
+        var p = Karnama.Domain.Attendance.AttendancePlace.Create("دفتر", 29.61, 52.53, 100).Value!;
+        p.DistanceMeters(29.61, 52.53).Should().BeLessThan(1);
+        p.DistanceMeters(29.611, 52.53).Should().BeInRange(100, 120);
+    }
+}

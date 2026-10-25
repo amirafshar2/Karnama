@@ -9,6 +9,10 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Me } from "@/lib/types";
+import { faProfile } from "@/lib/i18n/fa-pages";
+import { registerTexts as registerPageTexts } from "@/lib/i18n/registry";
+
+registerPageTexts(faProfile);
 
 export default function ProfilePage() {
   const { me, reloadMe, logout } = useAuth();

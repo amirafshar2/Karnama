@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Karnama.Application.Abstractions;
 using Karnama.Application.Common;
+using Karnama.Domain.Attendance;
 using Karnama.Domain.Auditing;
 using Karnama.Domain.Catalog;
 using Karnama.Domain.Clients;
@@ -43,7 +44,29 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<WorkComment> WorkComments => Set<WorkComment>();
     public DbSet<FileAsset> Files => Set<FileAsset>();
     public DbSet<ChangeEvent> ChangeEvents => Set<ChangeEvent>();
+    public DbSet<WorkSchedule> WorkSchedules => Set<WorkSchedule>();
+    public DbSet<Holiday> Holidays => Set<Holiday>();
+    public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<AttendanceEvent> AttendanceEvents => Set<AttendanceEvent>();
+    public DbSet<WorkTimer> WorkTimers => Set<WorkTimer>();
+    public DbSet<AttendanceCorrection> AttendanceCorrections => Set<AttendanceCorrection>();
+    public DbSet<AttendancePolicy> AttendancePolicies => Set<AttendancePolicy>();
+    public DbSet<AttendancePlace> AttendancePlaces => Set<AttendancePlace>();
+    public DbSet<KioskCodeUse> KioskCodeUses => Set<KioskCodeUse>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+    /// <summary>
+    /// PostgreSQL timestamptz stores UTC only. Clients send times with an offset (e.g. "+03:30" from a Persian date
+    /// picker); normalise every DateTimeOffset to UTC on the way in so nothing fails or shifts.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcDateTimeOffsetConverter>();
+        configurationBuilder.Properties<DateTimeOffset?>().HaveConversion<UtcDateTimeOffsetConverter>();
+    }
+
+    private sealed class UtcDateTimeOffsetConverter() : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTimeOffset, DateTimeOffset>(
+        v => v.ToUniversalTime(), v => v.ToUniversalTime());
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

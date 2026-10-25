@@ -21,14 +21,16 @@ for p in 5080 5081 3000 3001; do free_port $p; done
 if docker info >/dev/null 2>&1; then docker compose up -d --wait postgres redis; PSQL="docker compose exec -T postgres psql -U karnama -d postgres"
 else PSQL="psql postgresql://karnama:${POSTGRES_PASSWORD}@localhost:5432/postgres"; fi
 
-# The empty install is a brand-new customer every run.
+# Both installs start fresh every run (tests change data); your own demo database "karnama" is left alone.
 $PSQL -c "DROP DATABASE IF EXISTS karnama_empty WITH (FORCE);" -c "CREATE DATABASE karnama_empty;" >/dev/null
+$PSQL -c "DROP DATABASE IF EXISTS karnama_e2e WITH (FORCE);" -c "CREATE DATABASE karnama_e2e;" >/dev/null
 EMPTY_CS="${ConnectionStrings__Default/Database=karnama;/Database=karnama_empty;}"
+DEMO_CS="${ConnectionStrings__Default/Database=karnama;/Database=karnama_e2e;}"
 
 dotnet build src/Karnama.Api -c Release -v q -nologo
 API_DLL="$ROOT/src/Karnama.Api/bin/Release/net10.0/Karnama.Api.dll"
 
-( cd src/Karnama.Api && Seed__Mode=Demo DemoLogin__Enabled=true \
+( cd src/Karnama.Api && Seed__Mode=Demo DemoLogin__Enabled=true ConnectionStrings__Default="$DEMO_CS" \
   dotnet "$API_DLL" --urls http://localhost:5080 > "$LOGS/api-demo.log" 2>&1 & )
 ( cd src/Karnama.Api && Seed__Mode=Empty DemoLogin__Enabled=false ConnectionStrings__Default="$EMPTY_CS" \
   Cors__AllowedOrigins__0=http://localhost:3001 dotnet "$API_DLL" --urls http://localhost:5081 > "$LOGS/api-empty.log" 2>&1 & )

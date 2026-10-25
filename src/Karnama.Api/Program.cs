@@ -35,6 +35,7 @@ builder.Services.AddInfrastructure(config, builder.Environment);
 builder.Services.AddApplication();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<IRequestContext, HttpRequestContext>();
 builder.Services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();
 
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -158,6 +159,7 @@ app.MapPublic(demoLogin);
 app.MapSettings();
 app.MapCatalog();
 app.MapWork();
+app.MapAttendance();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, ClipboardList, Hourglass, MonitorSmartphone } from "lucide-react";
+import { CalendarClock, Hourglass, MonitorSmartphone } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { TextKey } from "@/lib/i18n/registry";
 import { useI18n } from "@/lib/i18n/provider";
@@ -11,11 +11,14 @@ const OnboardingCard = dynamic(() => import("@/components/app/onboarding-card").
 
 import { faAccess } from "@/lib/i18n/fa-access";
 import { registerTexts } from "@/lib/i18n/registry";
+import { faDashboard } from "@/lib/i18n/fa-pages";
+import { registerTexts as registerPageTexts } from "@/lib/i18n/registry";
+
+registerPageTexts(faDashboard);
 
 registerTexts(faAccess);
 
-const NEXT: { key: TextKey; icon: typeof ClipboardList }[] = [
-  { key: "dashboard.next.orders", icon: ClipboardList },
+const NEXT: { key: TextKey; icon: typeof Hourglass }[] = [
   { key: "dashboard.next.time", icon: Hourglass },
   { key: "dashboard.next.leave", icon: CalendarClock },
   { key: "dashboard.next.portal", icon: MonitorSmartphone },

@@ -41,4 +41,7 @@ export const faCrud = {
   "crud.verb.cancelled": "لغو شد",
   "crud.verb.portalEnabled": "دسترسی پنل مشتری داده شد",
   "crud.verb.cover": "عکس کاور عوض شد",
+  "crud.verb.accepted": "پذیرفته شد",
+  "crud.verb.rejected": "رد شد",
+  "crud.verb.moved": "جابه‌جا شد",
 } as const;

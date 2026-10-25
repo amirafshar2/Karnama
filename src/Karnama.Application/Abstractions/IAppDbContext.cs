@@ -1,3 +1,4 @@
+using Karnama.Domain.Attendance;
 using Karnama.Domain.Auditing;
 using Karnama.Domain.Catalog;
 using Karnama.Domain.Clients;
@@ -35,6 +36,18 @@ public interface IAppDbContext
     DbSet<WorkComment> WorkComments { get; }
     DbSet<FileAsset> Files { get; }
     DbSet<ChangeEvent> ChangeEvents { get; }
+    DbSet<WorkSchedule> WorkSchedules { get; }
+    DbSet<Holiday> Holidays { get; }
+    DbSet<Shift> Shifts { get; }
+    DbSet<AttendanceEvent> AttendanceEvents { get; }
+    DbSet<WorkTimer> WorkTimers { get; }
+    DbSet<AttendanceCorrection> AttendanceCorrections { get; }
+    DbSet<AttendancePolicy> AttendancePolicies { get; }
+    DbSet<AttendancePlace> AttendancePlaces { get; }
+    DbSet<KioskCodeUse> KioskCodeUses { get; }
+
+    /// <summary>For the few statements EF can't express (e.g. INSERT … ON CONFLICT DO NOTHING).</summary>
+    Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }
 
     /// <summary>Next human order number ("سفارش ۱۰۴۲") from a database sequence.</summary>
     Task<long> NextOrderNumberAsync(CancellationToken ct);

@@ -12,6 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { toLatinDigits, useI18n } from "@/lib/i18n/provider";
+import { faAuth } from "@/lib/i18n/fa-pages";
+import { registerTexts as registerPageTexts } from "@/lib/i18n/registry";
+
+registerPageTexts(faAuth);
 
 export function SetupScreen() {
   const { t } = useI18n();

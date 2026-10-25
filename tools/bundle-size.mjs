@@ -10,7 +10,7 @@ const PANEL_BUDGET = 180 * 1024;
 const appDir = join(dir, "server", "app");
 let failed = false;
 
-for (const page of ["login", "dashboard", "roles", "profile", "setup", "settings/brand", "settings/texts", "users", "clients", "packages", "services", "settings/platforms"]) {
+for (const page of ["login", "dashboard", "roles", "profile", "setup", "settings/brand", "settings/texts", "users", "clients", "packages", "services", "settings/platforms", "work", "orders"]) {
   const htmlFile = join(appDir, `${page}.html`);
   if (!existsSync(htmlFile)) continue;
   const html = readFileSync(htmlFile, "utf8");
