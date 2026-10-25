@@ -27,7 +27,8 @@ docker compose exec -T postgres psql -U karnama -d postgres -tc "SELECT 1 FROM p
 start "Karnama API (empty)" cmd /k dotnet run --project src\Karnama.Api --launch-profile http --urls http://localhost:5081
 
 pushd src\karnama-web
-if not exist node_modules call npm ci
+rem بسته‌های جدید هر نسخه (اگر چیزی عوض نشده باشد چند ثانیه بیشتر طول نمی‌کشد)
+call npm install --prefer-offline --no-audit --no-fund
 set NEXT_PUBLIC_API_BASE=http://localhost:5081
 set NEXT_PUBLIC_HUB_BASE=http://localhost:5081
 set NEXT_DIST_DIR=.next-empty

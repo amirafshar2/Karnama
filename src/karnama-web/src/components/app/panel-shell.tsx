@@ -60,7 +60,9 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   }
 
   const items = navFor(me);
-  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+  // Only the most specific menu entry is active (/attendance/live must not also light up /attendance).
+  const best = items.filter((i) => pathname === i.href || pathname?.startsWith(i.href + "/")).sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const isActive = (href: string) => href === best;
 
   return (
     <div className="flex min-h-dvh">

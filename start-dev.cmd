@@ -28,7 +28,8 @@ start "Karnama API" cmd /k dotnet run --project src\Karnama.Api --launch-profile
 echo [3/3] وب روی http://localhost:3000 ...
 pushd src\karnama-web
 if not exist .env.local copy .env.example .env.local >nul
-if not exist node_modules call npm ci
+rem بسته‌های جدید هر نسخه (اگر چیزی عوض نشده باشد چند ثانیه بیشتر طول نمی‌کشد)
+call npm install --prefer-offline --no-audit --no-fund
 start "Karnama Web" cmd /k npm run dev
 popd
 
