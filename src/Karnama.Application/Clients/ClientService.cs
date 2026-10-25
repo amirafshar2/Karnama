@@ -34,7 +34,8 @@ public sealed class UpsertClientValidator : AbstractValidator<UpsertClientReques
     public UpsertClientValidator()
     {
         RuleFor(x => x.BusinessName).NotEmpty().MaximumLength(120).WithMessage("نام کسب‌وکار الزامی است (حداکثر ۱۲۰ کاراکتر).");
-        RuleFor(x => x.Mobile).Must(m => PhoneNumber.TryNormalize(m, out _)).WithMessage("شماره‌ی موبایل معتبر نیست (مثل ۰۹۱۲۱۲۳۴۵۶۷).");
+        // Empty is allowed for staff who can't see the number (the service keeps the stored one; the domain still requires it).
+        RuleFor(x => x.Mobile).Must(m => string.IsNullOrEmpty(m) || PhoneNumber.TryNormalize(m, out _)).WithMessage("شماره‌ی موبایل معتبر نیست (مثل ۰۹۱۲۱۲۳۴۵۶۷).");
         RuleFor(x => x.InternalNote).MaximumLength(2000).WithMessage("یادداشت حداکثر ۲۰۰۰ کاراکتر است.");
         RuleFor(x => x.Status).IsInEnum();
     }

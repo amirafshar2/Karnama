@@ -1,4 +1,4 @@
-import { Languages, LayoutDashboard, Palette, ShieldCheck, UserRound, type LucideIcon } from "lucide-react";
+import { Boxes, Briefcase, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
 import type { TextKey } from "@/lib/i18n/registry";
 import { hasPermission, type Me, type Scope } from "@/lib/types";
 
@@ -13,7 +13,12 @@ export type NavItem = {
 /** Menu is built from the user's permissions; new modules add their entries here as they ship. */
 export const NAV: NavItem[] = [
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/clients", label: "nav.clients", icon: Briefcase, anyOf: [{ code: "clients.view", scope: "assigned" }] },
+  { href: "/packages", label: "nav.packages", icon: Package, anyOf: [{ code: "packages.view", scope: "all" }] },
+  { href: "/users", label: "nav.users", icon: Users, anyOf: [{ code: "users.manage", scope: "all" }] },
+  { href: "/services", label: "nav.services", icon: Boxes, anyOf: [{ code: "services.manage", scope: "all" }] },
   { href: "/roles", label: "nav.roles", icon: ShieldCheck, anyOf: [{ code: "roles.manage", scope: "all" }] },
+  { href: "/settings/platforms", label: "nav.platforms", icon: Network, anyOf: [{ code: "settings.manage", scope: "all" }] },
   { href: "/settings/brand", label: "nav.brand", icon: Palette, anyOf: [{ code: "settings.manage", scope: "all" }] },
   {
     href: "/settings/texts",

@@ -4,7 +4,10 @@ import { CalendarClock, ClipboardList, Hourglass, MonitorSmartphone } from "luci
 import { useAuth } from "@/lib/auth";
 import type { TextKey } from "@/lib/i18n/registry";
 import { useI18n } from "@/lib/i18n/provider";
-import { permissionGroup, type Scope } from "@/lib/types";
+import { hasPermission, permissionGroup, type Scope } from "@/lib/types";
+import dynamic from "next/dynamic";
+
+const OnboardingCard = dynamic(() => import("@/components/app/onboarding-card").then((m) => m.OnboardingCard), { ssr: false });
 
 import { faAccess } from "@/lib/i18n/fa-access";
 import { registerTexts } from "@/lib/i18n/registry";
@@ -38,6 +41,8 @@ export default function DashboardPage() {
         <p className="mt-1 text-muted-foreground">{t("dashboard.today", { date: formatDate(new Date()) })}</p>
         {me.roles.length > 0 && <p className="mt-1 text-muted-foreground">{t("dashboard.rolesLine", { roles: me.roles.join("، ") })}</p>}
       </section>
+
+      {hasPermission(me, "settings.manage", "all") && <OnboardingCard />}
 
       {me.kind === "client" ? (
         <section className="rounded-xl border bg-card p-6">

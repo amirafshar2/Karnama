@@ -7,9 +7,6 @@ import { ErrorText, useErrorMessage } from "@/components/app/error-text";
 import { useRequire } from "@/components/app/use-require";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { faCore } from "@/lib/i18n/fa";
-import { faAccess } from "@/lib/i18n/fa-access";
-import { faRoles } from "@/lib/i18n/fa-roles";
 import { faSettings } from "@/lib/i18n/fa-settings";
 import { useI18n } from "@/lib/i18n/provider";
 import { registerTexts, type TextKey } from "@/lib/i18n/registry";
@@ -17,8 +14,6 @@ import { notify } from "@/lib/notify";
 
 registerTexts(faSettings);
 
-/** Every built-in Persian text, i.e. the full list of editable keys. */
-const ALL_FA: Record<string, string> = { ...faCore, ...faAccess, ...faRoles, ...faSettings };
 
 export default function TextsPage() {
   const allowed = useRequire([
@@ -39,8 +34,11 @@ export default function TextsPage() {
   });
   const builtIn = useQuery({
     queryKey: ["text-defaults", lang],
-    queryFn: async (): Promise<Record<string, string>> =>
-      lang === "fa" ? ALL_FA : lang === "en" ? { ...ALL_FA, ...(await import("@/lib/i18n/en")).en } : ALL_FA,
+    queryFn: async (): Promise<{ fa: Record<string, string>; local: Record<string, string> }> => {
+      // Loaded on demand so the page itself stays inside the bandwidth budget.
+      const { ALL_FA } = await import("@/lib/i18n/all-fa");
+      return { fa: ALL_FA, local: lang === "en" ? { ...ALL_FA, ...(await import("@/lib/i18n/en")).en } : ALL_FA };
+    },
     staleTime: Infinity,
     enabled: allowed,
   });
@@ -48,9 +46,10 @@ export default function TextsPage() {
   const rows = useMemo(() => {
     const map = new Map((overrides.data ?? []).map((o) => [o.key, o.value]));
     const needle = q.trim().toLowerCase();
-    return Object.keys(ALL_FA)
+    const fa = builtIn.data?.fa ?? {};
+    return Object.keys(fa)
       .sort()
-      .map((key) => ({ key, def: builtIn.data?.[key] ?? ALL_FA[key], value: map.get(key) }))
+      .map((key) => ({ key, def: builtIn.data?.local[key] ?? fa[key], value: map.get(key) }))
       .filter((r) => !onlyChanged || r.value !== undefined)
       .filter((r) => !needle || r.key.toLowerCase().includes(needle) || r.def.toLowerCase().includes(needle) || (r.value ?? "").toLowerCase().includes(needle));
   }, [overrides.data, builtIn.data, q, onlyChanged]);

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DEMO_URL, demoLogin, shot } from "./helpers";
+import { DEMO_URL, demoLogin, menuHas, navTo, shot } from "./helpers";
 
 test.describe("demo install", () => {
   test("login page: OTP form and one-tap demo roles", async ({ page }, info) => {
@@ -23,7 +23,7 @@ test.describe("demo install", () => {
     await expect(page.getByText("حالت نمایشی")).toBeVisible();
     await shot(page, info, "admin-dashboard");
 
-    await page.getByTestId(isMobile ? "bottom-roles" : "nav-roles").click();
+    await navTo(page, isMobile, "roles");
     await expect(page).toHaveURL(/\/roles/);
     const rows = page.locator(isMobile ? "[data-testid^=role-card-]" : "[data-testid^=role-row-]");
     await expect(rows.filter({ hasText: "مالک" }).first()).toBeVisible();
@@ -81,7 +81,7 @@ test.describe("demo install", () => {
     await expect(owner.getByRole("button", { name: "حذف" })).toHaveCount(0);
 
     // Language: English switches direction without reload
-    await page.getByTestId(isMobile ? "bottom-profile" : "nav-profile").click();
+    await navTo(page, isMobile, "profile");
     await page.getByTestId("lang-en").check();
     await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
     await expect(page.getByRole("heading", { name: "My account" })).toBeVisible();
@@ -97,14 +97,14 @@ test.describe("demo install", () => {
   test("editor and client see only what their roles allow", async ({ page }, info) => {
     const isMobile = info.project.name !== "desktop";
     await demoLogin(page, "editor");
-    await expect(page.getByTestId(isMobile ? "bottom-roles" : "nav-roles")).toHaveCount(0);
-    await expect(page.getByTestId(isMobile ? "bottom-settings/brand" : "nav-settings/brand")).toHaveCount(0);
+    expect(await menuHas(page, isMobile, "roles")).toBe(false);
+    expect(await menuHas(page, isMobile, "settings/brand")).toBe(false);
     await expect(page.getByText("انجام کار و تایمر")).toBeVisible();
     await shot(page, info, "editor-dashboard");
     await page.goto(`${DEMO_URL}/roles`);
     await expect(page).toHaveURL(/\/dashboard/);
 
-    await page.getByTestId(isMobile ? "bottom-profile" : "nav-profile").click();
+    await navTo(page, isMobile, "profile");
     await page.getByTestId("logout").click();
     await expect(page).toHaveURL(/\/login/);
 

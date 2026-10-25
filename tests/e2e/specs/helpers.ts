@@ -59,3 +59,23 @@ export async function demoLogin(page: Page, role: "admin" | "editor" | "writer" 
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByTestId("dashboard-hello")).toBeVisible();
 }
+
+/** Opens a page from the menu: side nav on desktop; bottom bar (or its "More" panel) on phones. */
+export async function navTo(page: Page, mobile: boolean, href: string) {
+  if (!mobile) return page.getByTestId(`nav-${href}`).click();
+  const direct = page.getByTestId(`bottom-${href}`);
+  if (!(await direct.isVisible())) await page.getByTestId("bottom-more").click();
+  await direct.click();
+}
+
+/** The menu entry exists (phones: in the bar or behind "More"). */
+export async function menuHas(page: Page, mobile: boolean, href: string) {
+  if (!mobile) return (await page.getByTestId(`nav-${href}`).count()) > 0;
+  if ((await page.getByTestId(`bottom-${href}`).count()) > 0) return true;
+  const more = page.getByTestId("bottom-more");
+  if ((await more.count()) === 0) return false;
+  if (!(await page.getByTestId("bottom-more-panel").isVisible())) await more.click();
+  const has = (await page.getByTestId(`bottom-${href}`).count()) > 0;
+  await more.click();
+  return has;
+}

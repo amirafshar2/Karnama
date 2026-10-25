@@ -106,6 +106,10 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
 
         (await admin.PostAsJsonAsync("/api/v1/packages", Body("PKG-T1", "پکیج-تست-دو"), Http.Json)).StatusCode.Should().Be(HttpStatusCode.Conflict);
 
+        // The assign picker asks for active packages with the camelCase enum the API itself writes.
+        var active = await (await admin.GetAsync("/api/v1/packages?status=active&limit=100")).JsonAsync();
+        active.GetProperty("items").EnumerateArray().Select(x => x.GetProperty("sku").GetString()).Should().Contain("PKG-T1");
+
         // Capacity 1: two admins assign the last seat at the same moment -> exactly one wins.
         var clients = await (await admin.GetAsync("/api/v1/clients?limit=10")).JsonAsync();
         var ids = clients.GetProperty("items").EnumerateArray().Select(c => c.GetProperty("id").GetGuid()).Take(2).ToList();

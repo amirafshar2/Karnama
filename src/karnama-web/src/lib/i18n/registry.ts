@@ -1,10 +1,20 @@
 import { faAccess } from "./fa-access";
+import { faCrud } from "./fa-crud";
+import { faM2 } from "./fa-m2";
+import { faM2Forms } from "./fa-m2-forms";
 import { faCore } from "./fa";
 import { faRoles } from "./fa-roles";
 import { faSettings } from "./fa-settings";
 
 /** Every text key in the product (type only — module dictionaries are loaded by the pages that use them). */
-export type TextKey = keyof typeof faCore | keyof typeof faAccess | keyof typeof faRoles | keyof typeof faSettings;
+export type TextKey =
+  | keyof typeof faCore
+  | keyof typeof faAccess
+  | keyof typeof faRoles
+  | keyof typeof faSettings
+  | keyof typeof faCrud
+  | keyof typeof faM2
+  | keyof typeof faM2Forms;
 export type Dictionary = Record<TextKey, string>;
 
 const registered: Partial<Dictionary> = { ...faCore };

@@ -21,6 +21,10 @@ internal static class CatalogEndpoints
     private static IResult File(byte[] bytes, string name) =>
         Results.File(bytes, Xlsx, $"{name}-{DateTime.UtcNow:yyyyMMdd}.xlsx");
 
+    /// <summary>Query-string enum filter, case-insensitive (the API writes camelCase; default binding is case-sensitive). Unknown = no filter.</summary>
+    internal static T? E<T>(string? value) where T : struct, Enum =>
+        Enum.TryParse<T>(value, ignoreCase: true, out var v) && Enum.IsDefined(v) ? v : null;
+
     private static KeysetQuery Q(string? cursor, int? limit, string? q, bool? includeDeleted) => new(cursor, limit ?? 20, q, includeDeleted ?? false);
 
     public static void MapCatalog(this IEndpointRouteBuilder app)
@@ -28,8 +32,8 @@ internal static class CatalogEndpoints
         // ---- Users (staff) ----
         var users = app.MapGroup("/api/v1/users").WithTags("Users")
             .RequirePermission(Permissions.UsersManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
-        users.MapGet("/", async (string? cursor, int? limit, string? q, bool? includeDeleted, UserKind? kind, UserService svc, CancellationToken ct) =>
-            Results.Ok(await svc.ListAsync(Q(cursor, limit, q, includeDeleted), kind, ct)));
+        users.MapGet("/", async (string? cursor, int? limit, string? q, bool? includeDeleted, string? kind, UserService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ListAsync(Q(cursor, limit, q, includeDeleted), E<UserKind>(kind), ct)));
         users.MapGet("/export", async (UserService svc, CancellationToken ct) => File(await svc.ExportAsync(ct), "users"));
         users.MapGet("/{id:guid}", async (Guid id, UserService svc, HttpContext http, CancellationToken ct) => (await svc.GetAsync(id, ct)).ToHttp(http));
         users.MapPost("/", async (UpsertUserRequest body, UserService svc, HttpContext http, CancellationToken ct) =>
@@ -66,8 +70,8 @@ internal static class CatalogEndpoints
 
         // ---- Packages ----
         var packagesRead = app.MapGroup("/api/v1/packages").WithTags("Packages").RequirePermission(Permissions.PackagesView, PermissionScope.All);
-        packagesRead.MapGet("/", async (string? cursor, int? limit, string? q, bool? includeDeleted, PackageStatus? status, PackageService svc, CancellationToken ct) =>
-            Results.Ok(await svc.ListAsync(Q(cursor, limit, q, includeDeleted), status, ct)));
+        packagesRead.MapGet("/", async (string? cursor, int? limit, string? q, bool? includeDeleted, string? status, PackageService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ListAsync(Q(cursor, limit, q, includeDeleted), E<PackageStatus>(status), ct)));
         packagesRead.MapGet("/{id:guid}", async (Guid id, PackageService svc, HttpContext http, CancellationToken ct) => (await svc.GetAsync(id, ct)).ToHttp(http));
         var packages = app.MapGroup("/api/v1/packages").WithTags("Packages")
             .RequirePermission(Permissions.PackagesManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
@@ -85,8 +89,8 @@ internal static class CatalogEndpoints
 
         // ---- Clients ----
         var clientsRead = app.MapGroup("/api/v1/clients").WithTags("Clients").RequirePermission(Permissions.ClientsView, PermissionScope.Assigned);
-        clientsRead.MapGet("/", async (string? cursor, int? limit, string? q, bool? includeDeleted, ClientStatus? status, ClientService svc, CancellationToken ct) =>
-            Results.Ok(await svc.ListAsync(Q(cursor, limit, q, includeDeleted), status, ct)));
+        clientsRead.MapGet("/", async (string? cursor, int? limit, string? q, bool? includeDeleted, string? status, ClientService svc, CancellationToken ct) =>
+            Results.Ok(await svc.ListAsync(Q(cursor, limit, q, includeDeleted), E<ClientStatus>(status), ct)));
         clientsRead.MapGet("/{id:guid}", async (Guid id, ClientService svc, HttpContext http, CancellationToken ct) => (await svc.GetAsync(id, ct)).ToHttp(http));
         var clients = app.MapGroup("/api/v1/clients").WithTags("Clients")
             .RequirePermission(Permissions.ClientsManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();

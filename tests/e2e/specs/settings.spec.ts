@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DEMO_URL, demoLogin, shot } from "./helpers";
+import { DEMO_URL, demoLogin, menuHas, shot } from "./helpers";
 
 test.describe("white-label: brand, colours, logo and texts from the admin panel", () => {
   test("admin changes name and colours; every page follows", async ({ page }, info) => {
@@ -50,7 +50,7 @@ test.describe("white-label: brand, colours, logo and texts from the admin panel"
     await page.getByTestId("texts-search").fill("login.title");
     await page.getByTestId("text-row-login.title").getByRole("button", { name: "برگرداندن به پیش‌فرض" }).click();
     await expect(page.getByText("متن به پیش‌فرض برگشت.")).toBeVisible();
-    if (isMobile) await expect(page.getByTestId("bottom-settings/texts")).toBeVisible();
+    expect(await menuHas(page, isMobile, "settings/texts")).toBe(true);
   });
 
   test("web app manifest follows the brand (Android install / iPhone home screen)", async ({ request }) => {

@@ -152,3 +152,21 @@ export function refreshSession(): Promise<boolean> {
   refreshing = promise;
   return promise;
 }
+
+/** Multipart upload with the same auth/refresh handling as api(). */
+export async function uploadForm<T>(path: string, form: FormData): Promise<T> {
+  const send = () =>
+    fetch(API_BASE + path, {
+      method: "POST",
+      body: form,
+      credentials: "include",
+      headers: tokenStore.access ? { Authorization: `Bearer ${tokenStore.access}` } : undefined,
+    });
+  let res = await send();
+  if (res.status === 401 && (await refreshSession())) res = await send();
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.code ?? `http.${res.status}`, body.title ?? "", body.traceId);
+  }
+  return (await res.json()) as T;
+}

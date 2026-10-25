@@ -10,9 +10,7 @@ import { useRequire } from "@/components/app/use-require";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, ApiError, refreshSession } from "@/lib/api";
-import { API_BASE } from "@/lib/config";
-import { tokenStore } from "@/lib/token-store";
+import { api, uploadForm } from "@/lib/api";
 import { brandVars, contrast, DEFAULT_COLORS, isHex, type Brand, type BrandColors } from "@/lib/brand";
 import { faSettings } from "@/lib/i18n/fa-settings";
 import { useI18n } from "@/lib/i18n/provider";
@@ -211,22 +209,4 @@ function ColorField({ id, label, help, value, optional, onChange }: { id: string
       <FieldHelp id={`color-${id}-help`}>{help}</FieldHelp>
     </div>
   );
-}
-
-/** Multipart upload with the same auth/refresh handling as api(). */
-async function uploadForm<T>(path: string, form: FormData): Promise<T> {
-  const send = () =>
-    fetch(API_BASE + path, {
-      method: "POST",
-      body: form,
-      credentials: "include",
-      headers: tokenStore.access ? { Authorization: `Bearer ${tokenStore.access}` } : undefined,
-    });
-  let res = await send();
-  if (res.status === 401 && (await refreshSession())) res = await send();
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.code ?? `http.${res.status}`, body.title ?? "", body.traceId);
-  }
-  return (await res.json()) as T;
 }
