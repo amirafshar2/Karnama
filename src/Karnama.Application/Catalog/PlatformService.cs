@@ -34,7 +34,8 @@ public sealed class PlatformService(IAppDbContext db, ICurrentUser me, IAuditWri
     {
         var p = await db.Platforms.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null) return Error.NotFound("platforms.notFound", "شبکه پیدا نشد.");
-        if (r.Version is { } v) db.SetOriginalVersion(p, v);
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        db.SetOriginalVersion(p, v);
         var key = r.Key.Trim().ToLowerInvariant();
         if (key != p.Key && await db.Platforms.AnyAsync(x => x.Key == key && x.Id != id, ct))
             return Error.Conflict("platforms.duplicate", "شبکه‌ای با این شناسه وجود دارد.");

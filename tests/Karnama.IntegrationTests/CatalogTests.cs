@@ -168,4 +168,38 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
         (await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "تکراری", phone = "09127771111", roleIds = Array.Empty<Guid>(), isActive = true }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
+
+    [Fact]
+    public async Task Non_owner_cannot_escalate_or_touch_owners()
+    {
+        var admin = await Admin();
+        var roles = (await (await admin.GetAsync("/api/v1/roles?limit=100")).JsonAsync()).GetProperty("items").EnumerateArray().ToList();
+        Guid RoleId(string name) => roles.First(r => r.GetProperty("name").GetString() == name).GetProperty("id").GetGuid();
+
+        // Only users.manage: can't hand out a role stronger than itself.
+        var limited = As(new() { [Permissions.UsersManage] = PermissionScope.All });
+        (await limited.PostAsJsonAsync("/api/v1/users", new { displayName = "ارتقا", phone = "09127772222", roleIds = new[] { RoleId("ادمین نمایشی") }, isActive = true }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        // Holding the role's permissions is enough.
+        var withWork = As(new()
+        {
+            [Permissions.UsersManage] = PermissionScope.All, [Permissions.WorkView] = PermissionScope.All, [Permissions.WorkRun] = PermissionScope.All,
+            [Permissions.OrdersView] = PermissionScope.All, [Permissions.AttendanceSelf] = PermissionScope.Own, [Permissions.AttendanceView] = PermissionScope.All,
+            [Permissions.ReportsView] = PermissionScope.All,
+        });
+        (await withWork.PostAsJsonAsync("/api/v1/users", new { displayName = "تدوینگر دوم", phone = "09127772223", roleIds = new[] { RoleId("تدوینگر") }, isActive = true }))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // A full non-owner admin can't deactivate or delete an owner.
+        var users = (await (await admin.GetAsync("/api/v1/users?limit=100")).JsonAsync()).GetProperty("items").EnumerateArray().ToList();
+        var owner = users.First(u => u.GetProperty("roles").EnumerateArray().Any(r => r.GetProperty("systemKey").GetString() == "owner"));
+        var everything = As(Permissions.Catalog.ToDictionary(p => p.Code, p => p.MaxScope));
+        var body = new { displayName = "x", phone = owner.GetProperty("phone").GetString(), roleIds = Array.Empty<Guid>(), isActive = false };
+        (await everything.PutAsJsonAsync($"/api/v1/users/{owner.GetProperty("id").GetGuid()}", body)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await everything.DeleteAsync($"/api/v1/users/{owner.GetProperty("id").GetGuid()}")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // Client logins never show up on the staff page.
+        var clients = (await (await admin.GetAsync("/api/v1/users?kind=client&limit=100")).JsonAsync()).GetProperty("items").EnumerateArray();
+        clients.Should().NotContain(u => u.GetProperty("phone").GetString() == "09000000004");
+    }
 }

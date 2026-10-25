@@ -37,7 +37,40 @@ public sealed class HistoryService(IAppDbContext db, ICurrentUser me)
         var names = await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => actorIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
         return rows.Select(r => new HistoryEntryDto(r.OccurredAt, r.Action, r.ActorId is { } a && names.TryGetValue(a, out var n) ? n : null, r.IsDemo,
-            // Never echo credentials or phone numbers back through history.
-            r.DataJson)).ToList();
+            Redact(r.DataJson))).ToList();
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex Sensitive =
+        new("phone|mobile|secret|password|token|apikey|api_key|key$|otp|code$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>Never echo credentials or phone numbers back through history, whatever a future audit entry contains.</summary>
+    public static string? Redact(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return json;
+        try
+        {
+            var node = System.Text.Json.Nodes.JsonNode.Parse(json);
+            Walk(node);
+            return node?.ToJsonString();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+
+        static void Walk(System.Text.Json.Nodes.JsonNode? n)
+        {
+            switch (n)
+            {
+                case System.Text.Json.Nodes.JsonObject o:
+                    foreach (var k in o.Select(p => p.Key).ToList())
+                        if (Sensitive.IsMatch(k)) o[k] = "•••";
+                        else Walk(o[k]);
+                    break;
+                case System.Text.Json.Nodes.JsonArray a:
+                    foreach (var item in a) Walk(item);
+                    break;
+            }
+        }
     }
 }

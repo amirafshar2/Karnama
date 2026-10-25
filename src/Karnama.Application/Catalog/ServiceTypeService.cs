@@ -72,7 +72,8 @@ public sealed class ServiceTypeService(IAppDbContext db, ICurrentUser me, IAudit
     {
         var s = await db.ServiceTypes.Include(x => x.Stages).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (s is null) return Error.NotFound("services.notFound", "خدمت پیدا نشد.");
-        if (r.Version is { } v) db.SetOriginalVersion(s, v);
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        db.SetOriginalVersion(s, v);
         var u = s.Update(new LocalizedText(r.Name), r.Description, r.Icon, r.BasePrice, r.ConsumesQuota, r.Weight, r.SortOrder, r.IsActive);
         if (u.IsFailure) return u.Error!;
         var applied = await ApplyAsync(s, r, ct);

@@ -107,7 +107,8 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
     {
         var p = await db.Packages.Include(x => x.Quotas).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null) return Error.NotFound("packages.notFound", "پکیج پیدا نشد.");
-        if (r.Version is { } v) db.SetOriginalVersion(p, v);
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        db.SetOriginalVersion(p, v);
         var check = await CheckReferencesAsync(r, id, ct);
         if (check.IsFailure) return check.Error!;
         var before = new { p.Price, p.SpecialPrice, p.Status };

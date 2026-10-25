@@ -34,7 +34,9 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<KeysetPage<UserListItemDto>> ListAsync(KeysetQuery q, UserKind? kind, CancellationToken ct)
     {
         var query = q.IncludeDeleted ? db.Users.IgnoreQueryFilters() : db.Users;
-        query = query.Where(u => u.Kind == (kind ?? UserKind.Staff));
+        // Staff only: client logins (and their numbers) belong to the clients page and clients.contact.
+        _ = kind;
+        query = query.Where(u => u.Kind == UserKind.Staff);
         if (!string.IsNullOrWhiteSpace(q.Search))
         {
             var like = Keyset.Like(q.Search);
@@ -48,7 +50,7 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
 
     public async Task<Result<UserListItemDto>> GetAsync(Guid id, CancellationToken ct)
     {
-        var u = await db.Users.IgnoreQueryFilters().AsNoTracking().Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == id, ct);
+        var u = await db.Users.IgnoreQueryFilters().AsNoTracking().Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == id && x.Kind == UserKind.Staff, ct);
         return u is null ? Error.NotFound("users.notFound", "کاربر پیدا نشد.") : ToDto(u, await RoleNamesAsync(ct));
     }
 
@@ -71,9 +73,9 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
 
     public async Task<Result<UserListItemDto>> UpdateAsync(Guid id, UpsertUserRequest r, CancellationToken ct)
     {
-        var user = await db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id, ct);
+        var user = await db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id && u.Kind == UserKind.Staff, ct);
         if (user is null) return Error.NotFound("users.notFound", "کاربر پیدا نشد.");
-        var guard = Guard(user);
+        var guard = await GuardAsync(user, ct);
         if (guard.IsFailure) return guard.Error!;
 
         PhoneNumber.TryNormalize(r.Phone, out var phone);
@@ -102,10 +104,10 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
 
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
     {
-        var user = await db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id, ct);
+        var user = await db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id && u.Kind == UserKind.Staff, ct);
         if (user is null) return Error.NotFound("users.notFound", "کاربر پیدا نشد.");
         if (user.Id == me.UserId) return Error.Conflict("users.self", "نمی‌توانید حساب خودتان را حذف کنید.");
-        var guard = Guard(user);
+        var guard = await GuardAsync(user, ct);
         if (guard.IsFailure) return guard;
         var last = await LastOwnerCheckAsync(user, removingOwner: true, ct);
         if (last.IsFailure) return last;
@@ -120,8 +122,10 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
 
     public async Task<Result<UserListItemDto>> RestoreAsync(Guid id, CancellationToken ct)
     {
-        var user = await db.Users.IgnoreQueryFilters().Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id, ct);
+        var user = await db.Users.IgnoreQueryFilters().Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id && u.Kind == UserKind.Staff, ct);
         if (user is null) return Error.NotFound("users.notFound", "کاربر پیدا نشد.");
+        var guard = await GuardAsync(user, ct);
+        if (guard.IsFailure) return guard.Error!;
         if (await db.Users.AnyAsync(u => u.Phone == user.Phone, ct)) return Error.Conflict("users.phoneTaken", "این شماره برای کاربر دیگری ثبت شده است.");
         user.SoftRestore();
         user.Activate();
@@ -139,11 +143,15 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     }
 
     /// <summary>Demo sessions may only change demo accounts; nobody but an Owner touches an Owner.</summary>
-    private Result Guard(User target)
+    private async Task<Result> GuardAsync(User target, CancellationToken ct)
     {
         if (me.IsDemo && !target.IsDemo) return Error.Forbidden("users.demoGuard", "در حالت نمایشی فقط حساب‌های نمونه قابل تغییرند.");
+        if (await PermissionLoader.IsOwnerAsync(db, target.Id, ct) && !await CallerIsOwnerAsync(ct))
+            return Error.Forbidden("users.ownerOnly", "فقط مالک می‌تواند حساب یک مالک را تغییر دهد.");
         return Result.Success();
     }
+
+    private Task<bool> CallerIsOwnerAsync(CancellationToken ct) => PermissionLoader.IsOwnerAsync(db, me.UserId ?? Guid.Empty, ct);
 
     private async Task<Result> ApplyRolesAsync(User user, List<Guid> roleIds, CancellationToken ct)
     {
@@ -153,11 +161,23 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         if (roles.Any(r => r.SystemKey == SystemRoles.Client)) return Error.Validation("users.clientRole", "نقش «مشتری» از صفحه‌ی مشتری‌ها داده می‌شود.");
 
         var ownerRoleId = await db.Roles.Where(r => r.SystemKey == SystemRoles.Owner).Select(r => r.Id).FirstAsync(ct);
+        var callerIsOwner = await CallerIsOwnerAsync(ct);
+        var current = user.Roles.Select(r => r.RoleId).ToHashSet();
+        var changed = wanted.Where(id => !current.Contains(id)).Concat(current.Where(id => !wanted.Contains(id))).ToList();
+        if (!callerIsOwner && changed.Count > 0)
+        {
+            // No self-promotion: a non-owner can't change their own roles, and can only grant or take away
+            // roles whose every permission they hold themselves at the same scope or wider.
+            if (user.Id == me.UserId) return Error.Forbidden("users.selfRoles", "نقش‌های خودتان را فقط مالک می‌تواند تغییر دهد.");
+            var grants = await db.Roles.Where(r => changed.Contains(r.Id)).SelectMany(r => r.Permissions.Select(p => new { p.Code, p.Scope })).ToListAsync(ct);
+            if (grants.Any(g => !me.Has(g.Code, g.Scope)))
+                return Error.Forbidden("users.roleTooStrong", "این نقش دسترسی‌هایی دارد که خودتان ندارید؛ فقط مالک می‌تواند آن را بدهد یا بگیرد.");
+        }
         var hadOwner = user.Roles.Any(r => r.RoleId == ownerRoleId);
         var wantsOwner = wanted.Contains(ownerRoleId);
         if (hadOwner != wantsOwner)
         {
-            if (!await PermissionLoader.IsOwnerAsync(db, me.UserId ?? Guid.Empty, ct))
+            if (!callerIsOwner)
                 return Error.Forbidden("users.ownerOnly", "فقط مالک می‌تواند نقش «مالک» را بدهد یا بگیرد.");
             if (hadOwner && !wantsOwner)
             {

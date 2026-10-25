@@ -74,3 +74,14 @@ public class MediaSniffTests
         Karnama.Infrastructure.Storage.LocalMediaStore.Sniff("<svg xmlns="u8).Should().BeNull();
     }
 }
+
+public class HistoryRedactionTests
+{
+    [Fact]
+    public void Sensitive_keys_are_masked_at_any_depth()
+    {
+        var json = """{"name":"a","phone":"0912","nested":{"apiKey":"k","ok":1},"list":[{"mobile":"0913"}]}""";
+        var r = Karnama.Application.History.HistoryService.Redact(json)!;
+        r.Should().NotContain("0912").And.NotContain("0913").And.NotContain("\"k\"").And.Contain("\"ok\":1").And.Contain("\"name\":\"a\"");
+    }
+}

@@ -105,7 +105,8 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     {
         var c = await db.Clients.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (c is null) return Error.NotFound("clients.notFound", "مشتری پیدا نشد.");
-        if (r.Version is { } v) db.SetOriginalVersion(c, v);
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        db.SetOriginalVersion(c, v);
         var check = await CheckPlatformsAsync(r, ct);
         if (check.IsFailure) return check.Error!;
         // Staff without clients.contact never see the number, so they can't overwrite it either.

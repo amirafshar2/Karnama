@@ -75,7 +75,8 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     {
         var role = await db.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role is null) return Error.NotFound("roles.notFound", "نقش پیدا نشد.");
-        if (request.Version is { } v) db.SetOriginalVersion(role, v);
+        if (request.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        db.SetOriginalVersion(role, v);
 
         var before = role.Permissions.Select(p => new GrantDto(p.Code, p.Scope)).ToList();
         var updated = role.Update(new LocalizedText(request.Name), request.Description, ToGrants(request));
