@@ -1,0 +1,12 @@
+**/bin
+**/obj
+**/node_modules
+**/.next
+**/.next-*
+src/karnama-web
+mobile
+tests
+storage
+.env
+*.log
+.git

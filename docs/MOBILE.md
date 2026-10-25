@@ -46,7 +46,26 @@
 - BSSID وای‌فای، NFC، کار پس‌زمینه و اعلان محلی زمان‌بندی‌شده در وب آیفون نیست → سیاست ورود برای کاربر آیفون باید روش‌های جایگزین (QR کیوسک، IP، سلفی) داشته باشد. ادمین در «سیاست ورود» می‌بیند کدام روش روی کدام شکل کار می‌کند.
 - در اتحادیه‌ی اروپا اپل در iOS 17.4 حذف PWA را اعلام و بعد پس گرفت؛ برای ایران اثری ندارد ولی در `docs/` ثبت است.
 
-## اندروید — قدم‌های M7 (و هر مرحله‌ای که قابلیت بومی لازم دارد)
+## اندروید — آنچه ساخته شد (M7)
+
+- **پروژه:** `mobile/` با Capacitor 8.5.3 (`mobile/capacitor.config.ts`، `appId` = `ir.karnama.app`؛ برای هر آژانس قابل تغییر با `KARNAMA_APP_ID` و `KARNAMA_APP_NAME`). وب اپ همان کد است: `next build` با `BUILD_TARGET=mobile` خروجی استاتیک در `src/karnama-web/out`.
+- **پلاگین‌ها (نسخه‌ی ثابت، بررسی‌شده):** Secure Storage (Keystore — توکن ورود)، Geolocation + **تشخیص مکان جعلی** (`@capgo/capacitor-mock-location-detector`)، **اسکنر QR گوشی** (ML Kit؛ اگر نبود، دوربین داخل صفحه)، App (دکمه‌ی برگشت)، Local Notifications (یادآوری زمان انتشار برای پیج‌های دست مشتری، حتی آفلاین)، Splash، Status Bar.
+- **آداپترها:** `src/karnama-web/src/lib/native.ts` — صفحه‌ها فقط این را صدا می‌زنند؛ در وب چیزی از Capacitor دانلود نمی‌شود.
+- **دانلود فایل:** با لینک امضاشده‌ی ۱۰ دقیقه‌ای (`POST /api/v1/files/{id}/link`) — در اپ به مدیر دانلود اندروید (با ادامه بعد از قطعی) و در وب مستقیم به دیسک، نه حافظه.
+- **آیکون و اسپلش:** `python tools/android_assets.py [حرف] [رنگ زمینه] [رنگ حرف]` از برند ساخته می‌شود (برای انتشار می‌توانید طرح کانوا را جایگزین کنید).
+- **امنیت (MASVS):** `allowBackup=false` و قوانین استخراج داده، فقط HTTPS و فقط CAهای سیستم (`network_security_config.xml`؛ HTTP فقط برای امولاتور 10.0.2.2)، اشکال‌زدایی WebView فقط با `KARNAMA_DEBUG=1`، امضای انتشار از `android/keystore.properties` (در گیت نیست)، مجوزها فقط دوربین، مکان لحظه‌ای و اعلان. جزئیات: `docs/security/2026-10-25-m7-review.md`.
+- **تست:** خروجی اپ در تست تصویری روی Pixel 7 و ۳۶۰px اجرا می‌شود (ورود، ماندن بعد از بارگذاری دوباره، صفحه‌های اصلی).
+
+### ساخت APK (روی کامپیوتر امیر با Android Studio)
+1. `build-android.cmd` را اجرا کنید (پیش‌فرض API = امولاتور روی همین کامپیوتر). برای سرور واقعی: `set KARNAMA_API=https://api.example.ir` و بعد اجرا.
+2. Android Studio باز می‌شود: Run برای امتحان؛ برای انتشار **Build → Generate Signed App Bundle / APK**.
+3. کلید امضا یک بار ساخته می‌شود و **هرگز گم نشود** (بدون آن به‌روزرسانی اپ ممکن نیست):
+   `keytool -genkeypair -v -keystore karnama-release.jks -keyalg RSA -keysize 4096 -validity 10000 -alias karnama`
+   بعد `mobile/android/keystore.properties` با `storeFile`، `storePassword`، `keyAlias`، `keyPassword` (این فایل و jks در گیت نیستند).
+4. در API باید `Cors__AllowedOrigins` شامل `https://localhost` باشد (مبدأ اپ).
+5. اسکن امنیتی APK با **MobSF** قبل از انتشار (`docker run -p 8000:8000 opensecurity/mobile-security-framework-mobsf` و آپلود APK).
+
+## اندروید — قدم‌های بعدی (هر مرحله‌ای که قابلیت بومی لازم دارد)
 1. `mobile/` با Capacitor 8.5، `webDir` = `src/karnama-web/out`، `minSdk 24`.
 2. پلاگین‌ها (هر کدام قبل از نصب بررسی امنیت و نسخه‌ی سازگار با Capacitor 8): Camera، Filesystem، Network، App، Local Notifications، Secure Storage (Keystore)، Splash، Share، Geolocation + mock-location-detector، Barcode (ML Kit)، NFC، Wi-Fi info (BSSID).
 3. `lib/native/*` آداپترها با تشخیص `Capacitor.isNativePlatform()`؛ صفحه‌ها فقط آداپتر را صدا می‌زنند.

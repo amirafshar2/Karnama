@@ -22,6 +22,7 @@ public sealed class FileOptions
 }
 
 public sealed record FileDto(Guid Id, string FileName, string ContentType, long Size, string? Kind, FilePurpose Purpose, bool ClientVisible, bool FromClient, Guid? WorkItemId, DateTimeOffset CreatedAt);
+public sealed record FileLinkDto(string Url, DateTimeOffset ExpiresAt);
 public sealed record StartUploadRequest(Guid OrderId, Guid? WorkItemId, FilePurpose Purpose, string FileName, string? ContentType, long Size);
 public sealed record UploadStatusDto(Guid Id, long Size, long Received, bool Complete, int ChunkSize);
 
@@ -29,7 +30,7 @@ public sealed record UploadStatusDto(Guid Id, long Size, long Received, bool Com
 /// Resumable uploads (tus-like: start → PATCH chunks at an offset → HEAD to resume) and checked downloads.
 /// The file type is decided from its first bytes, never from the name the client sent.
 /// </summary>
-public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore store, IOptions<FileOptions> options, TimeProvider clock, IAuditWriter audit, IChangeFeed changes, ICurrentUser me)
+public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore store, IOptions<FileOptions> options, TimeProvider clock, IAuditWriter audit, IChangeFeed changes, ICurrentUser me, ILinkSigner links)
 {
     private readonly FileOptions _o = options.Value;
 
@@ -109,6 +110,33 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
         var f = await db.Files.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.Status == FileStatus.Ready, ct);
         if (f is null) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
         if (!await CanReadAsync(f, ct)) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
+        return (f, store.OpenRead(f.StorageKey));
+    }
+
+    public static readonly TimeSpan LinkLifetime = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// A 10-minute download link for someone who may read the file: the browser (or Android's download manager) streams
+    /// it to disk with resume, instead of holding the whole video in memory. Bound to this file and this person.
+    /// </summary>
+    public async Task<Result<FileLinkDto>> LinkAsync(Guid id, CancellationToken ct)
+    {
+        var f = await db.Files.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.Status == FileStatus.Ready, ct);
+        if (f is null || !await CanReadAsync(f, ct)) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
+        var token = links.Sign($"{f.Id:N}|{access.Me:N}", LinkLifetime);
+        return new FileLinkDto($"/api/v1/files/dl/{token}", clock.GetUtcNow().Add(LinkLifetime));
+    }
+
+    /// <summary>Opens a file from a signed link (no session needed). The signer's user must still exist and be active.</summary>
+    public async Task<Result<(FileAsset File, Stream Content)>> OpenLinkAsync(string token, CancellationToken ct)
+    {
+        var payload = links.Verify(token);
+        var parts = payload?.Split('|');
+        if (parts is not { Length: 2 } || !Guid.TryParseExact(parts[0], "N", out var fileId) || !Guid.TryParseExact(parts[1], "N", out var userId))
+            return Error.NotFound("files.linkExpired", "این لینک منقضی شده است؛ دوباره از برنامه دانلود کنید.");
+        if (!await db.Users.AnyAsync(u => u.Id == userId && u.IsActive, ct)) return Error.NotFound("files.linkExpired", "این لینک منقضی شده است.");
+        var f = await db.Files.AsNoTracking().FirstOrDefaultAsync(x => x.Id == fileId && x.Status == FileStatus.Ready, ct);
+        if (f is null) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
         return (f, store.OpenRead(f.StorageKey));
     }
 

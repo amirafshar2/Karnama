@@ -1,6 +1,7 @@
 # secrets
 .env
 .env.*
+!deploy/.env.prod.example
 !.env.example
 *.keystore
 *.jks
@@ -44,3 +45,7 @@ docs/PROJECT_MAP.html
 .next-*/
 storage/
 dump.rdb
+
+# Server secrets
+deploy/.env.prod
+deploy/backups/

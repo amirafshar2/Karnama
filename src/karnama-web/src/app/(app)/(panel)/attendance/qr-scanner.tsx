@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n/provider";
+import { isNative, nativeScanQr } from "@/lib/native";
 
 type Detector = { detect: (s: CanvasImageSource) => Promise<{ rawValue: string }[]> };
 
@@ -18,6 +19,12 @@ export function QrScanner({ onCode }: { onCode: (code: string) => void }) {
     let stopped = false;
     let raf = 0;
     (async () => {
+      // Android app: the phone's own scanner first (faster, works in low light); in-page camera if it isn't available.
+      if (isNative) {
+        const code = await nativeScanQr();
+        if (stopped) return;
+        if (code) return onCode(code);
+      }
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
         if (!video.current || stopped) return;

@@ -34,7 +34,7 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         var shifts = await db.Shifts.AsNoTracking().Where(s => s.Day == today || s.Status == ShiftStatus.Open).ToListAsync(ct);
         var timers = await db.WorkTimers.AsNoTracking().Where(t => t.StoppedAt == null).ToListAsync(ct);
         var itemIds = timers.Select(t => t.WorkItemId).ToList();
-        var titles = await db.WorkItems.AsNoTracking().Where(w => itemIds.Contains(w.Id)).ToDictionaryAsync(w => w.Id, w => w.Title, ct);
+        var titles = await db.WorkItems.AsNoTracking().Where(w => itemIds.Contains(w.Id)).Select(w => new { w.Id, w.Title }).ToDictionaryAsync(w => w.Id, w => w.Title, ct);
         var schedules = await db.WorkSchedules.AsNoTracking().ToListAsync(ct);
         var fallback = schedules.FirstOrDefault(s => s.UserId == null);
         var holiday = await db.Holidays.AnyAsync(h => h.Date == today, ct);
@@ -65,7 +65,7 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         if (needsReviewOnly) q = q.Where(s => s.NeedsReview);
         var rows = await q.OrderByDescending(s => s.ClockInAt).Take(1000).ToListAsync(ct);
         var ids = rows.Select(r => r.UserId).Distinct().ToList();
-        var names = await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        var names = await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => ids.Contains(u.Id)).Select(u => new { u.Id, u.DisplayName }).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
         var now = clock.GetUtcNow();
         return rows.Select(s => AttendanceService.ToDto(s, names.GetValueOrDefault(s.UserId), now)).ToList();
     }
@@ -106,7 +106,7 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         if (pendingOnly) q = q.Where(c => c.Status == CorrectionStatus.Pending);
         var rows = await q.OrderByDescending(c => c.CreatedAt).Take(200).ToListAsync(ct);
         var ids = rows.Select(r => r.UserId).Distinct().ToList();
-        var names = await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        var names = await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => ids.Contains(u.Id)).Select(u => new { u.Id, u.DisplayName }).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
         return rows.Select(c => new CorrectionDto(c.Id, c.UserId, names.GetValueOrDefault(c.UserId) ?? "—", c.Day, c.ClockIn, c.ClockOut, c.Reason, c.Status, c.DecisionNote, c.CreatedAt)).ToList();
     }
 

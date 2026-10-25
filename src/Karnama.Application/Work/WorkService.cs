@@ -214,9 +214,10 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         var clientIds = items.Select(w => w.ClientId).Distinct().ToList();
         var userIds = items.Where(w => w.AssigneeId != null).Select(w => w.AssigneeId!.Value).Distinct().ToList();
         var serviceIds = items.Select(w => w.ServiceTypeId).Distinct().ToList();
-        var clients = await db.Clients.IgnoreQueryFilters().AsNoTracking().Where(c => clientIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.BusinessName, ct);
-        var users = await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
-        var services = await db.ServiceTypes.IgnoreQueryFilters().AsNoTracking().Where(s => serviceIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
+        // Projections only: the board is the busiest read, and whole rows carry big JSON (forms, accounts) it doesn't need.
+        var clients = await db.Clients.IgnoreQueryFilters().AsNoTracking().Where(c => clientIds.Contains(c.Id)).Select(c => new { c.Id, c.BusinessName }).ToDictionaryAsync(c => c.Id, c => c.BusinessName, ct);
+        var users = await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => userIds.Contains(u.Id)).Select(u => new { u.Id, u.DisplayName }).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        var services = await db.ServiceTypes.IgnoreQueryFilters().AsNoTracking().Where(s => serviceIds.Contains(s.Id)).Select(s => new { s.Id, s.Name }).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
         var comments = await db.WorkComments.AsNoTracking().Where(c => ids.Contains(c.WorkItemId)).GroupBy(c => c.WorkItemId)
             .Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(g => g.Key, g => g.N, ct);
         var files = await db.Files.AsNoTracking().Where(f => f.WorkItemId != null && ids.Contains(f.WorkItemId!.Value) && f.Status == Domain.Files.FileStatus.Ready)

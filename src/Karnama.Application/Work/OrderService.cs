@@ -65,7 +65,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
         var page = await Keyset.PageAsync(query, q, x => x, o => o.Id, ct);
         var ids = page.Items.Select(o => o.Id).ToList();
         var clientIds = page.Items.Select(o => o.ClientId).Distinct().ToList();
-        var clients = await db.Clients.IgnoreQueryFilters().AsNoTracking().Where(c => clientIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.BusinessName, ct);
+        var clients = await db.Clients.IgnoreQueryFilters().AsNoTracking().Where(c => clientIds.Contains(c.Id)).Select(c => new { c.Id, c.BusinessName }).ToDictionaryAsync(c => c.Id, c => c.BusinessName, ct);
         var stages = await db.WorkItems.AsNoTracking().Where(w => ids.Contains(w.OrderId) && w.Status != WorkStatus.Cancelled)
             .Select(w => new { w.OrderId, w.StageOrder, w.StageName, w.Status }).ToListAsync(ct);
         var byOrder = stages.GroupBy(s => s.OrderId).ToDictionary(g => g.Key, g => g.OrderBy(s => s.StageOrder).ToList());
@@ -247,7 +247,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
 
         var items = await db.WorkItems.AsNoTracking().Where(w => w.OrderId == o.Id).OrderBy(w => w.StageOrder).ToListAsync(ct);
         var userIds = items.Where(w => w.AssigneeId != null).Select(w => w.AssigneeId!.Value).Distinct().ToList();
-        var names = portal ? [] : await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        var names = portal ? [] : await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => userIds.Contains(u.Id)).Select(u => new { u.Id, u.DisplayName }).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
         // The portal never learns who works on what.
         var stages = items.Where(w => w.Status != WorkStatus.Cancelled).Select(w => new OrderStageDto(w.Id, w.StageOrder, w.StageName.Get(lang), w.Status,
             portal ? null : w.AssigneeId, portal ? null : (w.AssigneeId is { } a ? names.GetValueOrDefault(a) : null), w.Deadline)).ToList();

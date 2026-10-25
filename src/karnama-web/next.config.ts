@@ -39,7 +39,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Lets the visual test script build the demo and the empty install side by side.
-  distDir: process.env.NEXT_DIST_DIR || ".next",
+  // The app build exports static files to out/ (Capacitor webDir).
+  distDir: isMobile ? "out" : process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   output: isMobile ? "export" : undefined,
   // The public site (SSR, *.web.tsx) exists only on the web server; the app build gets the app (*.mobile.tsx for "/").

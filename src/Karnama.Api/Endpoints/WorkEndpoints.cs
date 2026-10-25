@@ -60,6 +60,18 @@ internal static class WorkEndpoints
             http.Response.Headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
             return Results.File(stream, type, canInline ? null : f.FileName, enableRangeProcessing: true);
         });
+        files.MapPost("/{id:guid}/link", async (Guid id, FileService svc, HttpContext http, CancellationToken ct) => (await svc.LinkAsync(id, ct)).ToHttp(http));
+        // Signed, 10-minute link: no Authorization header, so a plain <a href> or Android's download manager can stream it (with resume).
+        app.MapGet("/api/v1/files/dl/{token}", async (string token, FileService svc, HttpContext http, CancellationToken ct) =>
+        {
+            var r = await svc.OpenLinkAsync(token, ct);
+            if (r.IsFailure) return r.ToHttp(http);
+            var (f, stream) = r.Value;
+            http.Response.Headers.CacheControl = "private, no-store";
+            http.Response.Headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
+            http.Response.Headers["Referrer-Policy"] = "no-referrer";
+            return Results.File(stream, KindToMime(f.Kind), f.FileName, enableRangeProcessing: true);
+        }).WithTags("Files").AllowAnonymous();
         files.MapPost("/{id:guid}/share", async (Guid id, bool visible, FileService svc, HttpContext http, CancellationToken ct) => (await svc.ShareAsync(id, visible, ct)).ToHttp(http));
         files.MapDelete("/{id:guid}", async (Guid id, FileService svc, HttpContext http, CancellationToken ct) => (await svc.DeleteAsync(id, ct)).ToHttp(http));
 

@@ -1,0 +1,26 @@
+{
+  "name": "karnama-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Android shell (Capacitor) around the static build of src/karnama-web",
+  "scripts": {
+    "build:web": "npm --prefix ../src/karnama-web run build:mobile",
+    "sync": "cap sync android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor-mlkit/barcode-scanning": "8.2.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/geolocation": "8.2.3",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
+    "@capgo/capacitor-mock-location-detector": "8.0.8"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

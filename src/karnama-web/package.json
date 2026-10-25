@@ -12,6 +12,15 @@
     "size": "node ../../tools/bundle-size.mjs .next"
   },
   "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor-mlkit/barcode-scanning": "8.2.1",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/geolocation": "8.2.3",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
+    "@capgo/capacitor-mock-location-detector": "8.0.8",
     "@microsoft/signalr": "10.0.11",
     "@microsoft/signalr-protocol-msgpack": "10.0.11",
     "@tiptap/core": "3.31.4",

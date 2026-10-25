@@ -1,6 +1,7 @@
 "use client";
 
 import { api, ApiError } from "./api";
+import { isNative, nativeLocate } from "./native";
 
 export type Trust = "green" | "yellow" | "red";
 export type Shift = {
@@ -101,7 +102,9 @@ export async function flushQueue(): Promise<number> {
 export const queuedCount = () => readQueue().length;
 
 /** One reading of the location, only now (never tracking). */
-export function locate(): Promise<Evidence | null> {
+export async function locate(): Promise<Evidence | null> {
+  // Android app: the GPS plugin plus fake-location checks (the server flags "mock" readings for review).
+  if (isNative) return nativeLocate();
   return new Promise((resolve) => {
     if (!("geolocation" in navigator)) return resolve(null);
     // A permission prompt left unanswered must not hold the clock-in: give up after 8 s (the shift is then reviewed).

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, Download, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useErrorMessage } from "@/components/app/error-text";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -12,6 +12,7 @@ import { notify } from "@/lib/notify";
 import { useQuery, useQueryClient } from "@/lib/query";
 import { downloadFile } from "@/lib/upload";
 import { useLive } from "@/lib/use-live";
+import { scheduleReminders } from "@/lib/native";
 import { cn } from "@/lib/utils";
 import { statusTone, type PublishJob } from "@/components/publishing/types";
 
@@ -27,6 +28,13 @@ export function PortalPublishing() {
   useLive(["publish"], [KEY]);
   const [url, setUrl] = useState<Record<string, string>>({});
   const list = (jobs.data ?? []).filter((j) => j.management === "clientManaged");
+  // In the Android app the phone itself reminds at publish time, even offline (bots/SMS remind too).
+  useEffect(() => {
+    if (!jobs.data) return;
+    void scheduleReminders(
+      jobs.data.filter((j) => j.management === "clientManaged" && j.status === "scheduled").map((j) => ({ id: j.id, at: j.publishAt, title: t("portalPub.title"), body: `${j.platformName} @${j.handle}` })),
+    );
+  }, [jobs.data, t]);
   if (list.length === 0) return null;
 
   const copy = async (j: PublishJob) => {

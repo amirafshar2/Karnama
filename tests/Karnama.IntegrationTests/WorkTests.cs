@@ -171,6 +171,18 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         dl.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("cover.png");
         (await dl.Content.ReadAsByteArrayAsync()).Should().Equal(png);
 
+        // Signed 10-minute link: works without a session, supports Range (resume), refuses tampering; the editor can't link files they can't read.
+        var link = await Ok(await admin.PostAsync($"/api/v1/files/{fileId}/link", null));
+        var url = link.GetProperty("url").GetString()!;
+        var anon = _f.CreateClient();
+        var ranged = new HttpRequestMessage(HttpMethod.Get, url);
+        ranged.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(10, 19);
+        var part = await anon.SendAsync(ranged);
+        part.StatusCode.Should().Be(HttpStatusCode.PartialContent);
+        (await part.Content.ReadAsByteArrayAsync()).Should().Equal(png[10..20]);
+        (await anon.GetAsync(url[..^4] + "AAAA")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await (await As("writer")).PostAsync($"/api/v1/files/{fileId}/link", null)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
         // HTML pretending to be an image is refused and removed.
         var html = "<html><script>alert(1)</script></html>"u8.ToArray();
         var s2 = await Ok(await admin.PostAsJsonAsync("/api/v1/files", new { orderId, purpose = "attachment", fileName = "x.png", contentType = "image/png", size = html.Length }));

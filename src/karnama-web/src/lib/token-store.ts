@@ -1,8 +1,9 @@
 import { CLIENT_KIND } from "./config";
+import { secureGet, secureSet } from "./native";
 
 /**
  * Access token: memory only (never localStorage).
- * Refresh token: web = HttpOnly cookie handled by the browser; android = Keystore-backed secure storage (added in M7).
+ * Refresh token: web = HttpOnly cookie handled by the browser; android = Keystore-backed secure storage.
  */
 let accessToken: string | null = null;
 
@@ -15,13 +16,12 @@ export const tokenStore = {
   },
   async getRefresh(): Promise<string | null> {
     if (CLIENT_KIND === "web") return null;
-    return androidRefresh;
+    return secureGet(REFRESH_KEY);
   },
   async setRefresh(token: string | null) {
     if (CLIENT_KIND === "web") return;
-    // M7: replace with @capacitor-community/secure-storage (Android Keystore).
-    androidRefresh = token;
+    await secureSet(REFRESH_KEY, token);
   },
 };
 
-let androidRefresh: string | null = null;
+const REFRESH_KEY = "karnama.refresh";

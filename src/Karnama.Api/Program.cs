@@ -141,8 +141,13 @@ app.UseKarnamaSecurityHeaders();
 if (!app.Environment.IsDevelopment()) app.UseHsts();
 app.UseSerilogRequestLogging(o =>
 {
-    // Path only: query strings (e.g. hub access tokens) are never logged.
-    o.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0} ms";
+    // Path only: query strings (e.g. hub access tokens) are never logged, nor signed download tokens in the path.
+    o.MessageTemplate = "HTTP {RequestMethod} {SafePath} responded {StatusCode} in {Elapsed:0} ms";
+    o.EnrichDiagnosticContext = (diag, http) =>
+    {
+        var path = http.Request.Path.Value ?? "";
+        diag.Set("SafePath", path.StartsWith("/api/v1/files/dl/", StringComparison.Ordinal) ? "/api/v1/files/dl/***" : path);
+    };
 });
 app.UseResponseCompression();
 app.UseCors();

@@ -1,0 +1,103 @@
+# Production on one server in Iran (docs: deploy/README.md). Values come from deploy/.env.prod (never committed).
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod up -d --build
+name: karnama
+
+x-app-env: &app-env
+  ASPNETCORE_ENVIRONMENT: Production
+  ConnectionStrings__Default: "Host=postgres;Database=karnama;Username=karnama;Password=${POSTGRES_PASSWORD};Maximum Pool Size=60"
+  ConnectionStrings__Redis: "redis:6379"
+  Jwt__SigningKey: ${JWT_SIGNING_KEY}
+  Otp__HashKey: ${OTP_HASH_KEY}
+  Setup__Token: ${SETUP_TOKEN}
+  Seed__Mode: Empty
+  DemoLogin__Enabled: "false"
+  Database__AutoMigrate: "false"
+  Storage__LocalPath: /data/storage
+  Sms__Provider: ${SMS_PROVIDER}
+  Sms__ApiKey: ${SMS_API_KEY}
+  Sms__OtpTemplate: ${SMS_OTP_TEMPLATE}
+  Sms__LineNumber: ${SMS_LINE_NUMBER}
+  Cors__AllowedOrigins__0: https://${SITE_DOMAIN}
+  Cors__AllowedOrigins__1: https://localhost
+  ReverseProxy__KnownNetworks__0: 172.16.0.0/12
+  Notify__PublicBaseUrl: https://${SITE_DOMAIN}
+  Notify__BaleBotUsername: ${BALE_BOT_USERNAME}
+  Messengers__BaleToken: ${BALE_TOKEN}
+  Messengers__BaleWebhookSecret: ${BALE_WEBHOOK_SECRET}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: karnama
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in deploy/.env.prod}
+      POSTGRES_DB: karnama
+    volumes: [pgdata:/var/lib/postgresql/data, ./backups:/backups]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U karnama -d karnama"], interval: 5s, timeout: 3s, retries: 30 }
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 30 }
+
+  # Reviewed, idempotent SQL (deploy/migrations.sql) — never automatic migrations in production.
+  migrate:
+    image: postgres:16-alpine
+    depends_on: { postgres: { condition: service_healthy } }
+    environment: { PGPASSWORD: "${POSTGRES_PASSWORD}" }
+    volumes: [./migrations.sql:/migrations.sql:ro]
+    command: ["psql", "-h", "postgres", "-U", "karnama", "-d", "karnama", "-v", "ON_ERROR_STOP=1", "-f", "/migrations.sql"]
+    restart: "no"
+
+  api:
+    build: { context: .., dockerfile: src/Karnama.Api/Dockerfile }
+    restart: unless-stopped
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    environment: *app-env
+    volumes: [storage:/data/storage]
+    read_only: true
+    tmpfs: [/tmp]
+
+  worker:
+    build: { context: .., dockerfile: src/Karnama.Worker/Dockerfile }
+    restart: unless-stopped
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    environment: *app-env
+    volumes: [storage:/data/storage]
+    read_only: true
+    tmpfs: [/tmp]
+
+  web:
+    build:
+      context: ../src/karnama-web
+      args:
+        NEXT_PUBLIC_API_BASE: https://${API_DOMAIN}
+        NEXT_PUBLIC_HUB_BASE: https://${API_DOMAIN}
+        NEXT_PUBLIC_SITE_URL: https://${SITE_DOMAIN}
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_BASE: http://api:8080
+      NEXT_PUBLIC_SITE_URL: https://${SITE_DOMAIN}
+    depends_on: [api]
+
+  # TLS + HTTP/3 + compression in front of everything (certificates renew automatically).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, caddydata:/data]
+    depends_on: [web, api]
+
+volumes:
+  pgdata:
+  storage:
+  caddydata:

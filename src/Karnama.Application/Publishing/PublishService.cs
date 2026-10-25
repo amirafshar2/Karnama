@@ -181,10 +181,10 @@ public sealed class PublishService(IAppDbContext db, ICurrentUser me, WorkAccess
     {
         var lang = me.LanguageCode;
         var clientIds = rows.Select(r => r.ClientId).Distinct().ToList();
-        var clients = await db.Clients.IgnoreQueryFilters().AsNoTracking().Where(c => clientIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.BusinessName, ct);
+        var clients = await db.Clients.IgnoreQueryFilters().AsNoTracking().Where(c => clientIds.Contains(c.Id)).Select(c => new { c.Id, c.BusinessName }).ToDictionaryAsync(c => c.Id, c => c.BusinessName, ct);
         var platforms = await db.Platforms.IgnoreQueryFilters().AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Name.Get(lang), ct);
         var orderIds = rows.Where(r => r.OrderId != null).Select(r => r.OrderId!.Value).Distinct().ToList();
-        var numbers = await db.Orders.AsNoTracking().Where(o => orderIds.Contains(o.Id)).ToDictionaryAsync(o => o.Id, o => o.Number, ct);
+        var numbers = await db.Orders.AsNoTracking().Where(o => orderIds.Contains(o.Id)).Select(o => new { o.Id, o.Number }).ToDictionaryAsync(o => o.Id, o => o.Number, ct);
         var fileIds = rows.SelectMany(r => r.FileIds).Distinct().ToList();
         var portal = await access.PortalClientIdAsync(ct) is not null;
         var files = await db.Files.AsNoTracking().Where(f => fileIds.Contains(f.Id) && f.Status == Domain.Files.FileStatus.Ready).ToDictionaryAsync(f => f.Id, ct);

@@ -327,7 +327,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
     private async Task<Dictionary<Guid, string>> NamesAsync(IEnumerable<Guid> ids, CancellationToken ct)
     {
         var list = ids.Distinct().ToList();
-        return await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => list.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        return await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => list.Contains(u.Id)).Select(u => new { u.Id, u.DisplayName }).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
     }
 
     private async Task<IReadOnlyList<LeaveRequestDto>> DtosAsync(IReadOnlyList<LeaveRequest> rows, CancellationToken ct)

@@ -2,6 +2,7 @@
 
 import { api, refreshSession } from "./api";
 import { API_BASE } from "./config";
+import { isNative, openOutside } from "./native";
 import { tokenStore } from "./token-store";
 
 export type UploadTarget = { orderId: string; workItemId?: string | null; purpose: "brief" | "deliverable" | "attachment" };
@@ -92,15 +93,19 @@ export async function uploadFile(file: File, target: UploadTarget, onProgress: (
 }
 
 /** Downloads a private file with the session token (links can't carry it). */
+/**
+ * Downloads through a 10-minute signed link: the browser (or Android's download manager) streams the file to disk and
+ * can resume — a 2 GB video never sits in memory.
+ */
 export async function downloadFile(id: string, name: string) {
-  const get = () => fetch(`${API_BASE}/api/v1/files/${id}`, { credentials: "include", headers: tokenStore.access ? { Authorization: `Bearer ${tokenStore.access}` } : undefined });
-  let res = await get();
-  if (res.status === 401 && (await refreshSession())) res = await get();
-  if (!res.ok) throw new Error("download failed");
-  const url = URL.createObjectURL(await res.blob());
+  const { url } = await api<{ url: string }>(`/api/v1/files/${id}/link`, { method: "POST" });
+  const full = `${API_BASE}${url}`;
+  if (isNative) return openOutside(full);
   const a = document.createElement("a");
-  a.href = url;
+  a.href = full;
   a.download = name;
+  a.rel = "noopener";
+  document.body.appendChild(a);
   a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  a.remove();
 }
