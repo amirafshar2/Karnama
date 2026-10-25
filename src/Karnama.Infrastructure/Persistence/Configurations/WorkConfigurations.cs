@@ -61,7 +61,6 @@ internal sealed class FileAssetConfiguration : IEntityTypeConfiguration<FileAsse
         b.Property(x => x.Kind).HasMaxLength(20);
         b.HasIndex(x => x.OrderId);
         b.HasIndex(x => x.WorkItemId);
-        b.HasQueryFilter(x => !x.IsDeleted);
     }
 }
 
@@ -164,5 +163,56 @@ internal sealed class PublishJobConfiguration : IEntityTypeConfiguration<Karnama
         b.Property(x => x.Version).IsRowVersion();
         b.HasIndex(x => new { x.Status, x.PublishAt });
         b.HasIndex(x => new { x.ClientId, x.PublishAt });
+    }
+}
+
+internal sealed class BlogPostConfiguration : IEntityTypeConfiguration<Karnama.Domain.Content.BlogPost>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Content.BlogPost> b)
+    {
+        b.ToTable("blog_posts");
+        b.Property(x => x.Title).HasMaxLength(150).IsRequired();
+        b.Property(x => x.Slug).HasMaxLength(100).IsRequired();
+        b.Property(x => x.ContentJson).HasColumnType("text").IsRequired();
+        b.Property(x => x.ContentHtml).HasColumnType("text").IsRequired();
+        b.Property(x => x.ContentMarkdown).HasColumnType("text").IsRequired();
+        b.Property(x => x.PlainText).HasColumnType("text").IsRequired();
+        b.Property(x => x.CoverImage).HasMaxLength(100);
+        b.Property(x => x.CoverAlt).HasMaxLength(200);
+        b.Property(x => x.SeoTitle).HasMaxLength(80).IsRequired();
+        b.Property(x => x.MetaDescription).HasMaxLength(200).IsRequired();
+        b.Property(x => x.FocusKeyword).HasMaxLength(80).IsRequired();
+        b.Property(x => x.Tags).AsJson();
+        b.Property(x => x.Toc).AsJson();
+        b.Property(x => x.SeoChecks).AsJson();
+        b.Property(x => x.Faq).AsJson();
+        b.Property(x => x.Version).IsRowVersion();
+        // Slugs are unique among everything that isn't archived (an archived post frees its URL).
+        b.HasIndex(x => x.Slug).IsUnique().HasFilter("\"IsDeleted\" = false");
+        b.HasIndex(x => new { x.Status, x.PublishedAt });
+        b.HasIndex(x => x.AuthorId);
+    }
+}
+
+internal sealed class BlogCategoryConfiguration : IEntityTypeConfiguration<Karnama.Domain.Content.BlogCategory>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Content.BlogCategory> b)
+    {
+        b.ToTable("blog_categories");
+        b.Property(x => x.Name).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Slug).HasMaxLength(70).IsRequired();
+        b.Property(x => x.Description).HasMaxLength(300);
+        b.HasIndex(x => x.Slug).IsUnique();
+    }
+}
+
+internal sealed class BlogSlugRedirectConfiguration : IEntityTypeConfiguration<Karnama.Domain.Content.BlogSlugRedirect>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Content.BlogSlugRedirect> b)
+    {
+        b.ToTable("blog_slug_redirects");
+        b.HasKey(x => x.OldSlug);
+        b.Property(x => x.OldSlug).HasMaxLength(100);
+        b.HasIndex(x => x.PostId);
     }
 }

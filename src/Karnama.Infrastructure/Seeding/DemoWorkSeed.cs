@@ -76,12 +76,13 @@ internal static class DemoWorkSeed
         }
         await db.SaveChangesAsync(ct);
         await SeedLeaveAsync(db, users.Select(u => (u.Id, u.DisplayName)).ToList(), now, ct);
-        await SeedPublishingAsync(db, now, ct);
     }
 
     /// <summary>A week of sample posts on the calendar; one of the café's own channel posts is due now (portal reminder).</summary>
-    private static async Task SeedPublishingAsync(AppDbContext db, DateTimeOffset now, CancellationToken ct)
+    public static async Task SeedPublishingAsync(AppDbContext db, CancellationToken ct)
     {
+        if (await db.PublishJobs.AnyAsync(ct)) return;
+        var now = DateTimeOffset.UtcNow;
         var clients = await db.Clients.AsNoTracking().ToListAsync(ct);
         var today = Karnama.Application.Attendance.Iran.Today(now);
         (string Client, int Day, int Hour, string Caption, string[] Tags, bool Own)[] rows =
@@ -98,7 +99,8 @@ internal static class DemoWorkSeed
         {
             var client = clients.FirstOrDefault(c => c.BusinessName == r.Client);
             if (client is null) continue;
-            var account = r.Own ? client.Accounts.First(a => a.Management == PageManagement.ClientManaged) : client.Accounts.First();
+            var account = r.Own ? client.Accounts.FirstOrDefault(a => a.Management == PageManagement.ClientManaged) : client.Accounts.FirstOrDefault();
+            if (account is null) continue;
             // Hour -1 = 20 minutes ago (already due).
             var at = r.Hour < 0 ? now.AddMinutes(-20) : Karnama.Application.Attendance.Iran.At(today.AddDays(r.Day), new TimeOnly(r.Hour, 0));
             var job = Karnama.Domain.Publishing.PublishJob.Create(client.Id, null, account.PlatformId, account.Handle, account.Management, at, r.Caption, r.Tags, [], at.AddHours(-1)).Value!;

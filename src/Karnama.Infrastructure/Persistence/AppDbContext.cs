@@ -63,6 +63,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Karnama.Domain.Notify.MessengerLinkCode> MessengerLinkCodes => Set<Karnama.Domain.Notify.MessengerLinkCode>();
     public DbSet<Karnama.Domain.Notify.BotUpdate> BotUpdates => Set<Karnama.Domain.Notify.BotUpdate>();
     public DbSet<Karnama.Domain.Publishing.PublishJob> PublishJobs => Set<Karnama.Domain.Publishing.PublishJob>();
+    public DbSet<Karnama.Domain.Content.BlogPost> BlogPosts => Set<Karnama.Domain.Content.BlogPost>();
+    public DbSet<Karnama.Domain.Content.BlogCategory> BlogCategories => Set<Karnama.Domain.Content.BlogCategory>();
+    public DbSet<Karnama.Domain.Content.BlogSlugRedirect> BlogSlugRedirects => Set<Karnama.Domain.Content.BlogSlugRedirect>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     /// <summary>

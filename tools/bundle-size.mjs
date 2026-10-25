@@ -5,12 +5,13 @@ import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
 const dir = process.argv[2] ?? "src/karnama-web/.next";
-const BUDGETS = { login: 200 * 1024, setup: 200 * 1024 };
+// The public site (index = home page) is server-rendered: only the Next/React runtime itself (no app code).
+const BUDGETS = { login: 200 * 1024, setup: 200 * 1024, index: 140 * 1024 };
 const PANEL_BUDGET = 180 * 1024;
 const appDir = join(dir, "server", "app");
 let failed = false;
 
-for (const page of ["login", "dashboard", "roles", "profile", "setup", "settings/brand", "settings/texts", "users", "clients", "packages", "services", "settings/platforms", "work", "orders", "attendance", "attendance/live", "attendance/setup", "attendance/kiosk", "attendance/calendar", "attendance/report"]) {
+for (const page of ["login", "dashboard", "roles", "profile", "setup", "settings/brand", "settings/texts", "users", "clients", "packages", "services", "settings/platforms", "work", "orders", "attendance", "attendance/live", "attendance/setup", "attendance/kiosk", "attendance/calendar", "attendance/report", "publishing", "content/blog", "content/blog/edit", "index"]) {
   const htmlFile = join(appDir, `${page}.html`);
   if (!existsSync(htmlFile)) continue;
   const html = readFileSync(htmlFile, "utf8");

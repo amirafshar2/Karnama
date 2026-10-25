@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { themeInitScript } from "@/lib/theme";
-import { Providers } from "./providers";
 import "./globals.css";
 
 // Self-hosted (no Google Fonts: may be unreachable in Iran). One variable file covers 100–900.
@@ -45,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full font-sans">
-        <Providers>{children}</Providers>
+        {children}
       </body>
     </html>
   );

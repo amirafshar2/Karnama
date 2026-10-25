@@ -163,6 +163,7 @@ app.MapAttendance();
 app.MapPortal();
 app.MapLeave();
 app.MapNotify();
+app.MapBlog();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

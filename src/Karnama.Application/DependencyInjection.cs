@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<Notify.BotUpdateService>();
         services.AddScoped<Notify.PackageExpiryJob>();
         services.AddScoped<Publishing.PublishService>();
+        services.AddScoped<Blog.BlogService>();
         return services;
     }
 }

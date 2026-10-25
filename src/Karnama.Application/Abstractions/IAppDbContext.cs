@@ -54,6 +54,9 @@ public interface IAppDbContext
     DbSet<Karnama.Domain.Notify.MessengerLink> MessengerLinks { get; }
     DbSet<Karnama.Domain.Notify.MessengerLinkCode> MessengerLinkCodes { get; }
     DbSet<Karnama.Domain.Publishing.PublishJob> PublishJobs { get; }
+    DbSet<Karnama.Domain.Content.BlogPost> BlogPosts { get; }
+    DbSet<Karnama.Domain.Content.BlogCategory> BlogCategories { get; }
+    DbSet<Karnama.Domain.Content.BlogSlugRedirect> BlogSlugRedirects { get; }
 
     /// <summary>For the few statements EF can't express (e.g. INSERT … ON CONFLICT DO NOTHING).</summary>
     Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }

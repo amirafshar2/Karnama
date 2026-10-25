@@ -46,6 +46,7 @@ export const faCore = {
   "nav.attSetup": "تنظیم حضور",
   "nav.kiosk": "QR دفتر",
   "nav.publishing": "تقویم انتشار",
+  "nav.blog": "بلاگ",
   "bell.open": "اعلان‌ها",
   "bell.unread": "{count} اعلان خوانده‌نشده",
   "nav.clients": "مشتری‌ها",
@@ -59,8 +60,8 @@ export const faCore = {
 
 
   "notFound.title": "این صفحه پیدا نشد",
-  "notFound.body": "آدرس را بررسی کنید یا به داشبورد برگردید.",
-  "notFound.home": "رفتن به داشبورد",
+  "notFound.body": "آدرس را بررسی کنید یا به صفحه‌ی اصلی برگردید.",
+  "notFound.home": "رفتن به صفحه‌ی اصلی",
 
   "pwa.iosTitle": "کارنما را مثل یک اپ روی آیفون نصب کنید",
   "pwa.iosStep1": "در سافاری دکمه‌ی اشتراک‌گذاری",

@@ -42,10 +42,18 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   output: isMobile ? "export" : undefined,
+  // The public site (SSR, *.web.tsx) exists only on the web server; the app build gets the app (*.mobile.tsx for "/").
+  pageExtensions: isMobile ? ["mobile.tsx", "mobile.ts", "tsx", "ts"] : ["web.tsx", "web.ts", "tsx", "ts"],
   trailingSlash: isMobile,
   images: { unoptimized: isMobile },
   // Headers apply to the web server build (static export inside the app has no server).
-  ...(isMobile ? {} : { headers: async () => [{ source: "/:path*", headers: securityHeaders }] }),
+  ...(isMobile
+    ? {}
+    : {
+        headers: async () => [{ source: "/:path*", headers: securityHeaders }],
+        // Blog and brand images live on the API; the site serves them from its own origin (same-origin, cacheable).
+        rewrites: async () => [{ source: "/media/public/:path*", destination: `${api}/media/public/:path*` }],
+      }),
   turbopack: {
     rules: {
       "*.css": {

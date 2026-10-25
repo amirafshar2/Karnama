@@ -38,8 +38,14 @@
     ".next-demo/types/**/*.ts",
     ".next-demo/dev/types/**/*.ts",
     ".next-empty/types/**/*.ts",
-    ".next-empty/dev/types/**/*.ts"
+    ".next-empty/dev/types/**/*.ts",
+    ".next-test/types/**/*.ts",
+    ".next-test/dev/types/**/*.ts",
+    ".next-size/types/**/*.ts",
+    ".next-size/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules", "scripts"]
+    "node_modules",
+    "scripts"
+  ]
 }

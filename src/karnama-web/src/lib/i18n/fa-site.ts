@@ -1,0 +1,28 @@
+/** Public website texts (server-rendered). Editable in Settings › Texts like every other text. */
+export const faSite = {
+  "site.nav.home": "صفحه‌ی اصلی",
+  "site.nav.blog": "بلاگ",
+  "site.nav.login": "ورود به پنل",
+  "site.skip": "رفتن به محتوا",
+  "site.menu": "منوی سایت",
+  "site.footerMenu": "پیوندهای پایین صفحه",
+
+  "site.blog.title": "بلاگ",
+  "site.blog.description": "نکته‌های کاربردی مدیریت پیج، تولید محتوا و تبلیغات برای کسب‌وکارها.",
+  "site.blog.all": "همه",
+  "site.blog.empty": "هنوز مطلبی منتشر نشده است.",
+  "site.blog.readMore": "خواندن مطلب",
+  "site.blog.minutes": "{n} دقیقه مطالعه",
+  "site.blog.by": "نوشته‌ی {name}",
+  "site.blog.updated": "به‌روزرسانی: {date}",
+  "site.blog.toc": "فهرست مطالب",
+  "site.blog.related": "مطالب مرتبط",
+  "site.blog.share": "اشتراک‌گذاری",
+  "site.blog.shareTelegram": "تلگرام",
+  "site.blog.shareWhatsapp": "واتساپ",
+  "site.blog.tags": "برچسب‌ها",
+  "site.blog.page": "صفحه‌ی {n}",
+  "site.blog.prev": "صفحه‌ی قبل",
+  "site.blog.next": "صفحه‌ی بعد",
+  "site.blog.breadcrumb": "مسیر صفحه",
+} as const;

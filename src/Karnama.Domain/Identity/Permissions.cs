@@ -57,6 +57,9 @@ public static class Permissions
     public const string UsersManage = "users.manage";
     public const string RolesManage = "roles.manage";
 
+    public const string BlogWrite = "blog.write";
+    public const string BlogPublish = "blog.publish";
+
     public const string CampaignsManage = "campaigns.manage";
     public const string InfluencersManage = "influencers.manage";
 
@@ -103,6 +106,9 @@ public static class Permissions
 
         new(UsersManage, "users", AllOnly),
         new(RolesManage, "users", AllOnly),
+
+        new(BlogWrite, "blog", OwnOrAll),
+        new(BlogPublish, "blog", AllOnly),
 
         new(CampaignsManage, "campaigns", AllOnly),
         new(InfluencersManage, "campaigns", AllOnly),

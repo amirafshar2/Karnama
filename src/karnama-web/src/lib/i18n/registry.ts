@@ -1,16 +1,18 @@
-import { faAccess } from "./fa-access";
-import { faCrud } from "./fa-crud";
-import { faM2 } from "./fa-m2";
-import { faM2Forms } from "./fa-m2-forms";
-import { faM3 } from "./fa-m3";
-import { faM4 } from "./fa-m4";
-import { faPortal } from "./fa-portal";
-import { faM5 } from "./fa-m5";
-import { faM6 } from "./fa-m6";
+import type { faAccess } from "./fa-access";
+import type { faCrud } from "./fa-crud";
+import type { faM2 } from "./fa-m2";
+import type { faM2Forms } from "./fa-m2-forms";
+import type { faM3 } from "./fa-m3";
+import type { faM4 } from "./fa-m4";
+import type { faPortal } from "./fa-portal";
+import type { faM5 } from "./fa-m5";
+import type { faM6 } from "./fa-m6";
+import type { faSite } from "./fa-site";
+import type { faBlog } from "./fa-blog";
 import { faCore } from "./fa";
-import { faAuth, faDashboard, faProfile } from "./fa-pages";
-import { faRoles } from "./fa-roles";
-import { faSettings } from "./fa-settings";
+import type { faAuth, faDashboard, faProfile } from "./fa-pages";
+import type { faRoles } from "./fa-roles";
+import type { faSettings } from "./fa-settings";
 
 /** Every text key in the product (type only — module dictionaries are loaded by the pages that use them). */
 export type TextKey =
@@ -28,7 +30,9 @@ export type TextKey =
   | keyof typeof faM4
   | keyof typeof faPortal
   | keyof typeof faM5
-  | keyof typeof faM6;
+  | keyof typeof faM6
+  | keyof typeof faSite
+  | keyof typeof faBlog;
 export type Dictionary = Record<TextKey, string>;
 
 const registered: Partial<Dictionary> = { ...faCore };

@@ -14,6 +14,7 @@ export const faAccess = {
   "permGroup.settings": "تنظیمات",
   "permGroup.users": "کاربران و نقش‌ها",
   "permGroup.campaigns": "تبلیغات",
+  "permGroup.blog": "بلاگ",
   "perm.work.view": "دیدن کارها",
   "perm.work.create": "ساختن کار",
   "perm.work.assign": "سپردن کار به افراد",
@@ -44,5 +45,7 @@ export const faAccess = {
   "perm.users.manage": "مدیریت کاربران",
   "perm.roles.manage": "مدیریت نقش‌ها",
   "perm.campaigns.manage": "مدیریت کمپین‌ها",
+  "perm.blog.write": "نوشتن مطلب بلاگ",
+  "perm.blog.publish": "بازبینی و انتشار مطالب بلاگ",
   "perm.influencers.manage": "مدیریت اینفلوئنسرها",
 } as const;

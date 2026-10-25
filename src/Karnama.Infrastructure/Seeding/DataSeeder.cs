@@ -32,6 +32,9 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             await db.SaveChangesAsync(ct);
             await DemoCatalogSeed.SeedAsync(db, ct);
             await DemoWorkSeed.SeedAsync(db, ct);
+            await DemoWorkSeed.SeedPublishingAsync(db, ct);
+            await DemoBlogSeed.SeedAsync(db, ct);
+            await SyncDemoAdminAsync(ct);
         }
         logger.LogInformation("Seed completed (mode: {Mode})", options.Value.Mode);
     }
@@ -100,7 +103,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             new(Permissions.ReportsView, PermissionScope.Own),
         ];
         var editorRole = Role.Create(Name("تدوینگر", "Video editor"), "تدوین ریلز و ویدیو", worker).Value;
-        var writerRole = Role.Create(Name("عکاس و متن‌نویس", "Photographer & copywriter"), "عکاسی، کپشن و متن", worker).Value;
+        var writerRole = Role.Create(Name("عکاس و متن‌نویس", "Photographer & copywriter"), "عکاسی، کپشن و متن", [.. worker, new(Permissions.BlogWrite, PermissionScope.Own)]).Value;
         var aiRole = Role.Create(Name("کار با هوش مصنوعی", "AI specialist"), "تولید محتوا با ابزارهای هوش مصنوعی", worker).Value;
         db.Roles.AddRange(manager, editorRole, writerRole, aiRole);
 
@@ -117,6 +120,17 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         AddUser("09000000005", "رضا (تدوینگر دوم نمونه)", UserKind.Staff, editorRole.Id);
         AddUser("09000000006", "نگار (هوش مصنوعی نمونه)", UserKind.Staff, aiRole.Id);
         AddUser("09000000007", "محمد (مدیر نمونه)", UserKind.Staff, manager.Id);
+    }
+
+    /// <summary>The demo admin shows everything, so it follows the catalog as new modules add permissions.</summary>
+    private async Task SyncDemoAdminAsync(CancellationToken ct)
+    {
+        var phone = DemoAccounts.Find("admin")!.Phone;
+        var roleId = await db.Users.Where(u => u.Phone == phone && u.IsDemo).SelectMany(u => u.Roles.Select(r => r.RoleId)).FirstOrDefaultAsync(ct);
+        var role = await db.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == roleId && r.SystemKey == null, ct);
+        if (role is null || role.Permissions.Count == Permissions.Catalog.Count) return;
+        role.Update(role.Name, role.Description, Permissions.Catalog.Select(p => new PermissionGrant(p.Code, p.MaxScope)));
+        await db.SaveChangesAsync(ct);
     }
 
     private void AddUser(string phone, string name, UserKind kind, Guid roleId)

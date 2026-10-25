@@ -1,4 +1,4 @@
-import { BarChart3, CalendarClock, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, CalendarClock, Newspaper, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
 import type { TextKey } from "@/lib/i18n/registry";
 import { hasPermission, type Me, type Scope } from "@/lib/types";
 
@@ -20,6 +20,7 @@ export const NAV: NavItem[] = [
   { href: "/attendance/calendar", label: "nav.calendar", icon: CalendarDays, anyOf: [{ code: "attendance.self", scope: "own" }] },
   { href: "/attendance/live", label: "nav.live", icon: UsersRound, anyOf: [{ code: "attendance.view", scope: "all" }] },
   { href: "/attendance/report", label: "nav.attReport", icon: BarChart3, anyOf: [{ code: "attendance.view", scope: "all" }] },
+  { href: "/content/blog", label: "nav.blog", icon: Newspaper, anyOf: [{ code: "blog.write", scope: "own" }, { code: "blog.publish", scope: "all" }] },
   { href: "/clients", label: "nav.clients", icon: Briefcase, anyOf: [{ code: "clients.view", scope: "assigned" }] },
   { href: "/packages", label: "nav.packages", icon: Package, anyOf: [{ code: "packages.view", scope: "all" }] },
   { href: "/users", label: "nav.users", icon: Users, anyOf: [{ code: "users.manage", scope: "all" }] },
