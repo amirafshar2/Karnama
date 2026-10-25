@@ -216,3 +216,34 @@ internal sealed class BlogSlugRedirectConfiguration : IEntityTypeConfiguration<K
         b.HasIndex(x => x.PostId);
     }
 }
+
+internal sealed class CaseStudyConfiguration : IEntityTypeConfiguration<Karnama.Domain.Content.CaseStudy>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Content.CaseStudy> b)
+    {
+        b.ToTable("case_studies");
+        b.Property(x => x.BusinessName).HasMaxLength(80).IsRequired();
+        b.Property(x => x.Slug).HasMaxLength(80).IsRequired();
+        b.Property(x => x.Services).AsJson();
+        b.Property(x => x.Metrics).AsJson();
+        b.Property(x => x.Shots).AsJson();
+        b.Property(x => x.Version).IsRowVersion();
+        b.Ignore(x => x.FollowerGrowth);
+        b.Ignore(x => x.RevenueGrowth);
+        b.Ignore(x => x.CanPublish);
+        b.HasIndex(x => x.Slug).IsUnique().HasFilter("\"IsDeleted\" = false");
+    }
+}
+
+internal sealed class LeadConfiguration : IEntityTypeConfiguration<Karnama.Domain.Crm.Lead>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Crm.Lead> b)
+    {
+        b.ToTable("leads");
+        b.Property(x => x.Name).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Phone).HasMaxLength(20).IsRequired();
+        b.Property(x => x.Version).IsRowVersion();
+        b.HasIndex(x => new { x.Phone, x.CreatedAt });
+        b.HasIndex(x => x.Status);
+    }
+}

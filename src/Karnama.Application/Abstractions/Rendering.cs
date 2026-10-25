@@ -12,3 +12,9 @@ public interface IExcelExporter
 {
     byte[] Export(string sheetName, IReadOnlyList<string> headers, IEnumerable<IReadOnlyList<object?>> rows);
 }
+
+/// <summary>Drops the API's short cache of public site reads after content changes (so a fix shows up at once).</summary>
+public interface IPublicCache
+{
+    Task EvictAsync(CancellationToken ct);
+}

@@ -22,7 +22,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
         Directory.CreateDirectory(_root);
     }
 
-    [GeneratedRegex("^(brand|packages|blog)/[0-9a-f]{32}\\.(png|jpg|webp)$")]
+    [GeneratedRegex("^(brand|packages|blog|cases)/[0-9a-f]{32}\\.(png|jpg|webp)$")]
     private static partial Regex IdPattern();
 
     public async Task<Result<string>> SaveImageAsync(Stream content, long length, string folder, CancellationToken ct)
@@ -56,6 +56,18 @@ internal sealed partial class LocalMediaStore : IMediaStore
     public (Stream Stream, string ContentType)? OpenPublic(string id)
     {
         if (!IdPattern().IsMatch(id)) return null;
+        var path = Path.GetFullPath(Path.Combine(_root, id));
+        if (!path.StartsWith(_root, StringComparison.Ordinal) || !File.Exists(path)) return null;
+        var type = Path.GetExtension(path) switch { ".png" => "image/png", ".jpg" => "image/jpeg", _ => "image/webp" };
+        return (File.OpenRead(path), type);
+    }
+
+    [GeneratedRegex("^consent/[0-9a-f]{32}\\.(png|jpg|webp)$")]
+    private static partial Regex PrivateIdPattern();
+
+    public (Stream Stream, string ContentType)? OpenPrivate(string id)
+    {
+        if (!PrivateIdPattern().IsMatch(id)) return null;
         var path = Path.GetFullPath(Path.Combine(_root, id));
         if (!path.StartsWith(_root, StringComparison.Ordinal) || !File.Exists(path)) return null;
         var type = Path.GetExtension(path) switch { ".png" => "image/png", ".jpg" => "image/jpeg", _ => "image/webp" };

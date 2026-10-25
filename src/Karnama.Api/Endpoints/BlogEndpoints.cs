@@ -36,7 +36,8 @@ internal static class BlogEndpoints
         blog.MapDelete("/categories/{id:guid}", async (Guid id, BlogService svc, HttpContext http, CancellationToken ct) => (await svc.DeleteCategoryAsync(id, ct)).ToHttp(http));
 
         // ---- Public (anonymous, server-rendered site reads these) ----
-        var pub = app.MapGroup("/api/v1/public/blog").WithTags("Public").AllowAnonymous();
+        // Cached briefly and evicted on every change (the Next server is the main reader, from one address).
+        var pub = app.MapGroup("/api/v1/public/blog").WithTags("Public").AllowAnonymous().CacheOutput(PublicCache.Policy).DisableRateLimiting();
         pub.MapGet("/", async (int? page, string? category, string? tag, BlogService svc, CancellationToken ct) =>
             Results.Ok(await svc.PublicListAsync(page ?? 1, category, tag, ct)));
         pub.MapGet("/posts/{slug}", async (string slug, BlogService svc, CancellationToken ct) =>

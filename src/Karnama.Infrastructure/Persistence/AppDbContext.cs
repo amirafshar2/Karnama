@@ -66,6 +66,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Karnama.Domain.Content.BlogPost> BlogPosts => Set<Karnama.Domain.Content.BlogPost>();
     public DbSet<Karnama.Domain.Content.BlogCategory> BlogCategories => Set<Karnama.Domain.Content.BlogCategory>();
     public DbSet<Karnama.Domain.Content.BlogSlugRedirect> BlogSlugRedirects => Set<Karnama.Domain.Content.BlogSlugRedirect>();
+    public DbSet<Karnama.Domain.Content.CaseStudy> CaseStudies => Set<Karnama.Domain.Content.CaseStudy>();
+    public DbSet<Karnama.Domain.Crm.Lead> Leads => Set<Karnama.Domain.Crm.Lead>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     /// <summary>

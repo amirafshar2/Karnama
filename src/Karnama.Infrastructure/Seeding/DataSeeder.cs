@@ -34,6 +34,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             await DemoWorkSeed.SeedAsync(db, ct);
             await DemoWorkSeed.SeedPublishingAsync(db, ct);
             await DemoBlogSeed.SeedAsync(db, ct);
+            await DemoSiteSeed.SeedAsync(db, ct);
             await SyncDemoAdminAsync(ct);
         }
         logger.LogInformation("Seed completed (mode: {Mode})", options.Value.Mode);

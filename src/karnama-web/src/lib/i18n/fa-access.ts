@@ -47,5 +47,6 @@ export const faAccess = {
   "perm.campaigns.manage": "مدیریت کمپین‌ها",
   "perm.blog.write": "نوشتن مطلب بلاگ",
   "perm.blog.publish": "بازبینی و انتشار مطالب بلاگ",
+  "perm.leads.manage": "دیدن و پیگیری درخواست‌های مشاوره",
   "perm.influencers.manage": "مدیریت اینفلوئنسرها",
 } as const;

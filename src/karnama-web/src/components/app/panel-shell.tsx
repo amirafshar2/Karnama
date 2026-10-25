@@ -104,7 +104,7 @@ function BottomNav({ items, isActive }: { items: ReturnType<typeof navFor>; isAc
   return (
     <nav aria-label={t("nav.main")} className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t bg-card/95 backdrop-blur md:hidden">
       {open && (
-        <ul className="mx-auto max-w-md border-b p-2" data-testid="bottom-more-panel">
+        <ul className="mx-auto max-h-[65dvh] max-w-md overflow-y-auto overscroll-contain border-b p-2" data-testid="bottom-more-panel">
           {rest.map((item) => (
             <li key={item.href}>
               <Link

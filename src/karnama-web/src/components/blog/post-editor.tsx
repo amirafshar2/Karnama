@@ -257,19 +257,23 @@ function EditorForm({ initial }: { initial: PostDetail }) {
           <label className="sr-only" htmlFor="post-title">{t("editor.titlePlaceholder")}</label>
           <textarea
             id="post-title"
-            rows={1}
+            rows={2}
             value={f.title}
             readOnly={readOnly}
-            onChange={(e) => set({ title: e.target.value.replace(/\n/g, " ") })}
+            onChange={(e) => {
+              set({ title: e.target.value.replace(/\n/g, " ") });
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
             placeholder={t("editor.titlePlaceholder")}
-            className="field-sizing-content w-full resize-none bg-transparent text-3xl leading-[1.5] font-black outline-none sm:text-4xl"
+            className="block w-full min-w-0 resize-none overflow-hidden bg-transparent text-3xl leading-[1.5] font-black outline-none sm:text-4xl"
             data-testid="post-title"
           />
           {editor && !readOnly && <EditorToolbar editor={editor} />}
           <div className="rounded-xl border bg-card p-4 sm:p-6">{editor ? <EditorContent editor={editor} /> : <div className="h-64 animate-pulse rounded bg-muted" />}</div>
         </div>
 
-        <aside className="space-y-4" aria-label={t("seo.title")}>
+        <aside className="min-w-0 space-y-4" aria-label={t("seo.title")}>
           {editor && <ImageSettings editor={editor} />}
 
           <section className="space-y-3 rounded-xl border bg-card p-4" data-testid="seo-panel">

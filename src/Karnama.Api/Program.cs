@@ -90,7 +90,13 @@ builder.Services.AddResponseCompression(o =>
     o.Providers.Add<GzipCompressionProvider>();
 });
 builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
-builder.Services.AddOutputCache(o => o.AddPolicy(OutputCachePolicies.Public, p => p.Expire(TimeSpan.FromSeconds(60)).Tag("public")));
+builder.Services.AddOutputCache(o =>
+{
+    o.AddPolicy(OutputCachePolicies.Public, p => p.Expire(TimeSpan.FromSeconds(60)).Tag("public"));
+    // Public site reads (blog, home, packages, portfolio): the Next server asks often; 30s here, evicted on every content change.
+    o.AddPolicy(PublicCache.Policy, p => p.Expire(TimeSpan.FromSeconds(30)).Tag(PublicCache.Tag));
+});
+builder.Services.AddSingleton<Karnama.Application.Abstractions.IPublicCache, PublicCache>();
 
 // --- Realtime ---
 var signalR = builder.Services.AddSignalR(o => o.MaximumReceiveMessageSize = 32 * 1024).AddMessagePackProtocol();
@@ -164,6 +170,7 @@ app.MapPortal();
 app.MapLeave();
 app.MapNotify();
 app.MapBlog();
+app.MapSite();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

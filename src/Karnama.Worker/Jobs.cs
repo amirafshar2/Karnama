@@ -104,6 +104,12 @@ internal sealed class SystemUser : ICurrentUser
     public PermissionScope? ScopeOf(string permission) => null;
 }
 
+/// <summary>The output cache lives in the API process; it expires on its own (30s) for changes made here.</summary>
+internal sealed class NoopPublicCache : IPublicCache
+{
+    public Task EvictAsync(CancellationToken ct) => Task.CompletedTask;
+}
+
 internal sealed class NoopRealtimeNotifier : IRealtimeNotifier
 {
     public Task PermissionsChangedAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct) => Task.CompletedTask;

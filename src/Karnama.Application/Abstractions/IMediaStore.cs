@@ -10,4 +10,6 @@ public interface IMediaStore
     string PublicUrl(string id);
     /// <summary>Opens a stored public file, or null if the id is invalid or missing.</summary>
     (Stream Stream, string ContentType)? OpenPublic(string id);
+    /// <summary>Private images (e.g. "consent/…"): never served by the public media route; callers check permissions.</summary>
+    (Stream Stream, string ContentType)? OpenPrivate(string id);
 }

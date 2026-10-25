@@ -16,6 +16,7 @@ builder.Services.AddApplication();
 builder.Services.AddScoped<ICurrentUser, SystemUser>();
 builder.Services.AddSingleton<IRealtimeNotifier, NoopRealtimeNotifier>();
 builder.Services.AddSingleton<IRequestContext, NoRequestContext>();
+builder.Services.AddSingleton<IPublicCache, NoopPublicCache>();
 
 builder.Services.AddHangfire(c => c
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)

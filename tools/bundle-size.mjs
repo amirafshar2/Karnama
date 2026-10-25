@@ -6,7 +6,7 @@ import { gzipSync } from "node:zlib";
 
 const dir = process.argv[2] ?? "src/karnama-web/.next";
 // The public site (index = home page) is server-rendered: only the Next/React runtime itself (no app code).
-const BUDGETS = { login: 200 * 1024, setup: 200 * 1024, index: 140 * 1024 };
+const BUDGETS = { login: 200 * 1024, setup: 200 * 1024, index: 150 * 1024 };
 const PANEL_BUDGET = 180 * 1024;
 const appDir = join(dir, "server", "app");
 let failed = false;

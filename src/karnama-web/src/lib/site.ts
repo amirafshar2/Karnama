@@ -53,3 +53,21 @@ export async function getT(): Promise<T> {
     return s;
   };
 }
+
+// ---- Home, packages, portfolio (N10) ----
+export type Contact = { phone: string | null; address: string | null; city: string | null; hours: string | null; email: string | null; instagram: string | null; telegram: string | null; whatsApp: string | null; neshanUrl: string | null; baladUrl: string | null; latitude: number | null; longitude: number | null };
+export type HomeContent = {
+  seoTitle: string; seoDescription: string; heroTitle: string; heroSubtitle: string; ctaLabel: string;
+  servicesTitle: string; casesTitle: string; packagesTitle: string; processTitle: string; process: { title: string; body: string }[];
+  testimonialsTitle: string; blogTitle: string; faqTitle: string; faq: { question: string; answer: string }[];
+  consultTitle: string; consultText: string; contact: Contact; showPackages: boolean; showCases: boolean; showBlog: boolean;
+};
+export type PackageCard = { name: string; slug: string; short: string | null; price: number; compareAt: number | null; special: number | null; period: "monthly" | "quarterly" | "oneTime"; validityDays: number; badge: "none" | "bestSeller" | "new"; coverUrl: string | null; highlights: string[] };
+export type PackageDetail = Omit<PackageCard, "highlights"> & { descriptionHtml: string | null; quotas: string[]; features: string[]; faq: { question: string; answer: string }[]; management: "agencyManaged" | "clientManaged"; consultSessions: number; revisionsPerItem: number; deliveryHours: number; seoTitle: string | null; seoDescription: string | null };
+export type CaseCard = { businessName: string; slug: string; industry: string | null; city: string | null; logoUrl: string | null; followersBefore: number | null; followersAfter: number | null; followerGrowth: number | null; revenueGrowth: number | null; services: string[]; summary: string | null; source: string | null; isSample: boolean; coverUrl: string | null };
+export type CaseDetail = { card: CaseCard; handle: string | null; from: string | null; to: string | null; revenueBefore: number | null; revenueAfter: number | null; revenueAsPercent: boolean; metrics: { label: string; before: number | null; after: number | null; unit: string | null }[]; shots: { url: string; caption: string | null; takenOn: string | null; isAfter: boolean }[]; quote: string | null; quoteBy: string | null; videoUrl: string | null };
+export type SiteHome = { content: HomeContent; stats: { clients: number; deliveries: number; medianFollowerGrowth: number | null }; services: { name: string; description: string | null; icon: string | null }[]; cases: CaseCard[]; packages: PackageCard[]; testimonials: { quote: string; by: string; businessName: string; slug: string }[] };
+
+export const getHome = () => siteGet<SiteHome>("/api/v1/public/site/home", 60);
+/** Prices are stored in rials; the site shows tomans. */
+export const toman = (rial: number) => Math.round(rial / 10).toLocaleString("fa-IR");

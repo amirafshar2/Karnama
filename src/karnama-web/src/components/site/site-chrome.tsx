@@ -29,6 +29,12 @@ export function SiteHeader({ brand, t }: { brand: Brand | null; t: T }) {
           <SiteMark brand={brand} />
         </Link>
         <nav aria-label={t("site.menu")} className="flex items-center gap-1 text-sm font-semibold">
+          <Link href="/plans" className="rounded-md px-3 py-2 hover:bg-muted">
+            {t("site.nav.packages")}
+          </Link>
+          <Link href="/cases" className="hidden rounded-md px-3 py-2 hover:bg-muted sm:block">
+            {t("site.nav.cases")}
+          </Link>
           <Link href="/blog" className="rounded-md px-3 py-2 hover:bg-muted">
             {t("site.nav.blog")}
           </Link>
@@ -53,6 +59,8 @@ export function SiteFooter({ brand, t }: { brand: Brand | null; t: T }) {
         </div>
         <nav aria-label={t("site.footerMenu")} className="flex flex-wrap gap-x-6 gap-y-2 text-sm sm:justify-end">
           <Link href="/" className="hover:underline">{t("site.nav.home")}</Link>
+          <Link href="/plans" className="hover:underline">{t("site.nav.packages")}</Link>
+          <Link href="/cases" className="hover:underline">{t("site.nav.cases")}</Link>
           <Link href="/blog" className="hover:underline">{t("site.nav.blog")}</Link>
           <Link href="/login" className="hover:underline">{t("site.nav.login")}</Link>
         </nav>

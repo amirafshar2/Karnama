@@ -8,6 +8,7 @@ internal static class RateLimits
     public const string Otp = "otp";
     public const string Auth = "auth";
     public const string Refresh = "refresh";
+    public const string PublicForm = "public-form";
 
     public static IServiceCollection AddKarnamaRateLimits(this IServiceCollection services, IConfiguration config) => services.AddRateLimiter(o =>
     {
@@ -41,6 +42,11 @@ internal static class RateLimits
         var refreshPerIp = config.GetValue("RateLimits:RefreshPerIpPerMinute", 300);
         o.AddPolicy(Refresh, http => RateLimitPartition.GetFixedWindowLimiter(IpOf(http),
             _ => new FixedWindowRateLimiterOptions { PermitLimit = refreshPerIp, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+        // Website forms (consultation): a person sends one; a script gets stopped quickly.
+        var formsPerIp = config.GetValue("RateLimits:FormsPerIpPer10Minutes", 5);
+        o.AddPolicy(PublicForm, http => RateLimitPartition.GetFixedWindowLimiter(IpOf(http),
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = formsPerIp, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 }));
 
         // Everyone: token bucket per user (or per IP when anonymous) so one broken client can't take the server down.
         o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(http =>

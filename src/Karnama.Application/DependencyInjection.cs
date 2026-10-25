@@ -45,6 +45,9 @@ public static class DependencyInjection
         services.AddScoped<Notify.PackageExpiryJob>();
         services.AddScoped<Publishing.PublishService>();
         services.AddScoped<Blog.BlogService>();
+        services.AddScoped<Site.SiteContentStore>();
+        services.AddScoped<Site.PublicSiteService>();
+        services.AddScoped<Site.CaseStudyService>();
         return services;
     }
 }

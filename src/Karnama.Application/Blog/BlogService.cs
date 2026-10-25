@@ -56,7 +56,7 @@ public sealed class SavePostValidator : AbstractValidator<SavePostRequest>
 /// automatic SEO pass on the server, and the public site reads only live posts.
 /// </summary>
 public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, TimeProvider clock, IMediaStore media, IContentRenderer renderer,
-    Settings.BrandService brand)
+    Settings.BrandService brand, IPublicCache cache)
 {
     private bool CanWriteAll => me.Kind == UserKind.Staff && me.Has(Permissions.BlogWrite, PermissionScope.All);
     private bool CanWrite => me.Kind == UserKind.Staff && me.Has(Permissions.BlogWrite, PermissionScope.Own);
@@ -115,6 +115,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         if (applied.IsFailure) return applied.Error!;
         audit.Add("blog.updated", nameof(BlogPost), p.Id.ToString());
         await db.SaveChangesAsync(ct);
+        if (p.Status == PostStatus.Published) await cache.EvictAsync(ct);
         return await DtoAsync(p, ct);
     }
 
@@ -219,6 +220,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         if (res.IsFailure) return res.Error!;
         audit.Add(p.Status == PostStatus.Scheduled ? "blog.scheduled" : "blog.published", nameof(BlogPost), p.Id.ToString(), new { r.At });
         await db.SaveChangesAsync(ct);
+        await cache.EvictAsync(ct);
         return await DtoAsync(p, ct);
     }
 
@@ -231,6 +233,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         if (res.IsFailure) return res.Error!;
         audit.Add("blog.unpublished", nameof(BlogPost), p.Id.ToString());
         await db.SaveChangesAsync(ct);
+        await cache.EvictAsync(ct);
         return await DtoAsync(p, ct);
     }
 
@@ -242,6 +245,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         p.Archive(me.UserId, clock.GetUtcNow());
         audit.Add("blog.archived", nameof(BlogPost), p.Id.ToString());
         await db.SaveChangesAsync(ct);
+        await cache.EvictAsync(ct);
         return Result.Success();
     }
 
@@ -251,7 +255,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         var now = clock.GetUtcNow();
         var due = await db.BlogPosts.Where(p => p.Status == PostStatus.Scheduled && p.PublishAt <= now).Take(100).ToListAsync(ct);
         foreach (var p in due) p.PublishIfDue(now);
-        if (due.Count > 0) await db.SaveChangesAsync(ct);
+        if (due.Count > 0) { await db.SaveChangesAsync(ct); await cache.EvictAsync(ct); }
         return due.Count;
     }
 
