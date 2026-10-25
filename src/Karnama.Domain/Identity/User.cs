@@ -118,6 +118,8 @@ public sealed class User : AuditableEntity
     }
 
     public void Deactivate() => IsActive = false;
+    public void SoftDelete(Guid? actor, DateTimeOffset now) => MarkDeleted(actor, now);
+    public void SoftRestore() => MarkRestored();
     public void Activate() => IsActive = true;
 }
 

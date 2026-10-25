@@ -21,6 +21,13 @@ public static class DependencyInjection
         services.AddScoped<SetupService>();
         services.AddScoped<Settings.BrandService>();
         services.AddScoped<TranslationAdminService>();
+        services.AddScoped<Catalog.PlatformService>();
+        services.AddScoped<Catalog.ServiceTypeService>();
+        services.AddScoped<Catalog.PackageService>();
+        services.AddScoped<Clients.ClientService>();
+        services.AddScoped<Users.UserService>();
+        services.AddScoped<Onboarding.OnboardingService>();
+        services.AddScoped<History.HistoryService>();
         return services;
     }
 }

@@ -2,6 +2,8 @@ using System.Linq.Expressions;
 using Karnama.Application.Abstractions;
 using Karnama.Application.Common;
 using Karnama.Domain.Auditing;
+using Karnama.Domain.Catalog;
+using Karnama.Domain.Clients;
 using Karnama.Domain.Common;
 using Karnama.Domain.Identity;
 using Karnama.Domain.Localization;
@@ -25,11 +27,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Translation> Translations => Set<Translation>();
     public DbSet<SiteSetting> SiteSettings => Set<SiteSetting>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Platform> Platforms => Set<Platform>();
+    public DbSet<ServiceType> ServiceTypes => Set<ServiceType>();
+    public DbSet<WorkflowStage> WorkflowStages => Set<WorkflowStage>();
+    public DbSet<ServiceFormVersion> ServiceFormVersions => Set<ServiceFormVersion>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackageQuota> PackageQuotas => Set<PackageQuota>();
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<ClientPackage> ClientPackages => Set<ClientPackage>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Ids are Guid v7 created in the domain (never by the database). Telling EF so makes new child entities
+        // added through a navigation (e.g. a new workflow stage) INSERTs instead of mistaken UPDATEs.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(Entity).IsAssignableFrom(entityType.ClrType) && entityType.BaseType is null)
+                modelBuilder.Entity(entityType.ClrType).Property(nameof(Entity.Id)).ValueGeneratedNever();
+        }
 
         // Soft delete: every ISoftDeletable is hidden unless IgnoreQueryFilters() is used.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

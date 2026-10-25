@@ -166,3 +166,13 @@ public class LocalizedTextTests
         t.Values.Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, string>("fa", "نام"));
     }
 }
+
+public class SlugTests
+{
+    [Theory]
+    [InlineData("مدیریت پیج نقره‌ای", "مدیریت-پیج-نقره-ای")]
+    [InlineData("  Gold Package!! ۲۰۲۶ ", "gold-package-2026")]
+    [InlineData("كيك و قهوه", "کیک-و-قهوه")]
+    [InlineData("a//b__c", "a-b-c")]
+    public void Makes_readable_slugs(string input, string expected) => Slug.From(input).Should().Be(expected);
+}

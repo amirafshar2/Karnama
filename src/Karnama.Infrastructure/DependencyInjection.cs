@@ -47,6 +47,8 @@ public static class DependencyInjection
         services.AddSingleton<ISecretProtector, SecretProtector>();
         services.AddScoped<DataSeeder>();
         services.AddSingleton<IMediaStore, Storage.LocalMediaStore>();
+        services.AddSingleton<IContentRenderer, Content.ContentRenderer>();
+        services.AddSingleton<IExcelExporter, Content.ExcelExporter>();
         services.AddSingleton<OtpDispatcher>();
         services.AddSingleton<IOtpDispatcher>(sp => sp.GetRequiredService<OtpDispatcher>());
         services.AddHostedService<OtpDispatchService>();

@@ -22,7 +22,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
         Directory.CreateDirectory(_root);
     }
 
-    [GeneratedRegex("^(brand)/[0-9a-f]{32}\\.(png|jpg|webp)$")]
+    [GeneratedRegex("^(brand|packages)/[0-9a-f]{32}\\.(png|jpg|webp)$")]
     private static partial Regex IdPattern();
 
     public async Task<Result<string>> SaveImageAsync(Stream content, long length, string folder, CancellationToken ct)

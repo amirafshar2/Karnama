@@ -156,6 +156,7 @@ app.MapI18n();
 app.MapSetup();
 app.MapPublic(demoLogin);
 app.MapSettings();
+app.MapCatalog();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

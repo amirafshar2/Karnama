@@ -22,12 +22,14 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
     {
         await SeedLanguagesAsync(ct);
         var (owner, client) = await SeedSystemRolesAsync(ct);
+        await SeedPlatformsAsync(ct);
         await db.SaveChangesAsync(ct);
 
         if (options.Value.Mode == SeedMode.Demo)
         {
             await SeedDemoAsync(owner, client, ct);
             await db.SaveChangesAsync(ct);
+            await DemoCatalogSeed.SeedAsync(db, ct);
         }
         logger.LogInformation("Seed completed (mode: {Mode})", options.Value.Mode);
     }
@@ -37,6 +39,22 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         if (await db.Languages.AnyAsync(ct)) return;
         db.Languages.Add(Language.Create("fa", "فارسی", TextDirection.Rtl, CalendarKind.Persian, DigitStyle.Persian, isDefault: true, sortOrder: 0).Value);
         db.Languages.Add(Language.Create("en", "English", TextDirection.Ltr, CalendarKind.Gregorian, DigitStyle.Latin, sortOrder: 1).Value);
+    }
+
+    /// <summary>Common Iranian networks, editable from the panel (also in empty installs).</summary>
+    private async Task SeedPlatformsAsync(CancellationToken ct)
+    {
+        if (await db.Platforms.IgnoreQueryFilters().AnyAsync(ct)) return;
+        (string Key, string Fa, string En, string? Url)[] list =
+        [
+            ("instagram", "اینستاگرام", "Instagram", "https://instagram.com/{handle}"),
+            ("telegram", "تلگرام", "Telegram", "https://t.me/{handle}"),
+            ("eitaa", "ایتا", "Eitaa", "https://eitaa.com/{handle}"),
+            ("bale", "بله", "Bale", "https://ble.ir/{handle}"),
+            ("rubika", "روبیکا", "Rubika", "https://rubika.ir/{handle}"),
+        ];
+        for (var i = 0; i < list.Length; i++)
+            db.Platforms.Add(Karnama.Domain.Catalog.Platform.Create(list[i].Key, Name(list[i].Fa, list[i].En), list[i].Url, i).Value);
     }
 
     private async Task<(Role Owner, Role Client)> SeedSystemRolesAsync(CancellationToken ct)

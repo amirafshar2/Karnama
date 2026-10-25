@@ -1,4 +1,6 @@
 using Karnama.Domain.Auditing;
+using Karnama.Domain.Catalog;
+using Karnama.Domain.Clients;
 using Karnama.Domain.Identity;
 using Karnama.Domain.Localization;
 using Karnama.Domain.Settings;
@@ -17,6 +19,14 @@ public interface IAppDbContext
     DbSet<Translation> Translations { get; }
     DbSet<SiteSetting> SiteSettings { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<Platform> Platforms { get; }
+    DbSet<ServiceType> ServiceTypes { get; }
+    DbSet<WorkflowStage> WorkflowStages { get; }
+    DbSet<ServiceFormVersion> ServiceFormVersions { get; }
+    DbSet<Package> Packages { get; }
+    DbSet<PackageQuota> PackageQuotas { get; }
+    DbSet<Client> Clients { get; }
+    DbSet<ClientPackage> ClientPackages { get; }
 
     /// <summary>Sets the concurrency token the client last saw, so a stale update fails with a conflict.</summary>
     void SetOriginalVersion<TEntity>(TEntity entity, uint version) where TEntity : class;
