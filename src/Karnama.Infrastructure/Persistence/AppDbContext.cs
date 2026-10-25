@@ -71,6 +71,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Karnama.Domain.Crm.LeadStage> LeadStages => Set<Karnama.Domain.Crm.LeadStage>();
     public DbSet<Karnama.Domain.Crm.LeadSource> LeadSources => Set<Karnama.Domain.Crm.LeadSource>();
     public DbSet<Karnama.Domain.Crm.LeadActivity> LeadActivities => Set<Karnama.Domain.Crm.LeadActivity>();
+    public DbSet<Karnama.Domain.Assets.Asset> Assets => Set<Karnama.Domain.Assets.Asset>();
+    public DbSet<Karnama.Domain.Assets.AssetCategory> AssetCategories => Set<Karnama.Domain.Assets.AssetCategory>();
+    public DbSet<Karnama.Domain.Assets.AssetAssignment> AssetAssignments => Set<Karnama.Domain.Assets.AssetAssignment>();
+    public DbSet<Karnama.Domain.Assets.AssetEvent> AssetEvents => Set<Karnama.Domain.Assets.AssetEvent>();
+    public DbSet<Karnama.Domain.Assets.AssetPhoto> AssetPhotos => Set<Karnama.Domain.Assets.AssetPhoto>();
     public DbSet<ClientCredential> ClientCredentials => Set<ClientCredential>();
     public DbSet<Karnama.Domain.Media.MediaAsset> MediaAssets => Set<Karnama.Domain.Media.MediaAsset>();
     public DbSet<Karnama.Domain.Chat.Conversation> Conversations => Set<Karnama.Domain.Chat.Conversation>();

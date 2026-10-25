@@ -25,6 +25,15 @@ public static class Iran
         var local = day.ToDateTime(time);
         return new DateTimeOffset(local, Zone.GetUtcOffset(local)).ToUniversalTime();
     }
+
+    /// <summary>1404/08/05 with Persian digits, for texts that leave the app (notifications, history notes).</summary>
+    public static string Jalali(DateOnly day)
+    {
+        var cal = new System.Globalization.PersianCalendar();
+        var d = day.ToDateTime(TimeOnly.MinValue);
+        var s = $"{cal.GetYear(d)}/{cal.GetMonth(d):00}/{cal.GetDayOfMonth(d):00}";
+        return string.Concat(s.Select(ch => ch is >= '0' and <= '9' ? (char)('۰' + (ch - '0')) : ch));
+    }
 }
 
 public sealed class AttendanceSettingsStore(IAppDbContext db, ISecretProtector protector)

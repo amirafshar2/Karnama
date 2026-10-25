@@ -52,6 +52,8 @@ export const faCore = {
   "nav.crm": "فروش و سرنخ‌ها",
   "nav.media": "صندوق فایل‌ها",
   "nav.reports": "گزارش کار و امتیاز",
+  "nav.assets": "تجهیزات",
+  "nav.help": "راهنما",
   "nav.chat": "گفتگو",
   "chat.aboutWork": "گفتگو درباره‌ی این کار",
   "bell.open": "اعلان‌ها",

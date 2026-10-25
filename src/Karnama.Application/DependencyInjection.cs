@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<Media.BotRouter>();
         services.AddScoped<Chat.ChatService>();
         services.AddScoped<Crm.CrmService>();
+        services.AddScoped<Assets.AssetService>();
         services.AddScoped<Reports.PerformanceService>();
         services.AddScoped<Notify.PackageExpiryJob>();
         services.AddScoped<Publishing.PublishService>();

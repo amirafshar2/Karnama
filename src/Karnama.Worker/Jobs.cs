@@ -47,13 +47,20 @@ public sealed class AttendanceJobs(Karnama.Application.Attendance.AttendanceAdmi
 
 /// <summary>Publishing reminders (M6) and package expiry notices (7/3/1 days).</summary>
 public sealed class NotifyJobs(Karnama.Application.Publishing.PublishService publish, Karnama.Application.Notify.PackageExpiryJob expiry,
-    Karnama.Application.Blog.BlogService blog, Karnama.Application.Crm.CrmService crm, ILogger<NotifyJobs> logger)
+    Karnama.Application.Blog.BlogService blog, Karnama.Application.Crm.CrmService crm, Karnama.Application.Assets.AssetService assets, ILogger<NotifyJobs> logger)
 {
     [AutomaticRetry(Attempts = 1)]
     public async Task CrmFollowUpsAsync(CancellationToken ct)
     {
         var n = await crm.RemindFollowUpsAsync(ct);
         if (n > 0) logger.LogInformation("Reminded {Count} CRM follow-ups", n);
+    }
+
+    [AutomaticRetry(Attempts = 3)]
+    public async Task AssetAlertsAsync(CancellationToken ct)
+    {
+        var n = await assets.AlertsAsync(ct);
+        if (n > 0) logger.LogInformation("Sent {Count} equipment alerts", n);
     }
 
     [AutomaticRetry(Attempts = 1)]
@@ -94,6 +101,7 @@ internal sealed class JobRegistrar(IRecurringJobManager jobs) : IHostedService
         jobs.AddOrUpdate<NotifyJobs>("blog-schedule", j => j.BlogScheduleAsync(CancellationToken.None), Cron.Minutely());
         jobs.AddOrUpdate<NotifyJobs>("crm-follow-ups", j => j.CrmFollowUpsAsync(CancellationToken.None), "*/5 * * * *");
         jobs.AddOrUpdate<NotifyJobs>("publish-tick", j => j.PublishTickAsync(CancellationToken.None), Cron.Minutely());
+        jobs.AddOrUpdate<NotifyJobs>("asset-alerts", j => j.AssetAlertsAsync(CancellationToken.None), "0 9 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran") });
         jobs.AddOrUpdate<NotifyJobs>("package-expiry", j => j.PackageExpiryAsync(CancellationToken.None), "30 5 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran") });
         return Task.CompletedTask;
     }

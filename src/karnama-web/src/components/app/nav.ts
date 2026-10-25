@@ -1,4 +1,4 @@
-import { Gauge, Inbox, MessagesSquare, BarChart3, CalendarClock, Newspaper, Globe, Trophy, PhoneIncoming, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { Camera, Gauge, Inbox, MessagesSquare, BarChart3, CalendarClock, Newspaper, Globe, Trophy, PhoneIncoming, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
 import type { TextKey } from "@/lib/i18n/registry";
 import { hasPermission, type Me, type Scope } from "@/lib/types";
 
@@ -20,6 +20,7 @@ export const NAV: NavItem[] = [
   { href: "/publishing", label: "nav.publishing", icon: CalendarClock, anyOf: [{ code: "orders.manage", scope: "all" }] },
   { href: "/crm", label: "nav.crm", icon: PhoneIncoming, anyOf: [{ code: "crm.leads", scope: "own" }] },
   { href: "/attendance", label: "nav.attendance", icon: Clock, anyOf: [{ code: "attendance.self", scope: "own" }] },
+  { href: "/assets", label: "nav.assets", icon: Camera, anyOf: [{ code: "assets.view", scope: "own" }] },
   { href: "/chat", label: "nav.chat", icon: MessagesSquare, anyOf: [{ code: "chat.use", scope: "own" }, { code: "chat.groups.manage", scope: "all" }], clients: true },
   { href: "/attendance/calendar", label: "nav.calendar", icon: CalendarDays, anyOf: [{ code: "attendance.self", scope: "own" }] },
   { href: "/attendance/live", label: "nav.live", icon: UsersRound, anyOf: [{ code: "attendance.view", scope: "all" }] },

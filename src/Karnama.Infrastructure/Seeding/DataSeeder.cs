@@ -24,6 +24,12 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         var (owner, client) = await SeedSystemRolesAsync(ct);
         await SeedPlatformsAsync(ct);
         await SeedCrmDefaultsAsync(ct);
+        if (!await db.AssetCategories.AnyAsync(ct))
+        {
+            var order = 0;
+            foreach (var (id, name) in Karnama.Domain.Assets.AssetDefaults.Categories)
+                db.AssetCategories.Add(Karnama.Domain.Assets.AssetCategory.Create(name, order += 10, id).Value!);
+        }
         await db.SaveChangesAsync(ct);
         await AttendanceSeed.SeedAsync(db, options.Value.Mode == SeedMode.Demo, ct);
 
@@ -41,6 +47,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             await EnsureDemoMarketerAsync(ct);
             await DemoCrmSeed.SeedAsync(db, ct);
             await DemoHistorySeed.SeedAsync(db, ct);
+            await DemoAssetSeed.SeedAsync(db, ct);
             await SyncDemoAdminAsync(ct);
         }
         logger.LogInformation("Seed completed (mode: {Mode})", options.Value.Mode);
@@ -124,6 +131,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             new(Permissions.ReportsView, PermissionScope.Own),
             new(Permissions.ChatUse, PermissionScope.Own),
             new(Permissions.ScoresView, PermissionScope.Own),
+            new(Permissions.AssetsView, PermissionScope.Own),
         ];
         var editorRole = Role.Create(Name("تدوینگر", "Video editor"), "تدوین ریلز و ویدیو", worker).Value;
         var writerRole = Role.Create(Name("عکاس و متن‌نویس", "Photographer & copywriter"), "عکاسی، کپشن و متن", [.. worker, new(Permissions.BlogWrite, PermissionScope.Own)]).Value;
@@ -157,6 +165,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             new(Permissions.AttendanceSelf, PermissionScope.Own),
             new(Permissions.AttendanceView, PermissionScope.Own),
             new(Permissions.ReportsView, PermissionScope.Own),
+            new(Permissions.AssetsView, PermissionScope.Own),
         ]).Value;
         db.Roles.Add(role);
         AddUser(phone, "نیما (بازاریاب نمونه)", UserKind.Staff, role.Id);
@@ -179,8 +188,9 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             var grants = r.Permissions.Select(g => new PermissionGrant(g.Code, g.Scope)).ToList();
             var manager = grants.Any(g => g.Code == Permissions.WorkAssign);
             PermissionGrant[] wanted = manager
-                ? [new(Permissions.ChatGroupsManage, PermissionScope.All), new(Permissions.ScoresView, PermissionScope.All)]
-                : [new(Permissions.ChatUse, PermissionScope.Own), new(Permissions.ScoresView, PermissionScope.Own)];
+                ? [new(Permissions.ChatGroupsManage, PermissionScope.All), new(Permissions.ScoresView, PermissionScope.All),
+                   new(Permissions.AssetsView, PermissionScope.All), new(Permissions.AssetsManage, PermissionScope.All), new(Permissions.AssetsAssign, PermissionScope.All)]
+                : [new(Permissions.ChatUse, PermissionScope.Own), new(Permissions.ScoresView, PermissionScope.Own), new(Permissions.AssetsView, PermissionScope.Own)];
             var missing = wanted.Where(w => grants.All(g => g.Code != w.Code) && !(w.Code == Permissions.ChatUse && grants.Any(g => g.Code == Permissions.ChatGroupsManage))).ToList();
             if (missing.Count == 0) continue;
             r.Update(r.Name, r.Description, grants.Concat(missing));

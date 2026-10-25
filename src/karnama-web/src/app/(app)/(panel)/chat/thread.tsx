@@ -8,6 +8,7 @@ import { prepareImage } from "@/components/blog/image-prep";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api, apiBlob, uploadForm } from "@/lib/api";
+import { useBlobUrl } from "@/lib/use-blob-url";
 import { useI18n } from "@/lib/i18n/provider";
 import { notify } from "@/lib/notify";
 import { onChange, onTyping, sendTyping } from "@/lib/realtime";
@@ -236,26 +237,6 @@ function Bubble({ m, showAuthor, seen, canModerate, onChanged }: { m: Message; s
       </div>
     </div>
   );
-}
-
-/** Private files come through the API with the token; a blob URL is made only when needed. */
-function useBlobUrl(path: string, enabled: boolean) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!enabled) return;
-    let made: string | null = null;
-    let gone = false;
-    apiBlob(path).then((b) => {
-      if (gone) return;
-      made = URL.createObjectURL(b);
-      setUrl(made);
-    }).catch(() => undefined);
-    return () => {
-      gone = true;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [path, enabled]);
-  return url;
 }
 
 function ImageBody({ m }: { m: Message }) {

@@ -59,14 +59,19 @@ public static class Permissions
 
     public const string BlogWrite = "blog.write";
     public const string BlogPublish = "blog.publish";
-    /// <summary>Own = a marketer's own leads; All = every lead (sales manager). PROMPT2 §14 crm.leads.own / crm.leads.all.</summary>
     /// <summary>Own = my score and "why"; All = everyone's (PROMPT2 §14 scores.view.own / scores.view.all).</summary>
     public const string ScoresView = "scores.view";
     public const string ScoresConfigure = "scores.configure";
 
+    /// <summary>Own = a marketer's own leads; All = every lead (sales manager). PROMPT2 §14 crm.leads.own / crm.leads.all.</summary>
     public const string CrmLeads = "crm.leads";
     public const string CrmAssign = "crm.assign";
     public const string CrmPipelineManage = "crm.pipeline.manage";
+
+    /// <summary>Own = what I hold; All = every asset (PROMPT2 §3).</summary>
+    public const string AssetsView = "assets.view";
+    public const string AssetsManage = "assets.manage";
+    public const string AssetsAssign = "assets.assign";
 
     public const string CredentialsView = "credentials.view";
     public const string CredentialsReveal = "credentials.reveal";
@@ -133,6 +138,10 @@ public static class Permissions
         new(CrmLeads, "crm", OwnOrAll),
         new(CrmAssign, "crm", AllOnly),
         new(CrmPipelineManage, "crm", AllOnly),
+
+        new(AssetsView, "assets", OwnOrAll),
+        new(AssetsManage, "assets", AllOnly),
+        new(AssetsAssign, "assets", AllOnly),
 
         new(CredentialsView, "credentials", AllOnly),
         new(CredentialsReveal, "credentials", AllOnly),

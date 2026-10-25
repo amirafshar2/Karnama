@@ -177,6 +177,8 @@ export const en: Partial<Dictionary> = {
   "nav.crm": "Sales & leads",
   "nav.media": "Files inbox",
   "nav.reports": "Work report & scores",
+  "nav.assets": "Equipment",
+  "nav.help": "Help",
   "nav.chat": "Chat",
   "chat.aboutWork": "Chat about this work",
   "bell.open": "Notifications",

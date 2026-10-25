@@ -17,8 +17,9 @@ import { faN5 } from "./fa-n5";
 import { faN6 } from "./fa-n6";
 import { faN7 } from "./fa-n7";
 import { faN8 } from "./fa-n8";
+import { faN3 } from "./fa-n3";
 import { faRoles } from "./fa-roles";
 import { faSettings } from "./fa-settings";
 
 /** Every built-in Persian text, i.e. the full list of editable keys (loaded only by the texts editor). */
-export const ALL_FA: Record<string, string> = { ...faCore, ...faAuth, ...faDashboard, ...faProfile, ...faAccess, ...faRoles, ...faSettings, ...faCrud, ...faM2, ...faM2Forms, ...faM3, ...faM4, ...faPortal, ...faM5, ...faM6, ...faSite, ...faBlog, ...faSiteAdmin, ...faN4, ...faN5, ...faN6, ...faN7, ...faN8 };
+export const ALL_FA: Record<string, string> = { ...faCore, ...faAuth, ...faDashboard, ...faProfile, ...faAccess, ...faRoles, ...faSettings, ...faCrud, ...faM2, ...faM2Forms, ...faM3, ...faM4, ...faPortal, ...faM5, ...faM6, ...faSite, ...faBlog, ...faSiteAdmin, ...faN4, ...faN5, ...faN6, ...faN7, ...faN8, ...faN3 };
