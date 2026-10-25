@@ -30,6 +30,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             await SeedDemoAsync(owner, client, ct);
             await db.SaveChangesAsync(ct);
             await DemoCatalogSeed.SeedAsync(db, ct);
+            await DemoWorkSeed.SeedAsync(db, ct);
         }
         logger.LogInformation("Seed completed (mode: {Mode})", options.Value.Mode);
     }

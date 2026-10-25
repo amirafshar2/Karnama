@@ -53,4 +53,56 @@ public static partial class FormSchema
 
     public static IReadOnlyList<FormField> Parse(string json) =>
         JsonSerializer.Deserialize<List<FormField>>(json, Json) ?? [];
+
+    /// <summary>
+    /// Checks an order's answers against the form it was placed with and returns canonical JSON with only known keys.
+    /// File fields are answered by uploading files to the order afterwards, so they are skipped here.
+    /// </summary>
+    public static Result<string> ValidateData(IReadOnlyList<FormField> fields, JsonElement? data)
+    {
+        var input = data is { ValueKind: JsonValueKind.Object } d ? d : default;
+        var output = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var f in fields)
+        {
+            if (f.Type == "file") continue;
+            var label = new LocalizedText(f.Label).Get("fa");
+            JsonElement v = default;
+            var has = input.ValueKind == JsonValueKind.Object && input.TryGetProperty(f.Key, out v) && v.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined)
+                      && !(v.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(v.GetString()))
+                      && !(v.ValueKind == JsonValueKind.Array && v.GetArrayLength() == 0);
+            if (!has)
+            {
+                if (f.Required) return Error.Validation("forms.required", $"«{label}» را پر کنید.");
+                continue;
+            }
+            switch (f.Type)
+            {
+                case "number":
+                    if (v.ValueKind != JsonValueKind.Number || !v.TryGetDecimal(out var n)) return Error.Validation("forms.number", $"«{label}» باید عدد باشد.");
+                    if (f.Min is { } min && n < min || f.Max is { } max && n > max) return Error.Validation("forms.range", $"«{label}» خارج از محدوده است.");
+                    output[f.Key] = n;
+                    break;
+                case "multiselect":
+                    if (v.ValueKind != JsonValueKind.Array) return Error.Validation("forms.multi", $"«{label}» معتبر نیست.");
+                    var picked = v.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString()! : "").ToList();
+                    if (picked.Any(p => f.Options?.All(o => o.Value != p) ?? true)) return Error.Validation("forms.option", $"گزینه‌ی «{label}» معتبر نیست.");
+                    output[f.Key] = picked.Distinct().ToList();
+                    break;
+                default:
+                    if (v.ValueKind != JsonValueKind.String) return Error.Validation("forms.text", $"«{label}» معتبر نیست.");
+                    var text = v.GetString()!.Trim();
+                    if (text.Length > (f.Type == "textarea" ? 4000 : 500)) return Error.Validation("forms.long", $"«{label}» خیلی طولانی است.");
+                    if (f.Type == "select" && (f.Options?.All(o => o.Value != text) ?? true)) return Error.Validation("forms.option", $"گزینه‌ی «{label}» معتبر نیست.");
+                    if (f.Type == "url" && !(Uri.TryCreate(text, UriKind.Absolute, out var u) && u.Scheme is "https" or "http"))
+                        return Error.Validation("forms.url", $"«{label}» باید یک لینک کامل باشد (https://…).");
+                    if (f.Type is "date" or "datetime" && !DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
+                        return Error.Validation("forms.date", $"تاریخ «{label}» معتبر نیست.");
+                    if (f.Type == "color" && !System.Text.RegularExpressions.Regex.IsMatch(text, "^#[0-9a-fA-F]{6}$"))
+                        return Error.Validation("forms.color", $"رنگ «{label}» معتبر نیست.");
+                    output[f.Key] = text;
+                    break;
+            }
+        }
+        return JsonSerializer.Serialize(output, Json);
+    }
 }

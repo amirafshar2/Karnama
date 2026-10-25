@@ -43,6 +43,7 @@ internal sealed class SystemUser : ICurrentUser
 internal sealed class NoopRealtimeNotifier : IRealtimeNotifier
 {
     public Task PermissionsChangedAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct) => Task.CompletedTask;
+    public Task ChangesAsync(IReadOnlyList<ChangeDelta> changes, CancellationToken ct) => Task.CompletedTask;
 }
 
 internal static class DevDotEnv

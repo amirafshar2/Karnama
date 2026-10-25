@@ -43,3 +43,4 @@ playwright-report/
 docs/PROJECT_MAP.html
 .next-*/
 storage/
+dump.rdb

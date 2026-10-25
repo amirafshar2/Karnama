@@ -3,7 +3,10 @@ using Karnama.Domain.Catalog;
 using Karnama.Domain.Clients;
 using Karnama.Domain.Identity;
 using Karnama.Domain.Localization;
+using Karnama.Domain.Files;
+using Karnama.Domain.Realtime;
 using Karnama.Domain.Settings;
+using Karnama.Domain.Work;
 using Microsoft.EntityFrameworkCore;
 
 namespace Karnama.Application.Abstractions;
@@ -27,6 +30,14 @@ public interface IAppDbContext
     DbSet<PackageQuota> PackageQuotas { get; }
     DbSet<Client> Clients { get; }
     DbSet<ClientPackage> ClientPackages { get; }
+    DbSet<Order> Orders { get; }
+    DbSet<WorkItem> WorkItems { get; }
+    DbSet<WorkComment> WorkComments { get; }
+    DbSet<FileAsset> Files { get; }
+    DbSet<ChangeEvent> ChangeEvents { get; }
+
+    /// <summary>Next human order number ("سفارش ۱۰۴۲") from a database sequence.</summary>
+    Task<long> NextOrderNumberAsync(CancellationToken ct);
 
     /// <summary>Sets the concurrency token the client last saw, so a stale update fails with a conflict.</summary>
     void SetOriginalVersion<TEntity>(TEntity entity, uint version) where TEntity : class;

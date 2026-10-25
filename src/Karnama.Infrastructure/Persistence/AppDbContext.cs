@@ -7,7 +7,10 @@ using Karnama.Domain.Clients;
 using Karnama.Domain.Common;
 using Karnama.Domain.Identity;
 using Karnama.Domain.Localization;
+using Karnama.Domain.Files;
+using Karnama.Domain.Realtime;
 using Karnama.Domain.Settings;
+using Karnama.Domain.Work;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,11 +38,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<PackageQuota> PackageQuotas => Set<PackageQuota>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientPackage> ClientPackages => Set<ClientPackage>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<WorkItem> WorkItems => Set<WorkItem>();
+    public DbSet<WorkComment> WorkComments => Set<WorkComment>();
+    public DbSet<FileAsset> Files => Set<FileAsset>();
+    public DbSet<ChangeEvent> ChangeEvents => Set<ChangeEvent>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        modelBuilder.HasSequence<long>("order_numbers").StartsAt(1001);
 
         // Ids are Guid v7 created in the domain (never by the database). Telling EF so makes new child entities
         // added through a navigation (e.g. a new workflow stage) INSERTs instead of mistaken UPDATEs.
@@ -61,6 +70,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
 
     public void SetOriginalVersion<TEntity>(TEntity entity, uint version) where TEntity : class =>
         Entry(entity).Property("Version").OriginalValue = version;
+
+    public async Task<long> NextOrderNumberAsync(CancellationToken ct) =>
+        await Database.SqlQueryRaw<long>("SELECT nextval('order_numbers') AS \"Value\"").SingleAsync(ct);
 
     public void MarkModified<TEntity>(TEntity entity) where TEntity : class
     {

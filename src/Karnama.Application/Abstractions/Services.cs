@@ -61,4 +61,7 @@ public interface IAuditWriter
 public interface IRealtimeNotifier
 {
     Task PermissionsChangedAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct);
+
+    /// <summary>Broadcasts deltas to everyone allowed to see them (managers, the assignees, the client's portal).</summary>
+    Task ChangesAsync(IReadOnlyList<ChangeDelta> changes, CancellationToken ct);
 }

@@ -28,6 +28,12 @@ public static class DependencyInjection
         services.AddScoped<Users.UserService>();
         services.AddScoped<Onboarding.OnboardingService>();
         services.AddScoped<History.HistoryService>();
+        services.AddScoped<Work.WorkAccess>();
+        services.AddScoped<Work.OrderService>();
+        services.AddScoped<Work.WorkService>();
+        services.AddScoped<Files.FileService>();
+        services.AddScoped<Realtime.ChangesService>();
+        services.AddScoped<Abstractions.IChangeFeed, Realtime.ChangeFeed>();
         return services;
     }
 }
