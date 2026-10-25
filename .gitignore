@@ -1,0 +1,43 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+keystore.properties
+appsettings.*.local.json
+
+# business docs (never in git)
+_privat/
+*.pptx
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Node / Next
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Android / Capacitor
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/release/
+
+# tests
+tests/e2e/screenshots/
+tests/e2e/report/
+tests/load/results/
+playwright-report/
+
+# misc
+*.db
+*.log
+.DS_Store
+docs/PROJECT_MAP.html
