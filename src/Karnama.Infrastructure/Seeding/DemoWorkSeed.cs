@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Karnama.Domain.Catalog;
+using Karnama.Domain.Clients;
 using Karnama.Domain.Work;
 using Karnama.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +76,36 @@ internal static class DemoWorkSeed
         }
         await db.SaveChangesAsync(ct);
         await SeedLeaveAsync(db, users.Select(u => (u.Id, u.DisplayName)).ToList(), now, ct);
+        await SeedPublishingAsync(db, now, ct);
+    }
+
+    /// <summary>A week of sample posts on the calendar; one of the café's own channel posts is due now (portal reminder).</summary>
+    private static async Task SeedPublishingAsync(AppDbContext db, DateTimeOffset now, CancellationToken ct)
+    {
+        var clients = await db.Clients.AsNoTracking().ToListAsync(ct);
+        var today = Karnama.Application.Attendance.Iran.Today(now);
+        (string Client, int Day, int Hour, string Caption, string[] Tags, bool Own)[] rows =
+        [
+            ("کافه نمونه", 0, -1, "منوی پاییزی ما رسید 🍂 دمنوش سیب و دارچین را امتحان کنید.", ["کافه", "شیراز", "پاییز"], true),
+            ("کافه نمونه", 1, 19, "پنجشنبه‌شب‌ها موسیقی زنده داریم 🎶", ["کافه", "موسیقی_زنده"], false),
+            ("کافه نمونه", 2, 12, "صبحانه‌ی آخر هفته از ساعت ۹ 🥐", ["صبحانه", "کافه"], true),
+            ("پوشاک نمونه", 0, 21, "کالکشن زمستانه — ۲۰٪ تخفیف تا آخر هفته", ["پوشاک", "تخفیف"], false),
+            ("پوشاک نمونه", 3, 20, "پشت صحنه‌ی عکاسی کالکشن جدید", ["پشت_صحنه"], false),
+            ("شیرینی‌فروشی نمونه", 2, 18, "کیک تولد سفارشی؛ از دو روز قبل سفارش دهید 🎂", ["کیک", "شیرینی"], false),
+            ("کلینیک زیبایی نمونه", 4, 17, "پاسخ به سؤال‌های پرتکرار درباره‌ی مراقبت پوست", ["پوست", "مراقبت"], false),
+        ];
+        foreach (var r in rows)
+        {
+            var client = clients.FirstOrDefault(c => c.BusinessName == r.Client);
+            if (client is null) continue;
+            var account = r.Own ? client.Accounts.First(a => a.Management == PageManagement.ClientManaged) : client.Accounts.First();
+            // Hour -1 = 20 minutes ago (already due).
+            var at = r.Hour < 0 ? now.AddMinutes(-20) : Karnama.Application.Attendance.Iran.At(today.AddDays(r.Day), new TimeOnly(r.Hour, 0));
+            var job = Karnama.Domain.Publishing.PublishJob.Create(client.Id, null, account.PlatformId, account.Handle, account.Management, at, r.Caption, r.Tags, [], at.AddHours(-1)).Value!;
+            job.MarkDue(now);
+            db.PublishJobs.Add(job);
+        }
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>Sample leave and absence rows so the approvals, calendar and report pages aren't empty in the demo.</summary>

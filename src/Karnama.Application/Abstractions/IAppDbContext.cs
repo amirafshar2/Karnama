@@ -48,6 +48,12 @@ public interface IAppDbContext
     DbSet<LeaveType> LeaveTypes { get; }
     DbSet<LeaveRequest> LeaveRequests { get; }
     DbSet<Absence> Absences { get; }
+    DbSet<Karnama.Domain.Notify.Notification> Notifications { get; }
+    DbSet<Karnama.Domain.Notify.OutboxMessage> Outbox { get; }
+    DbSet<Karnama.Domain.Notify.NotificationPrefs> NotificationPrefs { get; }
+    DbSet<Karnama.Domain.Notify.MessengerLink> MessengerLinks { get; }
+    DbSet<Karnama.Domain.Notify.MessengerLinkCode> MessengerLinkCodes { get; }
+    DbSet<Karnama.Domain.Publishing.PublishJob> PublishJobs { get; }
 
     /// <summary>For the few statements EF can't express (e.g. INSERT … ON CONFLICT DO NOTHING).</summary>
     Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }

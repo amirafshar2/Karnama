@@ -18,6 +18,7 @@ import type { FileItem } from "@/lib/work-types";
 registerTexts(faPortal);
 
 const PortalOrder = dynamic(() => import("./portal-order").then((m) => m.PortalOrder), { ssr: false });
+const PortalPublishing = dynamic(() => import("./portal-publishing").then((m) => m.PortalPublishing), { ssr: false });
 const PortalNewOrder = dynamic(() => import("./portal-new-order").then((m) => m.PortalNewOrder), { ssr: false });
 
 type Home = {
@@ -122,6 +123,8 @@ export function PortalHome() {
           ))}
         </ul>
       </section>
+
+      <PortalPublishing />
 
       <section aria-labelledby="pkg" className="space-y-3 rounded-xl border bg-card p-5">
         <h2 id="pkg" className="text-lg font-bold">

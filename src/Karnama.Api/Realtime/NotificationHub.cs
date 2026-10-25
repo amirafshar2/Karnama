@@ -55,7 +55,8 @@ internal sealed class SignalRRealtimeNotifier(IHubContext<NotificationHub, INoti
         {
             var msg = new ChangeMessage(c.Seq, c.Kind, c.Id, c.Fields);
             // Presence (who is in, on break, timers) goes to attendance managers and the person; everything else to work managers.
-            var groups = new List<string> { c.Kind == "presence" ? HubGroups.AllPresence : HubGroups.AllWork };
+            // A notification is private: only its owner hears about it.
+            var groups = c.Kind == "notification" ? new List<string>() : new List<string> { c.Kind == "presence" ? HubGroups.AllPresence : HubGroups.AllWork };
             if (c.AssigneeId is { } a) groups.Add(HubGroups.User(a));
             if (c.PreviousAssigneeId is { } p) groups.Add(HubGroups.User(p));
             if (c.ClientId is { } cl) groups.Add(HubGroups.Client(cl));

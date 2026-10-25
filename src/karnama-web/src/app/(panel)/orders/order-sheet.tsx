@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@/lib/query";
-import { Loader2 } from "lucide-react";
+import { CalendarClock, Loader2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { ErrorText, useErrorMessage } from "@/components/app/error-text";
 import { FilesPanel } from "@/components/app/files-panel";
@@ -11,11 +12,15 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n/provider";
-import type { TextKey } from "@/lib/i18n/registry";
+import { registerTexts, type TextKey } from "@/lib/i18n/registry";
+import { faM6 } from "@/lib/i18n/fa-m6";
 import { notify } from "@/lib/notify";
 import { hasPermission } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { OrderDetail } from "@/lib/work-types";
+
+registerTexts(faM6);
+const PublishEditor = dynamic(() => import("@/components/publishing/publish-editor").then((m) => m.PublishEditor), { ssr: false });
 
 export function OrderSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const { t, dir, formatNumber, formatDate } = useI18n();
@@ -28,6 +33,7 @@ export function OrderSheet({ id, onClose }: { id: string; onClose: () => void })
   const [busy, setBusy] = useState(false);
   const [reject, setReject] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   const o = q.data;
 
   const run = async (path: string, body?: unknown, ok?: string) => {
@@ -135,6 +141,13 @@ export function OrderSheet({ id, onClose }: { id: string; onClose: () => void })
               <FilesPanel files={o.files} target={{ orderId: o.id, purpose: "brief" }} canUpload={canManage && o.status !== "cancelled" && o.status !== "rejected"} canShare={canManage} onChanged={() => qc.invalidateQueries({ queryKey: ["order", id] })} />
             </section>
 
+            {canManage && (o.status === "inProgress" || o.status === "completed") && (
+              <Button type="button" variant="outline" className="h-12 w-full sm:w-auto" onClick={() => setScheduling(true)} data-testid="order-schedule">
+                <CalendarClock aria-hidden="true" />
+                {t("publish.schedule")}
+              </Button>
+            )}
+
             {canManage && (o.status === "submitted" || o.status === "inProgress") && (
               <section className="border-t pt-4">
                 {confirmCancel ? (
@@ -157,6 +170,16 @@ export function OrderSheet({ id, onClose }: { id: string; onClose: () => void })
           </div>
         )}
       </SheetContent>
+      {scheduling && o && (
+        <PublishEditor
+          initial={{ clientId: o.clientId, orderId: o.id }}
+          onClose={() => setScheduling(false)}
+          onSaved={() => {
+            setScheduling(false);
+            void qc.invalidateQueries({ queryKey: ["publishing"] });
+          }}
+        />
+      )}
     </Sheet>
   );
 }

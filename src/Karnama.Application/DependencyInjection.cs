@@ -39,6 +39,11 @@ public static class DependencyInjection
         services.AddScoped<Attendance.AttendanceService>();
         services.AddScoped<Attendance.AttendanceAdminService>();
         services.AddScoped<Attendance.LeaveService>();
+        services.AddScoped<Notify.Notifier>();
+        services.AddScoped<Notify.InboxService>();
+        services.AddScoped<Notify.BotUpdateService>();
+        services.AddScoped<Notify.PackageExpiryJob>();
+        services.AddScoped<Publishing.PublishService>();
         return services;
     }
 }

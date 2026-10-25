@@ -117,6 +117,7 @@ export function JalaliDateField({ label, help, value, onChange, optional, testId
 }
 
 export function SelectField<T extends string>({ label, help, value, onChange, options, testId, optional }: { label: string; help?: string; value: T | ""; onChange: (v: T) => void; options: { value: T; label: string }[]; testId?: string; optional?: boolean }) {
+  const { t } = useI18n();
   return (
     <Field label={label} help={help} optional={optional}>
       {(id, d) => (
@@ -129,6 +130,12 @@ export function SelectField<T extends string>({ label, help, value, onChange, op
           className="h-12 w-full rounded-md border border-input bg-card px-3 text-base md:h-11 md:text-sm"
         >
           {optional && <option value="">—</option>}
+          {/* Required and still empty: say so, instead of showing the first option as if it were chosen. */}
+          {!optional && value === "" && (
+            <option value="" disabled>
+              {t("common.choose")}
+            </option>
+          )}
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}

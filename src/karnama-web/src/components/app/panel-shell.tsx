@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
 import { notify } from "@/lib/notify";
+import { BellButton } from "@/components/app/bell";
 import { BrandMark } from "@/components/app/brand-mark";
 import { DemoBanner } from "@/components/app/demo-banner";
 import { navFor } from "@/components/app/nav";
@@ -75,6 +76,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
         <header className="safe-top sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/90 px-4 backdrop-blur">
           <BrandMark className="text-base md:hidden" />
           <span className="ms-auto truncate text-sm text-muted-foreground">{me.displayName}</span>
+          <BellButton />
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 md:px-8 md:pb-10">{children}</main>
       </div>

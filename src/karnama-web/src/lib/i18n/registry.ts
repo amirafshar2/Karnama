@@ -6,6 +6,7 @@ import { faM3 } from "./fa-m3";
 import { faM4 } from "./fa-m4";
 import { faPortal } from "./fa-portal";
 import { faM5 } from "./fa-m5";
+import { faM6 } from "./fa-m6";
 import { faCore } from "./fa";
 import { faAuth, faDashboard, faProfile } from "./fa-pages";
 import { faRoles } from "./fa-roles";
@@ -26,7 +27,8 @@ export type TextKey =
   | keyof typeof faM3
   | keyof typeof faM4
   | keyof typeof faPortal
-  | keyof typeof faM5;
+  | keyof typeof faM5
+  | keyof typeof faM6;
 export type Dictionary = Record<TextKey, string>;
 
 const registered: Partial<Dictionary> = { ...faCore };

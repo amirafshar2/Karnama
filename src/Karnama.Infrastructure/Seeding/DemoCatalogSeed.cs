@@ -102,7 +102,9 @@ internal static class DemoCatalogSeed
         foreach (var c in clients)
         {
             var client = Client.Create(new ClientSpec(c.Name, c.Industry, c.Contact, c.Mobile, "شیراز", "یادداشت داخلی نمونه — مشتری نمی‌بیند.",
-                ClientStatus.Active, [new ClientAccountSpec(P("instagram"), c.Name.Replace(" ", "_").Replace("‌", "") , c.M)])).Value;
+                ClientStatus.Active, [new ClientAccountSpec(P("instagram"), c.Name.Replace(" ", "_").Replace("‌", "") , c.M),
+                    // The café also runs its own Telegram channel: the portal shows publish reminders for it.
+                    .. (c.Mobile == "09000000004" ? new[] { new ClientAccountSpec(P("telegram"), "cafe_nemoone", PageManagement.ClientManaged) } : [])])).Value;
             if (c.Mobile == "09000000004" && portalUser is not null) client.LinkPortalUser(portalUser.Id);
             db.Clients.Add(client);
             var cp = ClientPackage.Assign(client.Id, c.Pkg, now.AddDays(-c.DaysAgo), PackageService.SnapshotQuotas(c.Pkg, names), now, null).Value;

@@ -44,7 +44,7 @@ public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
 }
 
 /// <summary>Orders: placed by an admin (for a client) or by the client in the portal; accepting one creates its work items.</summary>
-public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess access, IAuditWriter audit, TimeProvider clock, IChangeFeed changes)
+public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess access, IAuditWriter audit, TimeProvider clock, IChangeFeed changes, Notify.Notifier notifier)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -122,6 +122,8 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
             db.Orders.Add(o);
             audit.Add("orders.created", nameof(Order), o.Id.ToString(), new { o.Number, source });
             changes.Record("order", o.Id, o.ClientId, null, null, "created");
+            if (source == OrderSource.Client)
+                await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.OrdersManage, PermissionScope.All, t), "order.new", $"سفارش جدید از مشتری (#{o.Number})", o.Title, "/orders", false, $"order:{o.Id:N}", t);
             if (autoAccept)
             {
                 var accepted = await AcceptCoreAsync(o, service, t);

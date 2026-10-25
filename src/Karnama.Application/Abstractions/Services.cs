@@ -6,6 +6,9 @@ public interface ISmsSender
 {
     /// <summary>Sends an OTP. Implementations must never log the code in Production.</summary>
     Task SendOtpAsync(string phone, string code, CancellationToken ct);
+
+    /// <summary>Plain notification text (only for important notifications; SMS costs money).</summary>
+    Task SendTextAsync(string phone, string text, CancellationToken ct);
 }
 
 /// <summary>Queues an OTP SMS so the HTTP response never waits on (or reveals) the SMS provider.</summary>

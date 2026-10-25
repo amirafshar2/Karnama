@@ -40,10 +40,9 @@ export const faDashboard = {
   "dashboard.accessTitle": "دسترسی‌های شما",
   "dashboard.accessHint": "این فهرست از نقش‌هایتان می‌آید و با هر تغییر نقش، همین‌جا به‌روز می‌شود.",
   "dashboard.nextTitle": "به‌زودی در همین پنل",
-  "dashboard.next.orders": "سفارش‌ها و تابلوی کار لایو",
-  "dashboard.next.time": "ورود و خروج و تایمر هر کار",
-  "dashboard.next.leave": "مرخصی، غیبت و تأخیر",
-  "dashboard.next.portal": "پنل پیگیری مشتری",
+  "dashboard.next.site": "سایت و بلاگ با سئوی خودکار",
+  "dashboard.next.app": "اپ اندروید و نصب روی آیفون",
+  "dashboard.next.reports": "گزارش‌های مدیریتی و مالی",
   "dashboard.clientHello": "اینجا وضعیت سفارش‌ها و محتوای پیج شما نمایش داده می‌شود.",
 } as const;
 

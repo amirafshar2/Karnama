@@ -77,3 +77,92 @@ internal sealed class ChangeEventConfiguration : IEntityTypeConfiguration<Change
         b.HasIndex(x => x.At);
     }
 }
+
+internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Karnama.Domain.Notify.Notification>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Notify.Notification> b)
+    {
+        b.ToTable("notifications");
+        b.Property(x => x.Kind).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Title).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Body).HasMaxLength(1000);
+        b.Property(x => x.Link).HasMaxLength(300);
+        b.HasIndex(x => new { x.UserId, x.CreatedAt });
+        b.HasIndex(x => new { x.UserId, x.ReadAt });
+        b.Property(x => x.EventKey).HasMaxLength(160).IsRequired();
+        b.HasIndex(x => new { x.UserId, x.EventKey }).IsUnique();
+    }
+}
+
+internal sealed class OutboxConfiguration : IEntityTypeConfiguration<Karnama.Domain.Notify.OutboxMessage>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Notify.OutboxMessage> b)
+    {
+        b.ToTable("outbox");
+        b.Property(x => x.Id).UseIdentityAlwaysColumn();
+        b.Property(x => x.Text).HasMaxLength(1500).IsRequired();
+        b.Property(x => x.Link).HasMaxLength(300);
+        b.Property(x => x.IdempotencyKey).HasMaxLength(200).IsRequired();
+        b.Property(x => x.LastError).HasMaxLength(500);
+        b.HasIndex(x => x.IdempotencyKey).IsUnique();
+        b.HasIndex(x => new { x.Status, x.DueAt });
+    }
+}
+
+internal sealed class NotificationPrefsConfiguration : IEntityTypeConfiguration<Karnama.Domain.Notify.NotificationPrefs>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Notify.NotificationPrefs> b)
+    {
+        b.ToTable("notification_prefs");
+        b.HasKey(x => x.UserId);
+        b.Property(x => x.Channels).AsJson();
+        b.Property(x => x.Muted).AsJson();
+        b.Property(x => x.Version).IsRowVersion();
+    }
+}
+
+internal sealed class MessengerLinkConfiguration : IEntityTypeConfiguration<Karnama.Domain.Notify.MessengerLink>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Notify.MessengerLink> b)
+    {
+        b.ToTable("messenger_links");
+        b.HasKey(x => new { x.UserId, x.Messenger });
+        b.HasIndex(x => new { x.Messenger, x.ChatId }).IsUnique();
+    }
+}
+
+internal sealed class MessengerLinkCodeConfiguration : IEntityTypeConfiguration<Karnama.Domain.Notify.MessengerLinkCode>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Notify.MessengerLinkCode> b)
+    {
+        b.ToTable("messenger_link_codes");
+        b.Property(x => x.Id).UseIdentityAlwaysColumn();
+        b.Property(x => x.CodeHash).HasMaxLength(64).IsRequired();
+        b.HasIndex(x => x.CodeHash).IsUnique();
+    }
+}
+
+internal sealed class BotUpdateConfiguration : IEntityTypeConfiguration<Karnama.Domain.Notify.BotUpdate>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Notify.BotUpdate> b)
+    {
+        b.ToTable("bot_updates");
+        b.HasKey(x => new { x.Messenger, x.UpdateId });
+    }
+}
+
+internal sealed class PublishJobConfiguration : IEntityTypeConfiguration<Karnama.Domain.Publishing.PublishJob>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Publishing.PublishJob> b)
+    {
+        b.ToTable("publish_jobs");
+        b.Property(x => x.Handle).HasMaxLength(100).IsRequired();
+        b.Property(x => x.Caption).HasMaxLength(Karnama.Domain.Publishing.PublishJob.MaxCaption).IsRequired();
+        b.Property(x => x.Hashtags).AsJson();
+        b.Property(x => x.FileIds).AsJson();
+        b.Property(x => x.PostUrl).HasMaxLength(500);
+        b.Property(x => x.Version).IsRowVersion();
+        b.HasIndex(x => new { x.Status, x.PublishAt });
+        b.HasIndex(x => new { x.ClientId, x.PublishAt });
+    }
+}

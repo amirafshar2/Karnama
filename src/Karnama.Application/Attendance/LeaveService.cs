@@ -25,7 +25,7 @@ public sealed record MonthReportRowDto(Guid UserId, string Name, int WorkedMinut
     int UnpaidLeaveMinutes, int ExcusedAbsences, int UnexcusedAbsences, int Shifts);
 
 /// <summary>Leave, absence and lateness (docs/PROMPT.md §6.7): requests, approvals, automatic detection, balances, team calendar, monthly report.</summary>
-public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSettingsStore settings, IAuditWriter audit, TimeProvider clock, IChangeFeed changes, IExcelExporter excel)
+public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSettingsStore settings, IAuditWriter audit, TimeProvider clock, IChangeFeed changes, IExcelExporter excel, Notify.Notifier notifier)
 {
     private Guid Me => me.UserId ?? Guid.Empty;
     private bool CanApprove => me.Has(Permissions.AttendanceApprove, PermissionScope.All);
@@ -81,6 +81,12 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         audit.Add(byManager ? "leaves.registered" : "leaves.requested", nameof(LeaveRequest), created.Value!.Id.ToString(), new { forUser, type = type.Name, r.From, r.To });
         // Managers see the request live; the worker sees a manager's registration live.
         changes.Record("presence", forUser, null, forUser, null, "leave");
+        var userName = await db.Users.Where(u => u.Id == forUser).Select(u => u.DisplayName).FirstAsync(ct);
+        if (byManager)
+            await notifier.NotifyAsync([forUser], "leave.registered", "مرخصی برای شما ثبت شد", type.Name, "/attendance", false, $"leave:{created.Value.Id:N}", ct);
+        else
+            await notifier.NotifyAsync((await notifier.StaffWithAsync(Permissions.AttendanceApprove, PermissionScope.All, ct)).Where(u => u != forUser),
+                "leave.request", $"درخواست مرخصی: {userName}", $"{type.Name} — {r.Reason}", "/attendance/live", false, $"leave:{created.Value.Id:N}", ct);
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         return (await DtosAsync([created.Value!], ct))[0];
@@ -103,6 +109,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         var d = l.Decide(Me, r.Approve, r.Note, clock.GetUtcNow());
         if (d.IsFailure) return d.Error!;
         audit.Add(r.Approve ? "leaves.approved" : "leaves.rejected", nameof(LeaveRequest), id.ToString(), new { l.UserId });
+        await notifier.NotifyAsync([l.UserId], "leave.decided", r.Approve ? "مرخصی شما تأیید شد" : "مرخصی شما رد شد", r.Note, "/attendance", false, $"leave-d:{l.Id:N}", ct);
         changes.Record("presence", l.UserId, null, l.UserId, null, "leave");
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
@@ -209,6 +216,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
                 var expected = Iran.At(today, day.Start);
                 if (now < expected.AddMinutes(sched.GraceMinutes) || now > Iran.At(today, day.End)) continue;
                 db.Absences.Add(Absence.Detect(uid, today, expected, now, s.AbsenceReasonHours));
+                await notifier.NotifyAsync([uid], "absence.detected", "ورود امروز ثبت نشد", $"اگر مشکلی پیش آمده، دلیل را تا {s.AbsenceReasonHours} ساعت بنویسید.", "/attendance", true, $"abs:{uid:N}:{today}", ct);
                 changes.Record("presence", uid, null, uid, null, "absence");
                 detected++;
             }

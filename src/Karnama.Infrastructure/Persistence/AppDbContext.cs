@@ -56,6 +56,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<Absence> Absences => Set<Absence>();
+    public DbSet<Karnama.Domain.Notify.Notification> Notifications => Set<Karnama.Domain.Notify.Notification>();
+    public DbSet<Karnama.Domain.Notify.OutboxMessage> Outbox => Set<Karnama.Domain.Notify.OutboxMessage>();
+    public DbSet<Karnama.Domain.Notify.NotificationPrefs> NotificationPrefs => Set<Karnama.Domain.Notify.NotificationPrefs>();
+    public DbSet<Karnama.Domain.Notify.MessengerLink> MessengerLinks => Set<Karnama.Domain.Notify.MessengerLink>();
+    public DbSet<Karnama.Domain.Notify.MessengerLinkCode> MessengerLinkCodes => Set<Karnama.Domain.Notify.MessengerLinkCode>();
+    public DbSet<Karnama.Domain.Notify.BotUpdate> BotUpdates => Set<Karnama.Domain.Notify.BotUpdate>();
+    public DbSet<Karnama.Domain.Publishing.PublishJob> PublishJobs => Set<Karnama.Domain.Publishing.PublishJob>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     /// <summary>

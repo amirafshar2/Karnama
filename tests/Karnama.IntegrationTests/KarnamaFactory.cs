@@ -71,6 +71,14 @@ public sealed class CapturingSms : ISmsSender
         return Task.CompletedTask;
     }
 
+    public ConcurrentQueue<(string Phone, string Text)> Texts { get; } = new();
+
+    public Task SendTextAsync(string phone, string text, CancellationToken ct)
+    {
+        Texts.Enqueue((phone, text));
+        return Task.CompletedTask;
+    }
+
     /// <summary>SMS are sent in the background; wait until a new code for the phone arrives.</summary>
     public async Task<string> WaitForCodeAsync(string phone, string? previous = null)
     {
@@ -83,6 +91,17 @@ public sealed class CapturingSms : ISmsSender
     }
 }
 
+public sealed class CapturingMessenger : Karnama.Infrastructure.Notify.IMessengerSender
+{
+    public ConcurrentQueue<(Karnama.Domain.Notify.Messenger M, long ChatId, string Text)> Sent { get; } = new();
+
+    public Task SendAsync(Karnama.Domain.Notify.Messenger messenger, long chatId, string text, CancellationToken ct)
+    {
+        Sent.Enqueue((messenger, chatId, text));
+        return Task.CompletedTask;
+    }
+}
+
 public class KarnamaFactory(string connectionString, bool demoLogin = true, string seedMode = "Demo", string environment = "Development")
     : WebApplicationFactory<Program>
 {
@@ -90,6 +109,9 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
 
     public CapturingSms Sms { get; } = new();
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
+    public CapturingMessenger Messenger { get; } = new();
+    public const string BaleSecret = "bale-webhook-secret-test-0123456789";
+    public const string GatewaySecret = "telegram-gateway-secret-test-0123456789";
 
     static KarnamaFactory() => Environment.SetEnvironmentVariable("KARNAMA_SKIP_DOTENV", "1");
 
@@ -109,8 +131,13 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
         builder.UseSetting("RateLimits:AuthPerIpPerMinute", "1000");
         builder.UseSetting("RateLimits:UserBurst", "1000");
         builder.UseSetting("Storage:LocalPath", Path.Combine(Path.GetTempPath(), "karnama-test-storage"));
+        builder.UseSetting("Messengers:BaleWebhookSecret", BaleSecret);
+        builder.UseSetting("Messengers:TelegramGatewaySecret", GatewaySecret);
+        builder.UseSetting("Notify:BaleBotUsername", "karnama_test_bot");
         builder.ConfigureServices(s =>
         {
+            s.RemoveAll<Karnama.Infrastructure.Notify.IMessengerSender>();
+            s.AddSingleton<Karnama.Infrastructure.Notify.IMessengerSender>(Messenger);
             s.RemoveAll<ISmsSender>();
             s.AddSingleton<ISmsSender>(Sms);
             s.RemoveAll<TimeProvider>();

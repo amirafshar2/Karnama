@@ -25,7 +25,11 @@ builder.Services.AddHangfire(c => c
         new PostgreSqlStorageOptions { SchemaName = "hangfire", PrepareSchemaIfNecessary = true }));
 builder.Services.AddHangfireServer(o => o.WorkerCount = Math.Max(2, Environment.ProcessorCount));
 builder.Services.AddScoped<MaintenanceJobs>();
+builder.Services.AddScoped<AttendanceJobs>();
+builder.Services.AddScoped<NotifyJobs>();
 builder.Services.AddHostedService<JobRegistrar>();
+builder.Services.AddSingleton<Karnama.Infrastructure.Notify.OutboxDispatcher>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Karnama.Infrastructure.Notify.OutboxDispatcher>());
 
 var host = builder.Build();
 await host.RunAsync();

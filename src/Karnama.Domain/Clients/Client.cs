@@ -132,6 +132,22 @@ public sealed class ClientPackage : AuditableEntity
         };
     }
 
+    /// <summary>Smallest "days left" threshold already announced (7, 3, 1), so each reminder goes out once.</summary>
+    public int? ExpiryNoticeSent { get; private set; }
+
+    /// <summary>True when a new threshold was crossed and a reminder should go out now.</summary>
+    public bool NeedsExpiryNotice(DateTimeOffset now, out int threshold)
+    {
+        threshold = 0;
+        if (Status != ClientPackageStatus.Active) return false;
+        var left = DaysLeft(now);
+        foreach (var t in new[] { 1, 3, 7 })
+        {
+            if (left <= t && (ExpiryNoticeSent is null || ExpiryNoticeSent > t)) { threshold = t; ExpiryNoticeSent = t; return true; }
+        }
+        return false;
+    }
+
     public int DaysLeft(DateTimeOffset now) => Status != ClientPackageStatus.Active ? 0 : Math.Max(0, (int)Math.Ceiling((EndsAt - now).TotalDays));
 
     public Result Cancel()

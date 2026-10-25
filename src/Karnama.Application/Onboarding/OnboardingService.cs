@@ -29,7 +29,7 @@ public sealed class OnboardingService(IAppDbContext db, BrandService brand)
             new("serviceType", await db.ServiceTypes.AnyAsync(ct), "/services"),
             new("package", await db.Packages.AnyAsync(p => p.Status == PackageStatus.Active, ct), "/packages"),
             new("firstClient", await db.Clients.AnyAsync(ct), "/clients"),
-            new("schedule", false, "/dashboard"), // work schedules arrive with M4
+            new("schedule", await db.AttendancePlaces.AnyAsync(ct), "/attendance/setup"), // office location + clock-in methods
         };
         var done = steps.Count(s => s.Done);
         return new OnboardingDto(steps, (int)Math.Round(done * 100.0 / steps.Count), steps.FirstOrDefault(s => !s.Done));

@@ -142,7 +142,10 @@ function formatDate(locale: string, lang: Language, date: Date, opts?: Intl.Date
   const fmt = new Intl.DateTimeFormat(locale, options);
   if (lang.direction !== "rtl" || !options.month || options.month === "numeric" || options.month === "2-digit") return fmt.format(date);
   const part = (type: Intl.DateTimeFormatPartTypes) => fmt.formatToParts(date).find((p) => p.type === type)?.value;
-  return [part("weekday"), part("day"), part("month"), part("year")].filter(Boolean).join(" ");
+  const day = [part("weekday"), part("day"), part("month"), part("year")].filter(Boolean).join(" ");
+  if (!options.hour) return day;
+  const time = new Intl.DateTimeFormat(locale, { hour: options.hour, minute: options.minute ?? "2-digit", hourCycle: "h23" }).format(date);
+  return `${day}، ${time}`;
 }
 
 /** Turns Persian/Arabic digits into ASCII (for inputs). */

@@ -15,6 +15,9 @@ public sealed class SmsOptions
 
     /// <summary>Kavenegar: template name. sms.ir: numeric template id.</summary>
     public string OtpTemplate { get; set; } = string.Empty;
+
+    /// <summary>Sender line for plain messages (notifications).</summary>
+    public string LineNumber { get; set; } = string.Empty;
 }
 
 /// <summary>Development only: writes the code to the console log. Refuses to run in Production.</summary>
@@ -24,6 +27,13 @@ internal sealed class ConsoleSmsSender(ILogger<ConsoleSmsSender> logger, IHostEn
     {
         if (env.IsProduction()) throw new InvalidOperationException("Console SMS provider is not allowed in Production.");
         logger.LogWarning("[DEV SMS] OTP for {Phone}: {Code}", PhoneNumber.Mask(phone), code);
+        return Task.CompletedTask;
+    }
+
+    public Task SendTextAsync(string phone, string text, CancellationToken ct)
+    {
+        if (env.IsProduction()) throw new InvalidOperationException("Console SMS provider is not allowed in Production.");
+        logger.LogInformation("[DEV SMS] to {Phone}: {Text}", PhoneNumber.Mask(phone), text);
         return Task.CompletedTask;
     }
 }
@@ -36,6 +46,14 @@ internal sealed class KavenegarSmsSender(HttpClient http, IOptions<SmsOptions> o
         var o = options.Value;
         var url = $"v1/{Uri.EscapeDataString(o.ApiKey)}/verify/lookup.json?receptor={phone}&token={code}&template={Uri.EscapeDataString(o.OtpTemplate)}";
         using var response = await http.PostAsync(url, null, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task SendTextAsync(string phone, string text, CancellationToken ct)
+    {
+        var o = options.Value;
+        using var body = new FormUrlEncodedContent(new Dictionary<string, string> { ["receptor"] = phone, ["message"] = text, ["sender"] = o.LineNumber });
+        using var response = await http.PostAsync($"v1/{Uri.EscapeDataString(o.ApiKey)}/sms/send.json", body, ct);
         response.EnsureSuccessStatusCode();
     }
 }
@@ -53,6 +71,18 @@ internal sealed class SmsIrSmsSender(HttpClient http, IOptions<SmsOptions> optio
                 templateId = int.Parse(o.OtpTemplate, System.Globalization.CultureInfo.InvariantCulture),
                 parameters = new[] { new { name = "Code", value = code } },
             }),
+        };
+        request.Headers.Add("x-api-key", o.ApiKey);
+        using var response = await http.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task SendTextAsync(string phone, string text, CancellationToken ct)
+    {
+        var o = options.Value;
+        using var request = new HttpRequestMessage(HttpMethod.Post, "v1/send/bulk")
+        {
+            Content = JsonContent.Create(new { lineNumber = long.Parse(o.LineNumber, System.Globalization.CultureInfo.InvariantCulture), messageText = text, mobiles = new[] { phone } }),
         };
         request.Headers.Add("x-api-key", o.ApiKey);
         using var response = await http.SendAsync(request, ct);

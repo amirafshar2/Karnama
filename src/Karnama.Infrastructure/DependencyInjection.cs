@@ -27,6 +27,16 @@ public static class DependencyInjection
         services.Configure<DemoLoginOptions>(config.GetSection(DemoLoginOptions.Section));
         services.Configure<AppVersionOptions>(config.GetSection(AppVersionOptions.Section));
         services.Configure<SmsOptions>(config.GetSection(SmsOptions.Section));
+        services.Configure<Notify.MessengerOptions>(config.GetSection(Notify.MessengerOptions.Section));
+        services.Configure<Application.Notify.NotifyOptions>(config.GetSection(Application.Notify.NotifyOptions.Section));
+        services.AddHttpClient("bale", c => { c.BaseAddress = new Uri("https://tapi.bale.ai/"); c.Timeout = TimeSpan.FromSeconds(15); });
+        services.AddHttpClient("telegram-gateway", c =>
+        {
+            var url = config["Messengers:TelegramGatewayUrl"];
+            if (!string.IsNullOrWhiteSpace(url)) c.BaseAddress = new Uri(url.TrimEnd('/') + "/");
+            c.Timeout = TimeSpan.FromSeconds(20);
+        });
+        services.AddScoped<Notify.IMessengerSender, Notify.MessengerSender>();
 
         services.AddDbContext<AppDbContext>(o => o
             .UseNpgsql(config.GetConnectionString("Default"), npg => npg.EnableRetryOnFailure(3))

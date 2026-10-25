@@ -1,7 +1,13 @@
 "use client";
 
 import { useQuery } from "@/lib/query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
+import { useState } from "react";
+import { useErrorMessage } from "@/components/app/error-text";
+import { Button } from "@/components/ui/button";
+import { faM6 } from "@/lib/i18n/fa-m6";
+import { registerTexts } from "@/lib/i18n/registry";
+import { notify } from "@/lib/notify";
 import { FilesPanel } from "@/components/app/files-panel";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -10,12 +16,31 @@ import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import type { OrderDetail } from "@/lib/work-types";
 
+registerTexts(faM6);
+
 export function PortalOrder({ id, onClose }: { id: string; onClose: () => void }) {
   const { t, dir, formatNumber, formatDate } = useI18n();
   const isMobile = useIsMobile();
   const order = useQuery({ queryKey: ["portal-order", id], queryFn: () => api<OrderDetail>(`/api/v1/orders/${id}`) });
   const messages = useQuery({ queryKey: ["portal-messages", id], queryFn: () => api<{ id: string; author: string; fromMe: boolean; body: string; at: string }[]>(`/api/v1/portal/orders/${id}/messages`) });
   const o = order.data;
+  const errorMessage = useErrorMessage();
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const send = async () => {
+    if (!draft.trim()) return;
+    setSending(true);
+    try {
+      await api(`/api/v1/portal/orders/${id}/messages`, { method: "POST", body: { body: draft } });
+      setDraft("");
+      notify.success(t("portalMsg.sent"));
+      await messages.refetch();
+    } catch (e) {
+      notify.error(errorMessage(e));
+    } finally {
+      setSending(false);
+    }
+  };
   return (
     <Sheet open onOpenChange={(v) => !v && onClose()}>
       <SheetContent side={isMobile ? "bottom" : dir === "rtl" ? "left" : "right"} className={cn("flex flex-col gap-0 p-0", isMobile ? "h-[90dvh] rounded-t-2xl" : "w-full sm:max-w-xl")}>
@@ -54,6 +79,31 @@ export function PortalOrder({ id, onClose }: { id: string; onClose: () => void }
                 ))}
                 {messages.data?.length === 0 && <li className="text-sm text-muted-foreground">{t("portal.noMessages")}</li>}
               </ul>
+              <form
+                className="flex items-end gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void send();
+                }}
+              >
+                <label htmlFor="pm" className="sr-only">
+                  {t("portalMsg.placeholder")}
+                </label>
+                <textarea
+                  id="pm"
+                  rows={2}
+                  maxLength={4000}
+                  placeholder={t("portalMsg.placeholder")}
+                  className="min-h-12 flex-1 rounded-md border bg-transparent p-2 text-base"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  data-testid="portal-msg"
+                />
+                <Button type="submit" className="h-12" disabled={sending || !draft.trim()} data-testid="portal-msg-send">
+                  <Send className="rtl:-scale-x-100" aria-hidden="true" />
+                  {t("portalMsg.send")}
+                </Button>
+              </form>
             </section>
           </div>
         )}

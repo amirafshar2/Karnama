@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, Hourglass, MonitorSmartphone } from "lucide-react";
+import { BarChart3, Globe, Smartphone } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { TextKey } from "@/lib/i18n/registry";
 import { useI18n } from "@/lib/i18n/provider";
@@ -19,10 +19,10 @@ registerPageTexts(faDashboard);
 
 registerTexts(faAccess);
 
-const NEXT: { key: TextKey; icon: typeof Hourglass }[] = [
-  { key: "dashboard.next.time", icon: Hourglass },
-  { key: "dashboard.next.leave", icon: CalendarClock },
-  { key: "dashboard.next.portal", icon: MonitorSmartphone },
+const NEXT: { key: TextKey; icon: typeof Globe }[] = [
+  { key: "dashboard.next.site", icon: Globe },
+  { key: "dashboard.next.app", icon: Smartphone },
+  { key: "dashboard.next.reports", icon: BarChart3 },
 ];
 
 export default function DashboardPage() {

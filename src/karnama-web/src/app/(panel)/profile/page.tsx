@@ -11,6 +11,9 @@ import { useI18n } from "@/lib/i18n/provider";
 import type { Me } from "@/lib/types";
 import { faProfile } from "@/lib/i18n/fa-pages";
 import { registerTexts as registerPageTexts } from "@/lib/i18n/registry";
+import dynamic from "next/dynamic";
+
+const NotifyPrefs = dynamic(() => import("@/components/notify/notify-prefs").then((m) => m.NotifyPrefs), { ssr: false });
 
 registerPageTexts(faProfile);
 
@@ -70,6 +73,8 @@ export default function ProfilePage() {
           </div>
         </fieldset>
       )}
+
+      <NotifyPrefs />
 
       <Button variant="outline" className="h-12 w-full sm:w-auto" onClick={() => void logout()} data-testid="logout">
         <LogOut className="rtl:rotate-180" aria-hidden="true" />

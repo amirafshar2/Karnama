@@ -72,5 +72,5 @@ export const faM2Forms = {
   "onboarding.step.serviceType": "اولین نوع خدمت",
   "onboarding.step.package": "اولین پکیج فروش",
   "onboarding.step.firstClient": "اولین مشتری",
-  "onboarding.step.schedule": "برنامه‌ی کاری (به‌زودی)",
+  "onboarding.step.schedule": "برنامه‌ی کاری و محل دفتر",
 } as const;

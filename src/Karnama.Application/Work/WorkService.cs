@@ -24,7 +24,7 @@ public sealed record CommentRequest(string Body, CommentVisibility Visibility);
 public sealed record AssigneeSuggestionDto(Guid UserId, string Name, int OpenItems, int OpenMinutes, bool HasStageRole);
 
 /// <summary>Work items: the live kanban, moving cards (the domain decides who may move what), assigning, comments.</summary>
-public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess access, OrderService orders, IAuditWriter audit, TimeProvider clock, IChangeFeed changes)
+public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess access, OrderService orders, IAuditWriter audit, TimeProvider clock, IChangeFeed changes, Notify.Notifier notifier)
 {
     public const int BoardLimit = 500;
 
@@ -87,12 +87,32 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
                 if (c.IsSuccess) db.WorkComments.Add(c.Value!);
             }
             await AfterStatusChangeAsync(w, from, ct);
+            await NotifyMoveAsync(w, ct);
             audit.Add("work.moved", nameof(WorkItem), id.ToString(), new { from, to = w.Status });
         }
         changes.Record("work", w.Id, w.ClientId, w.AssigneeId, null, "status", "rank");
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         return (await CardsAsync([w], ct))[0];
+    }
+
+    private async Task NotifyMoveAsync(WorkItem w, CancellationToken ct)
+    {
+        var link = $"/work?open={w.Id}";
+        var what = $"{w.Title} — {w.StageName.Get("fa")}";
+        var key = $"move:{w.Id:N}:{w.Status}:{w.RevisionCount}";
+        switch (w.Status)
+        {
+            case WorkStatus.InReview:
+                await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.WorkReview, PermissionScope.All, ct), "work.review", "کاری برای بازبینی رسید", what, link, false, key, ct);
+                break;
+            case WorkStatus.ChangesRequested when w.AssigneeId is { } a:
+                await notifier.NotifyAsync([a], "work.changes", "این کار نیاز به اصلاح دارد", what, link, false, key, ct);
+                break;
+            case WorkStatus.ClientReview when await notifier.PortalUserAsync(w.ClientId, ct) is { } portal:
+                await notifier.NotifyAsync([portal], "portal.approval", "محتوای جدید منتظر تأیید شماست", w.Title, "/dashboard", true, key, ct);
+                break;
+        }
     }
 
     /// <summary>Done → the next stage unlocks; all done → the order is complete. Reopened → the order is open again.</summary>
@@ -133,6 +153,8 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         var res = w.Assign(r.UserId);
         if (res.IsFailure) return res.Error!;
         audit.Add("work.assigned", nameof(WorkItem), id.ToString(), new { previous, to = r.UserId });
+        if (r.UserId is { } assignee && assignee != me.UserId)
+            await notifier.NotifyAsync([assignee], "work.assigned", "کار جدید به شما سپرده شد", $"{w.Title} — {w.StageName.Get("fa")}", $"/work?open={w.Id}", false, $"assign:{w.Id:N}:{assignee:N}:{w.Version}", ct);
         changes.Record("work", w.Id, null, w.AssigneeId, previous, "assignee");   // the portal never learns who works on what
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
@@ -168,11 +190,15 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         if (c.IsFailure) return c.Error!;
         db.WorkComments.Add(c.Value!);
         changes.Record("work", w.Id, r.Visibility == CommentVisibility.Client ? w.ClientId : null, w.AssigneeId, null, "comments");
+        if (r.Visibility == CommentVisibility.Client && await notifier.PortalUserAsync(w.ClientId, ct) is { } portalUser)
+            await notifier.NotifyAsync([portalUser], "portal.message", $"پیام تازه درباره‌ی سفارش {w.OrderNumber}", Short(c.Value!.Body), "/dashboard", false, $"msg:{c.Value!.Id:N}", ct);
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         var x = c.Value!;
         return new CommentDto(x.Id, x.AuthorName, false, x.Visibility, x.Body, x.CreatedAt, true);
     }
+
+    private static string Short(string s) => s.Length <= 140 ? s : s[..140] + "…";
 
     private async Task<string> MyNameAsync(CancellationToken ct)
     {
