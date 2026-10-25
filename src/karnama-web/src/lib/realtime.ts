@@ -3,7 +3,7 @@
 import { HUB_BASE } from "./config";
 import { tokenStore } from "./token-store";
 
-type Handlers = { permissionsChanged: () => void };
+type Handlers = { permissionsChanged: () => void | Promise<void> };
 
 /** A live delta from the server: what kind of thing changed and which fields — the page refetches what it shows. */
 export type Change = { seq: number; kind: string; id: string; fields: string[] };
@@ -39,7 +39,12 @@ export async function connectRealtime(handlers: Handlers) {
     .configureLogging(LogLevel.Warning)
     .build();
 
-  connection.on("PermissionsChanged", handlers.permissionsChanged);
+  // Roles changed: refresh the token, then reconnect so the server re-decides which live groups this user may join.
+  connection.on("PermissionsChanged", async () => {
+    await handlers.permissionsChanged();
+    await connection.stop();
+    await start();
+  });
   connection.on("Changed", (m: Wire) => emit({ seq: Number(m.Seq ?? m.seq ?? 0), kind: String(m.Kind ?? m.kind ?? ""), id: String(m.Id ?? m.id ?? ""), fields: m.Fields ?? m.fields ?? [] }));
   connection.onreconnected(() => emit("resync"));
   let started = false;

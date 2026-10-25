@@ -284,8 +284,12 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         Convert.ToHexStringLower(HMACSHA256.HashData(key, Encoding.ASCII.GetBytes($"{step}.{n}")))[..16];
 
     /// <summary>The office kiosk shows this; a fresh code appears as soon as one is used.</summary>
-    public async Task<KioskCodeDto> KioskCodeAsync(CancellationToken ct)
+    public async Task<Result<KioskCodeDto>> KioskCodeAsync(CancellationToken ct)
     {
+        // A kiosk login used from home must not be able to mint valid office codes.
+        var networks = (await settings.GetAsync(ct)).OfficeNetworks;
+        if (networks.Count > 0 && !AttendanceSettingsStore.InNetworks(request.RemoteIp, networks))
+            return Error.Forbidden("kiosk.officeOnly", "صفحه‌ی QR فقط از اینترنت دفتر باز می‌شود.");
         var now = clock.GetUtcNow();
         var step = now.ToUnixTimeSeconds() / QrStepSeconds;
         var used = await db.KioskCodeUses.CountAsync(u => u.Step == step, ct);
@@ -307,11 +311,17 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         var s = await settings.GetAsync(ct);
         var elapsed = TimeSpan.FromMilliseconds(Math.Clamp(r.ElapsedMs ?? 0, 0, 72L * 3600 * 1000));
         var at = now - elapsed;
-        var offline = elapsed > TimeSpan.FromMinutes(1);
+        var offline = elapsed > TimeSpan.FromMinutes(2);
         string? issue = null;
-        if (offline && elapsed > TimeSpan.FromHours(12)) issue = "ثبت آفلاین خیلی دیر رسید";
+        // The elapsed time comes from the device, so an offline event is never trusted on its own: a manager confirms it.
+        // (Otherwise "I was offline for 2 hours" would turn an 11:00 arrival into a green 09:00.)
+        if (offline) issue = $"ثبت آفلاین ({(int)elapsed.TotalMinutes} دقیقه قبل) — مدیر تأیید کند";
         if (r.DeviceAt is { } d && Math.Abs((d - at).TotalMinutes) > s.OfflineToleranceMinutes)
             issue = $"ساعت گوشی {Math.Abs((d - at).TotalMinutes):0} دقیقه با ساعت سرور فرق داشت";
+        // Never before the person's previous event: no overlapping or reordered shifts.
+        var uid = Me;
+        var last = await db.AttendanceEvents.Where(e => e.UserId == uid).MaxAsync(e => (DateTimeOffset?)e.At, ct);
+        if (last is { } l && at < l) at = l;
         return (at, offline, issue);
     }
 

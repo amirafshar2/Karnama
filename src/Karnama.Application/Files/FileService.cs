@@ -15,6 +15,10 @@ public sealed class FileOptions
     public long MaxBytes { get; set; } = 2L * 1024 * 1024 * 1024;
     /// <summary>Largest chunk per request; small enough to retry cheaply on a weak mobile connection.</summary>
     public int MaxChunkBytes { get; set; } = 8 * 1024 * 1024;
+    /// <summary>Unfinished uploads one person may have at once (stops anyone reserving the disk).</summary>
+    public int MaxOpenUploadsPerUser { get; set; } = 5;
+    /// <summary>Unfinished uploads older than this are deleted by the worker.</summary>
+    public int StaleUploadHours { get; set; } = 24;
 }
 
 public sealed record FileDto(Guid Id, string FileName, string ContentType, long Size, string? Kind, FilePurpose Purpose, bool ClientVisible, bool FromClient, Guid? WorkItemId, DateTimeOffset CreatedAt);
@@ -49,6 +53,9 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
         else if (!access.IsManager && !me.Has(Domain.Identity.Permissions.OrdersManage, Domain.Identity.PermissionScope.All)) return Error.Forbidden();
         if (order.Status is OrderStatus.Cancelled or OrderStatus.Rejected) return Error.Conflict("orders.closed", "این سفارش بسته شده است.");
 
+        var uid = access.Me;
+        if (await db.Files.CountAsync(x => x.UploadedBy == uid && x.Status == FileStatus.Uploading, ct) >= _o.MaxOpenUploadsPerUser)
+            return Error.TooMany("files.tooManyOpen", "چند آپلود نیمه‌کاره دارید؛ اول آن‌ها را تمام کنید.");
         var f = FileAsset.Start(order.Id, order.ClientId, r.WorkItemId, r.Purpose, r.FileName, r.ContentType ?? "", r.Size, _o.MaxBytes, me.UserId, portal, clock.GetUtcNow());
         if (f.IsFailure) return f.Error!;
         db.Files.Add(f.Value!);
@@ -138,6 +145,20 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         return Result.Success();
+    }
+
+    /// <summary>Deletes unfinished uploads nobody continued (worker job).</summary>
+    public static async Task<int> PurgeStaleAsync(IAppDbContext db, IFileStore store, FileOptions o, DateTimeOffset now, CancellationToken ct)
+    {
+        var cutoff = now.AddHours(-o.StaleUploadHours);
+        var stale = await db.Files.Where(f => f.Status == FileStatus.Uploading && f.CreatedAt < cutoff).Take(500).ToListAsync(ct);
+        foreach (var f in stale)
+        {
+            await store.DeleteAsync(f.StorageKey, ct);
+            f.Delete();
+        }
+        await db.SaveChangesAsync(ct);
+        return stale.Count;
     }
 
     /// <summary>Allowed kinds by magic bytes. Anything else (HTML, SVG, scripts, executables) is refused.</summary>

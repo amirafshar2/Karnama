@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { hasPermission, permissionGroup, type Scope } from "@/lib/types";
 import dynamic from "next/dynamic";
 
+const PortalHome = dynamic(() => import("@/components/portal/portal-home").then((m) => m.PortalHome), { ssr: false });
 const OnboardingCard = dynamic(() => import("@/components/app/onboarding-card").then((m) => m.OnboardingCard), { ssr: false });
 
 import { faAccess } from "@/lib/i18n/fa-access";
@@ -28,6 +29,8 @@ export default function DashboardPage() {
   const { me } = useAuth();
   const { t, formatDate } = useI18n();
   if (!me) return null;
+  // Clients get their own simple panel (docs/PROMPT.md §6.9).
+  if (me.kind === "client") return <PortalHome />;
 
   const groups = new Map<string, [string, Scope][]>();
   for (const [code, scope] of Object.entries(me.permissions)) {
@@ -47,12 +50,7 @@ export default function DashboardPage() {
 
       {hasPermission(me, "settings.manage", "all") && <OnboardingCard />}
 
-      {me.kind === "client" ? (
-        <section className="rounded-xl border bg-card p-6">
-          <p>{t("dashboard.clientHello")}</p>
-        </section>
-      ) : (
-        <section className="rounded-xl border bg-card p-5 sm:p-6" aria-labelledby="access-title">
+      <section className="rounded-xl border bg-card p-5 sm:p-6" aria-labelledby="access-title">
           <h2 id="access-title" className="text-lg font-bold">
             {t("dashboard.accessTitle")}
           </h2>
@@ -75,7 +73,6 @@ export default function DashboardPage() {
             ))}
           </dl>
         </section>
-      )}
 
       <section aria-labelledby="next-title">
         <h2 id="next-title" className="text-lg font-bold">

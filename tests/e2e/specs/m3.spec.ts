@@ -58,7 +58,7 @@ test.describe("M3: orders and the live work board", () => {
     // Move: drag on desktop, "move to…" menu on phones
     if (mobile) {
       const id = (await card.first().getAttribute("data-testid"))!.replace("card-", "");
-      await page.getByTestId(`move-${id}`).selectOption("inProgress");
+      await page.getByTestId(`move-${id}`).filter({ visible: true }).selectOption("inProgress");
       await page.getByTestId("tab-inProgress").click();
       await expect(card.first()).toBeVisible();
     } else {

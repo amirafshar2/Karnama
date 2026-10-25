@@ -67,16 +67,17 @@ export default function WorkBoardPage() {
     }
   };
 
-  const Card = ({ c }: { c: WorkCard }) => {
+  // Plain render functions (not inner components): a re-render while dragging must not remount the card being dragged.
+  const renderCard = (c: WorkCard) => {
     const late = c.deadline && c.status !== "done" && new Date(c.deadline) < new Date();
     return (
       <li
-        draggable
-        onDragStart={(e) => e.dataTransfer.setData("text/plain", c.id)}
+        key={c.id}
         className="group rounded-lg border bg-card p-3 shadow-xs transition-colors hover:border-foreground/40"
         data-testid={`card-${c.id}`}
       >
-        <button type="button" className="block w-full text-start" onClick={() => setOpen(c.id)}>
+        {/* The button itself is the drag handle (Chrome doesn't start a drag from a button inside a draggable parent). */}
+        <button type="button" draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", c.id)} className="block w-full cursor-grab text-start active:cursor-grabbing" onClick={() => setOpen(c.id)}>
           <div className="flex items-start justify-between gap-2">
             <span className="text-xs text-muted-foreground">
               #{formatNumber(c.orderNumber)} · <bdi>{c.clientName}</bdi>
@@ -133,10 +134,11 @@ export default function WorkBoardPage() {
     );
   };
 
-  const Column = ({ status }: { status: WorkStatus }) => {
+  const renderColumn = (status: WorkStatus) => {
     const cards = byColumn.get(status) ?? [];
     return (
       <section
+        key={status}
         aria-labelledby={`col-${status}`}
         onDragOver={(e) => {
           e.preventDefault();
@@ -157,9 +159,7 @@ export default function WorkBoardPage() {
           <span className="rounded-full bg-background px-2 text-xs font-medium">{formatNumber(cards.length)}</span>
         </h2>
         <ul className="flex min-h-24 flex-col gap-2">
-          {cards.map((c) => (
-            <Card key={c.id} c={c} />
-          ))}
+          {cards.map(renderCard)}
           {cards.length === 0 && <li className="px-2 py-6 text-center text-xs text-muted-foreground">{t("work.empty")}</li>}
         </ul>
       </section>
@@ -217,18 +217,14 @@ export default function WorkBoardPage() {
           ))}
         </div>
         <ul className="mt-2 flex flex-col gap-2">
-          {(byColumn.get(mobileCol) ?? []).map((c) => (
-            <Card key={c.id} c={c} />
-          ))}
+          {(byColumn.get(mobileCol) ?? []).map(renderCard)}
           {(byColumn.get(mobileCol) ?? []).length === 0 && <li className="py-8 text-center text-sm text-muted-foreground">{t("work.empty")}</li>}
         </ul>
       </div>
 
       {/* Tablet/desktop: all columns, drag and drop. */}
       <div className="-mx-4 hidden gap-3 overflow-x-auto px-4 pb-4 md:flex">
-        {COLUMNS.map((s) => (
-          <Column key={s} status={s} />
-        ))}
+        {COLUMNS.map(renderColumn)}
       </div>
 
       {open && <WorkSheet id={open} onClose={() => setOpen(null)} />}

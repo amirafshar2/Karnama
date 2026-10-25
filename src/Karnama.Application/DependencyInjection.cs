@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<Files.FileService>();
         services.AddScoped<Realtime.ChangesService>();
         services.AddScoped<Abstractions.IChangeFeed, Realtime.ChangeFeed>();
+        services.AddScoped<Portal.PortalService>();
         services.AddScoped<Attendance.AttendanceSettingsStore>();
         services.AddScoped<Attendance.AttendanceService>();
         services.AddScoped<Attendance.AttendanceAdminService>();

@@ -6,8 +6,16 @@ using Microsoft.EntityFrameworkCore;
 namespace Karnama.Worker;
 
 /// <summary>Housekeeping that must not slow the API. More jobs (absence detection, reminders, outbox) arrive in later milestones.</summary>
-public sealed class MaintenanceJobs(IAppDbContext db, TimeProvider clock, ILogger<MaintenanceJobs> logger)
+public sealed class MaintenanceJobs(IAppDbContext db, TimeProvider clock, ILogger<MaintenanceJobs> logger, IFileStore files,
+    Microsoft.Extensions.Options.IOptions<Karnama.Application.Files.FileOptions> fileOptions)
 {
+    [AutomaticRetry(Attempts = 3)]
+    public async Task PurgeStaleUploadsAsync(CancellationToken ct)
+    {
+        var n = await Karnama.Application.Files.FileService.PurgeStaleAsync(db, files, fileOptions.Value, clock.GetUtcNow(), ct);
+        if (n > 0) logger.LogInformation("Deleted {Count} abandoned uploads", n);
+    }
+
     [AutomaticRetry(Attempts = 3)]
     public async Task PurgeExpiredAuthDataAsync(CancellationToken ct)
     {
@@ -39,6 +47,7 @@ internal sealed class JobRegistrar(IRecurringJobManager jobs) : IHostedService
     public Task StartAsync(CancellationToken cancellationToken)
     {
         jobs.AddOrUpdate<MaintenanceJobs>("purge-auth", j => j.PurgeExpiredAuthDataAsync(CancellationToken.None), Cron.Hourly());
+        jobs.AddOrUpdate<MaintenanceJobs>("purge-stale-uploads", j => j.PurgeStaleUploadsAsync(CancellationToken.None), Cron.Hourly());
         jobs.AddOrUpdate<AttendanceJobs>("close-forgotten-shifts", j => j.CloseForgottenAsync(CancellationToken.None), "*/30 * * * *");
         return Task.CompletedTask;
     }

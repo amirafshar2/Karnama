@@ -48,10 +48,12 @@ public sealed class ChangesService(IAppDbContext db, ICurrentUser me, Work.WorkA
 
         var q = db.ChangeEvents.AsNoTracking().Where(e => e.Seq > since);
         if (await access.PortalClientIdAsync(ct) is { } clientId) q = q.Where(e => e.ClientId == clientId);
-        else if (!access.SeesAllWork)
+        else
         {
             var uid = me.UserId ?? Guid.Empty;
-            q = q.Where(e => e.AssigneeId == uid || e.PreviousAssigneeId == uid);
+            var seesPresence = me.Has(Domain.Identity.Permissions.AttendanceView, Domain.Identity.PermissionScope.All);
+            if (!access.SeesAllWork) q = q.Where(e => e.AssigneeId == uid || e.PreviousAssigneeId == uid || (seesPresence && e.Kind == "presence"));
+            else if (!seesPresence) q = q.Where(e => e.Kind != "presence" || e.AssigneeId == uid);
         }
         var rows = await q.OrderBy(e => e.Seq).Take(MaxEvents + 1).ToListAsync(ct);
         if (rows.Count > MaxEvents) return new ChangesPage(latest, true, []);

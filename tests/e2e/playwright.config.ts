@@ -16,6 +16,9 @@ export default defineConfig({
   use: {
     locale: "fa-IR",
     timezoneId: "Asia/Tehran",
+    // Standing in the demo office (sample place), so the location check is exercised too.
+    geolocation: { latitude: 29.61005, longitude: 52.53002, accuracy: 20 },
+    permissions: ["geolocation"],
     trace: "retain-on-failure",
     actionTimeout: 15_000,
   },

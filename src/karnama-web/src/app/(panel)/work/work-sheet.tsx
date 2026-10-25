@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Play, Send, Square } from "lucide-react";
 import { useState } from "react";
 import { ErrorText, useErrorMessage } from "@/components/app/error-text";
 import { FilesPanel } from "@/components/app/files-panel";
@@ -14,6 +14,10 @@ import { useI18n } from "@/lib/i18n/provider";
 import type { TextKey } from "@/lib/i18n/registry";
 import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { faM4 } from "@/lib/i18n/fa-m4";
+import { registerTexts } from "@/lib/i18n/registry";
+
+registerTexts(faM4);
 import type { WorkDetail, WorkStatus } from "@/lib/work-types";
 
 /** One card in full: brief, actions the person may take, assignee, files and the conversation. */
@@ -116,6 +120,8 @@ export function WorkSheet({ id, onClose }: { id: string; onClose: () => void }) 
                 </div>
               )}
             </section>
+
+            {d.card.assigneeId === me?.id && d.card.status !== "done" && <TimerButton workItemId={id} />}
 
             {d.canAssign && <AssignBox id={id} current={d.card.assigneeId} version={d.card.version} onDone={refresh} />}
             {!d.canAssign && (
@@ -255,5 +261,30 @@ function Comments({ id, detail, canWrite, onSent }: { id: string; detail: WorkDe
         </div>
       )}
     </section>
+  );
+}
+
+/** Start/stop the work timer for this card (only one runs at a time; it needs an open shift). */
+function TimerButton({ workItemId }: { workItemId: string }) {
+  const { t, formatNumber } = useI18n();
+  const qc = useQueryClient();
+  const errorMessage = useErrorMessage();
+  const me = useQuery({ queryKey: ["attendance-me"], queryFn: () => api<{ timer: { workItemId: string; minutesToday: number } | null }>("/api/v1/attendance/me") });
+  const running = me.data?.timer?.workItemId === workItemId;
+  const toggle = async () => {
+    try {
+      qc.setQueryData(["attendance-me"], await api(running ? "/api/v1/attendance/timer" : `/api/v1/attendance/timer/${workItemId}`, { method: running ? "DELETE" : "POST" }));
+    } catch (e) {
+      notify.error(errorMessage(e));
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
+      <Button type="button" variant={running ? "destructive" : "outline"} className="h-12 md:h-11" onClick={toggle} data-testid="timer-toggle">
+        {running ? <Square className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}
+        {running ? t("att.timerStop") : t("att.timerStart")}
+      </Button>
+      {running && <span className="text-sm text-muted-foreground">{formatNumber(me.data?.timer?.minutesToday ?? 0)}′</span>}
+    </div>
   );
 }

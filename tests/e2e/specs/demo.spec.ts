@@ -109,7 +109,7 @@ test.describe("demo install", () => {
     await expect(page).toHaveURL(/\/login/);
 
     await demoLogin(page, "client");
-    await expect(page.getByText("وضعیت سفارش‌ها")).toBeVisible();
+    await expect(page.getByTestId("portal")).toBeVisible();
     await shot(page, info, "client-dashboard");
   });
 

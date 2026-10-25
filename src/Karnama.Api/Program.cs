@@ -77,7 +77,7 @@ var origins = config.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(origins)
     .AllowCredentials()
-    .WithHeaders("Authorization", "Content-Type", "Accept-Language", "If-None-Match", "If-Match", "X-Client", "X-Refresh-Token", "Idempotency-Key", "X-Requested-With", "x-signalr-user-agent")
+    .WithHeaders("Authorization", "Content-Type", "Accept-Language", "If-None-Match", "If-Match", "X-Client", "X-Refresh-Token", "Idempotency-Key", "Upload-Offset", "X-Requested-With", "x-signalr-user-agent")
     .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")
     .WithExposedHeaders("ETag", "Retry-After")
     .SetPreflightMaxAge(TimeSpan.FromHours(1))));
@@ -160,6 +160,7 @@ app.MapSettings();
 app.MapCatalog();
 app.MapWork();
 app.MapAttendance();
+app.MapPortal();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

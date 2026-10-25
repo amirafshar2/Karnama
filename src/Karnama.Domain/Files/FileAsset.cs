@@ -48,7 +48,8 @@ public sealed class FileAsset : Entity
             Id = id, OrderId = orderId, ClientId = clientId, WorkItemId = workItemId, Purpose = purpose, FileName = fileName,
             ContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType.Trim()[..Math.Min(contentType.Trim().Length, 100)],
             Size = size, StorageKey = $"{now:yyyy}/{now:MM}/{id:N}", Status = FileStatus.Uploading,
-            ClientVisible = byClient || purpose == FilePurpose.Brief, UploadedBy = uploadedBy, UploadedByClient = byClient, CreatedAt = now,
+            // Staff files reach the client only when an admin shares them.
+            ClientVisible = byClient, UploadedBy = uploadedBy, UploadedByClient = byClient, CreatedAt = now,
         };
     }
 

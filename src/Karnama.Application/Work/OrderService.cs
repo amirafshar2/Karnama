@@ -36,7 +36,6 @@ public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
 {
     public CreateOrderValidator()
     {
-        RuleFor(x => x.ClientId).NotEmpty().WithMessage("مشتری را انتخاب کنید.");
         RuleFor(x => x.ServiceTypeId).NotEmpty().WithMessage("نوع خدمت را انتخاب کنید.");
         RuleFor(x => x.Title).MaximumLength(Order.MaxTitle).WithMessage("عنوان حداکثر ۱۵۰ کاراکتر است.");
         RuleFor(x => x.Note).MaximumLength(Order.MaxNote).WithMessage("توضیح حداکثر ۴۰۰۰ کاراکتر است.");
@@ -97,6 +96,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
         else
         {
             if (!me.Has(Permissions.OrdersCreate, PermissionScope.All)) return Error.Forbidden();
+            if (r.ClientId == Guid.Empty) return Error.Validation("orders.client", "مشتری را انتخاب کنید.");
             clientId = r.ClientId;
         }
 
@@ -110,22 +110,30 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
         var answers = FormSchema.ValidateData(FormSchema.Parse(service.FormSchemaJson), r.Answers);
         if (answers.IsFailure) return answers.Error!;
 
-        var now = clock.GetUtcNow();
-        var number = await db.NextOrderNumberAsync(ct);
-        var created = Order.Create(number, clientId, service.Id, service.Name, service.FormVersion, answers.Value!, r.Title, r.Note, source,
-            source == OrderSource.Client ? OrderPriority.Normal : r.Priority, r.Deadline, now);
-        if (created.IsFailure) return created.Error!;
-        var order = created.Value!;
-        db.Orders.Add(order);
-        audit.Add("orders.created", nameof(Order), order.Id.ToString(), new { order.Number, source });
-        changes.Record("order", order.Id, order.ClientId, null, null, "created");
-
-        if (source == OrderSource.Admin && r.AutoAccept && me.Has(Permissions.OrdersManage, PermissionScope.All))
+        var autoAccept = source == OrderSource.Admin && r.AutoAccept && me.Has(Permissions.OrdersManage, PermissionScope.All);
+        async Task<Result<Order>> Place(CancellationToken t)
         {
-            var accepted = await AcceptCoreAsync(order, service, ct);
-            if (accepted.IsFailure) return accepted.Error!;
+            var now = clock.GetUtcNow();
+            var number = await db.NextOrderNumberAsync(t);
+            var created = Order.Create(number, clientId, service.Id, service.Name, service.FormVersion, answers.Value!, r.Title, r.Note, source,
+                source == OrderSource.Client ? OrderPriority.Normal : r.Priority, r.Deadline, now);
+            if (created.IsFailure) return created.Error!;
+            var o = created.Value!;
+            db.Orders.Add(o);
+            audit.Add("orders.created", nameof(Order), o.Id.ToString(), new { o.Number, source });
+            changes.Record("order", o.Id, o.ClientId, null, null, "created");
+            if (autoAccept)
+            {
+                var accepted = await AcceptCoreAsync(o, service, t);
+                if (accepted.IsFailure) return accepted.Error!;
+            }
+            await db.SaveChangesAsync(t);
+            return o;
         }
-        await db.SaveChangesAsync(ct);
+        // Accepting uses package quota: serializable, so two orders can't both take the last slot.
+        var placed = autoAccept ? await db.InTransactionAsync(Place, ct) : await Place(ct);
+        if (placed.IsFailure) return placed.Error!;
+        var order = placed.Value!;
         await changes.PublishAsync(ct);
         return await ToDtoAsync(order, ct);
     }
@@ -184,7 +192,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
             if (order.Deadline is { } od && (deadline is null || deadline > od || i == stages.Count - 1)) deadline = od;
             var item = WorkItem.ForStage(order, stages[i], stages.Count, deadline, maxRank + 1000 * (i + 1));
             db.WorkItems.Add(item);
-            changes.Record("work", item.Id, order.ClientId, null, null, "created");
+            changes.Record("work", item.Id, null, null, null, "created");
         }
         audit.Add("orders.accepted", nameof(Order), order.Id.ToString(), new { order.Number, outside, packageId });
         changes.Record("order", order.Id, order.ClientId, null, null, "status");

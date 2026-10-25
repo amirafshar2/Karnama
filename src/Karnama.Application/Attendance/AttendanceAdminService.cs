@@ -75,6 +75,7 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         if (!me.Has(Permissions.AttendanceApprove, PermissionScope.All) && !me.Has(Permissions.AttendanceCorrect, PermissionScope.All)) return Error.Forbidden();
         var s = await db.Shifts.FirstOrDefaultAsync(x => x.Id == shiftId, ct);
         if (s is null) return Error.NotFound();
+        if (s.UserId == Me) return Error.Forbidden("attendance.selfReview", "شیفت خودتان را مدیر دیگری باید بررسی کند.");
         s.Review(Me, r.Approve);
         audit.Add(r.Approve ? "attendance.reviewAccepted" : "attendance.reviewRejected", nameof(Shift), shiftId.ToString(), new { r.Note });
         changes.Record("presence", s.UserId, null, s.UserId, null, "review");

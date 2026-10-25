@@ -75,6 +75,12 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
 
         if (from != w.Status)
         {
+            if (w.Status == WorkStatus.ClientReview)
+            {
+                // "Send to client" = the client can now see this stage's deliverables.
+                foreach (var f in await db.Files.Where(f => f.WorkItemId == w.Id && f.Purpose == Domain.Files.FilePurpose.Deliverable && !f.ClientVisible).ToListAsync(ct))
+                    f.ShareWithClient(true);
+            }
             if (!string.IsNullOrWhiteSpace(r.Note) && w.Status == WorkStatus.ChangesRequested)
             {
                 var c = WorkComment.Create(w, me.UserId, await MyNameAsync(ct), false, CommentVisibility.Internal, r.Note, clock.GetUtcNow());
@@ -127,7 +133,7 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         var res = w.Assign(r.UserId);
         if (res.IsFailure) return res.Error!;
         audit.Add("work.assigned", nameof(WorkItem), id.ToString(), new { previous, to = r.UserId });
-        changes.Record("work", w.Id, w.ClientId, w.AssigneeId, previous, "assignee");
+        changes.Record("work", w.Id, null, w.AssigneeId, previous, "assignee");   // the portal never learns who works on what
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         return (await CardsAsync([w], ct))[0];

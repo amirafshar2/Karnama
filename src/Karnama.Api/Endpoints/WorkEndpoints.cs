@@ -76,3 +76,18 @@ internal static class WorkEndpoints
         _ => "application/octet-stream",
     };
 }
+
+/// <summary>The client portal: only users of kind Client linked to a client (checked in the service).</summary>
+internal static class PortalEndpoints
+{
+    public static void MapPortal(this IEndpointRouteBuilder app)
+    {
+        var portal = app.MapGroup("/api/v1/portal").WithTags("Portal").RequireAuthorization().AddEndpointFilter<ValidationFilter>();
+        portal.MapGet("/home", async (Karnama.Application.Portal.PortalService svc, HttpContext http, CancellationToken ct) => (await svc.HomeAsync(ct)).ToHttp(http));
+        portal.MapGet("/orders/{id:guid}/messages", async (Guid id, Karnama.Application.Portal.PortalService svc, HttpContext http, CancellationToken ct) => (await svc.MessagesAsync(id, ct)).ToHttp(http));
+        portal.MapPost("/approvals/{workItemId:guid}", async (Guid workItemId, Karnama.Application.Portal.ApprovalRequest body, Karnama.Application.Portal.PortalService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.DecideAsync(workItemId, body, ct)).ToHttp(http));
+        portal.MapPost("/orders", async (CreateOrderRequest body, OrderService svc, HttpContext http, CancellationToken ct) =>
+            (await svc.CreateAsync(body, OrderSource.Client, ct)).ToHttp(http, r => Results.Created($"/api/v1/orders/{r.Id}", r)));
+    }
+}

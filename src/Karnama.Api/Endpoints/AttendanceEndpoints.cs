@@ -46,7 +46,7 @@ internal static class AttendanceEndpoints
         app.MapGet("/api/v1/attendance/kiosk/code", async (AttendanceService svc, HttpContext http, CancellationToken ct) =>
         {
             http.Response.Headers.CacheControl = "no-store";
-            return Results.Ok(await svc.KioskCodeAsync(ct));
+            return (await svc.KioskCodeAsync(ct)).ToHttp(http);
         }).WithTags("Attendance").RequirePermission(Permissions.AttendanceKiosk, PermissionScope.All);
     }
 }

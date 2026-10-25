@@ -112,6 +112,20 @@ public sealed class AttendanceTests(DemoAppFixture app) : IClassFixture<DemoAppF
         var bad = await Ok(await editor.PostAsJsonAsync("/api/v1/attendance/clock-in", new { idempotencyKey = Key(), evidence = new { qr = forged } }));
         bad.GetProperty("shift").GetProperty("trust").GetString().Should().Be("red");
         await Ok(await editor.PostAsJsonAsync("/api/v1/attendance/clock-out", new { idempotencyKey = Key() }));
+
+        // Once office networks are set, the kiosk code is only handed out inside them (a kiosk login at home gets nothing).
+        (await admin.PutAsJsonAsync("/api/v1/attendance/setup/settings", new
+        {
+            officeNetworks = new[] { "10.20.0.0/16" }, autoClockInOnTimer = false, offlineToleranceMinutes = 10, forgottenAfterHours = 4,
+            selfieRetentionDays = 30, locationRetentionDays = 90, askEarlyLeaveReason = true,
+        })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await admin.GetAsync("/api/v1/attendance/kiosk/code")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // A manager can't clear the review flag on their own shift.
+        var mine = await Ok(await admin.PostAsJsonAsync("/api/v1/attendance/clock-in", new { idempotencyKey = Key() }));
+        var mineId = mine.GetProperty("shift").GetProperty("id").GetGuid();
+        (await admin.PostAsJsonAsync($"/api/v1/attendance/shifts/{mineId}/review", new { approve = true })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        await Ok(await admin.PostAsJsonAsync("/api/v1/attendance/clock-out", new { idempotencyKey = Key() }));
     }
 
     [Fact]

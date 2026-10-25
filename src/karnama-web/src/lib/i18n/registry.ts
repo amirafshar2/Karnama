@@ -3,6 +3,8 @@ import { faCrud } from "./fa-crud";
 import { faM2 } from "./fa-m2";
 import { faM2Forms } from "./fa-m2-forms";
 import { faM3 } from "./fa-m3";
+import { faM4 } from "./fa-m4";
+import { faPortal } from "./fa-portal";
 import { faCore } from "./fa";
 import { faAuth, faDashboard, faProfile } from "./fa-pages";
 import { faRoles } from "./fa-roles";
@@ -20,7 +22,9 @@ export type TextKey =
   | keyof typeof faCrud
   | keyof typeof faM2
   | keyof typeof faM2Forms
-  | keyof typeof faM3;
+  | keyof typeof faM3
+  | keyof typeof faM4
+  | keyof typeof faPortal;
 export type Dictionary = Record<TextKey, string>;
 
 const registered: Partial<Dictionary> = { ...faCore };
