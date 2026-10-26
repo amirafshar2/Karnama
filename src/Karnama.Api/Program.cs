@@ -73,6 +73,17 @@ builder.Services.AddAuthentication("Bearer").AddJwtBearer("Bearer", o =>
             if (!string.IsNullOrEmpty(token) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs")) ctx.Token = token;
             return Task.CompletedTask;
         },
+        // Removed roles, edited role grants and deactivation take effect at once: the token's security stamp must
+        // still be the user's current one (cached ≤ 30 s, evicted on change). Otherwise 401 → the client refreshes.
+        OnTokenValidated = async ctx =>
+        {
+            var principal = ctx.Principal!;
+            if (!Guid.TryParse(principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var userId)) { ctx.Fail("invalid subject"); return; }
+            var tokenStamp = int.TryParse(principal.FindFirst(Karnama.Application.Auth.SessionStamps.ClaimType)?.Value, out var s) ? s : 0;
+            var state = await ctx.HttpContext.RequestServices.GetRequiredService<Karnama.Application.Auth.SessionStamps>()
+                .GetAsync(userId, ctx.HttpContext.RequestAborted);
+            if (state is null || !state.Active || state.Stamp != tokenStamp) ctx.Fail("session changed");
+        },
     };
 });
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();

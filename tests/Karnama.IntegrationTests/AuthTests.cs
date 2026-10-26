@@ -221,3 +221,84 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         return c.SendAsync(req);
     }
 }
+
+/// <summary>
+/// Removed access takes effect at once (QA finding D B2). Own class (own app and clock): AuthTests moves its fake
+/// clock forward, which would make freshly issued tokens "not valid yet" against the real-time JWT check.
+/// </summary>
+public sealed class SessionStampTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
+{
+    private readonly KarnamaFactory _f = app.Factory;
+
+    [Fact]
+    public async Task Role_grant_change_stops_the_old_token_at_once_and_refresh_brings_the_new_rights()
+    {
+        var admin = _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
+        var leads = await admin.CreateRoleAsync("سرنخ تست", ("crm.leads", "own"));
+        var (_, access, refresh) = await _f.StaffLoginAsync("09127772001", leads);
+        var old = _f.CreateClient().WithToken(access);
+        (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.OK, "a valid token keeps working (cached check)");
+
+        var role = await (await admin.GetAsync($"/api/v1/roles/{leads}")).JsonAsync();
+        (await admin.PutAsJsonAsync($"/api/v1/roles/{leads}", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "سرنخ تست" },
+            permissions = new[] { new { code = "chat.use", scope = "own" } },
+            version = role.GetProperty("version").GetUInt32(),
+        }, Http.Json)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await old.GetAsync("/api/v1/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var fresh = await _f.RefreshAsync(refresh);
+        fresh.Should().NotBeNull("the refresh flow issues a token with the new stamp");
+        var c = _f.CreateClient().WithToken(fresh!.Value.Access);
+        (await c.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var me = await (await c.GetAsync("/api/v1/me")).JsonAsync();
+        me.GetProperty("permissions").TryGetProperty("crm.leads", out _).Should().BeFalse();
+        me.GetProperty("permissions").GetProperty("chat.use").GetString().Should().Be("own");
+
+        // Renaming a role without touching its grants doesn't end anybody's session.
+        role = await (await admin.GetAsync($"/api/v1/roles/{leads}")).JsonAsync();
+        (await admin.PutAsJsonAsync($"/api/v1/roles/{leads}", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "سرنخ تست ۲" },
+            permissions = new[] { new { code = "chat.use", scope = "own" } },
+            version = role.GetProperty("version").GetUInt32(),
+        }, Http.Json)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await c.GetAsync("/api/v1/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Removing_a_role_or_deactivating_a_user_stops_their_tokens_at_once()
+    {
+        var admin = _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
+        var leads = await admin.CreateRoleAsync("سرنخ تست دو", ("crm.leads", "own"));
+        var managers = await admin.CreateRoleAsync("مدیر کاربران تست", ("users.manage", "all"), ("crm.leads", "all"));
+        var (_, managerToken, _) = await _f.StaffLoginAsync("09127772002", managers);
+        var manager = _f.CreateClient().WithToken(managerToken);
+        var (userId, access, refresh) = await _f.StaffLoginAsync("09127772003", leads);
+        var old = _f.CreateClient().WithToken(access);
+        (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Role taken away.
+        (await manager.PutAsJsonAsync($"/api/v1/users/{userId}", new { displayName = "کاربر ۲۰۰۳", phone = "09127772003", roleIds = Array.Empty<Guid>(), isActive = true }, Http.Json))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var next = await _f.RefreshAsync(refresh);
+        next.Should().NotBeNull();
+        (await _f.CreateClient().WithToken(next!.Value.Access).GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // Deactivated: the current token dies and so does the refresh.
+        var current = _f.CreateClient().WithToken(next.Value.Access);
+        (await current.GetAsync("/api/v1/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await manager.PutAsJsonAsync($"/api/v1/users/{userId}", new { displayName = "کاربر ۲۰۰۳", phone = "09127772003", roleIds = Array.Empty<Guid>(), isActive = false }, Http.Json))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await current.GetAsync("/api/v1/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await _f.RefreshAsync(next.Value.Refresh)).Should().BeNull();
+
+        // The manager's own session was never touched.
+        (await manager.GetAsync("/api/v1/users?limit=1")).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+}

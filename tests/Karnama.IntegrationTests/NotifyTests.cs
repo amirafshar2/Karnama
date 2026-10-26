@@ -141,6 +141,36 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
     }
 
     [Fact]
+    public async Task Package_expiry_job_reports_the_notifications_it_really_created()
+    {
+        var admin = await As("admin");
+        await Ok(await admin.PutAsJsonAsync("/api/v1/settings/package-notices", new { daysBefore = new[] { 10 }, onEndDay = true, quotaUsedUp = true, contractEndPasswords = true }));
+        using (var scope = _f.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var pkg = await db.ClientPackages.Where(p => p.Status == Karnama.Domain.Clients.ClientPackageStatus.Active).Select(p => p.Id).FirstAsync();
+            await db.ClientPackages.Where(p => p.Id == pkg).ExecuteUpdateAsync(u => u.SetProperty(p => p.EndsAt, _f.Clock.GetUtcNow().AddDays(9)));
+        }
+        async Task<int> Run()
+        {
+            using var scope = _f.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<Karnama.Application.Notify.PackageExpiryJob>().RunAsync(CancellationToken.None);
+        }
+        async Task<int> Notifications()
+        {
+            using var scope = _f.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<AppDbContext>().Notifications.CountAsync();
+        }
+
+        var before = await Notifications();
+        var first = await Run();
+        first.Should().BeGreaterThan(0);
+        (await Notifications()).Should().Be(before + first);
+        (await Run()).Should().Be(0, "nothing new on a second pass, even while a quota stays used up");
+        (await Notifications()).Should().Be(before + first);
+    }
+
+    [Fact]
     public async Task Telegram_gateway_updates_must_be_signed()
     {
         var anon = _f.CreateClient();

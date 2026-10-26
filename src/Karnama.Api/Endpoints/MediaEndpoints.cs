@@ -14,7 +14,7 @@ internal static class MediaEndpoints
         g.MapGet("/", async (string? cursor, int? limit, string? status, bool? open, MediaService svc, HttpContext http, CancellationToken ct) =>
             (await svc.ListAsync(new KeysetQuery(cursor, limit ?? 30), CatalogEndpoints.E<Karnama.Domain.Media.MediaStatus>(status), open == true, ct)).ToHttp(http))
             .RequirePermission(Permissions.MediaInbox, PermissionScope.All);
-        g.MapGet("/targets", async (MediaService svc, HttpContext http, CancellationToken ct) => (await svc.TargetsAsync(ct)).ToHttp(http))
+        g.MapGet("/targets", async (Guid? mediaId, MediaService svc, HttpContext http, CancellationToken ct) => (await svc.TargetsAsync(mediaId, ct)).ToHttp(http))
             .RequirePermission(Permissions.MediaAssign, PermissionScope.All);
         g.MapGet("/{id:guid}", async (Guid id, MediaService svc, HttpContext http, CancellationToken ct) => (await svc.GetAsync(id, ct)).ToHttp(http))
             .RequirePermission(Permissions.MediaInbox, PermissionScope.All);

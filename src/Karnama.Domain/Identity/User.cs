@@ -36,6 +36,12 @@ public sealed class User : AuditableEntity
     /// <summary>Last accepted TOTP time step; a code can never be used twice.</summary>
     public long? LastTwoFactorStep { get; private set; }
 
+    /// <summary>
+    /// Moves whenever the user's access shrinks or changes (roles, role grants, deactivation). Access tokens carry the
+    /// value they were issued with; a token with an older stamp is rejected, so the client has to refresh.
+    /// </summary>
+    public int SecurityStamp { get; private set; }
+
     public IReadOnlyCollection<UserRole> Roles => _roles;
 
     public static Result<User> Create(string phone, string displayName, UserKind kind, bool isDemo = false, string languageCode = "fa")
@@ -117,8 +123,18 @@ public sealed class User : AuditableEntity
         return Result.Success();
     }
 
-    public void Deactivate() => IsActive = false;
-    public void SoftDelete(Guid? actor, DateTimeOffset now) => MarkDeleted(actor, now);
+    public void BumpSecurityStamp() => SecurityStamp++;
+
+    public void Deactivate()
+    {
+        if (IsActive) SecurityStamp++;
+        IsActive = false;
+    }
+    public void SoftDelete(Guid? actor, DateTimeOffset now)
+    {
+        SecurityStamp++;
+        MarkDeleted(actor, now);
+    }
     public void SoftRestore() => MarkRestored();
     public void Activate() => IsActive = true;
 }

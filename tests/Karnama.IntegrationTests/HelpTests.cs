@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Karnama.IntegrationTests;
@@ -60,6 +62,20 @@ public sealed class HelpTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         html.Should().NotContain("<script").And.NotContain("javascript:").And.NotContain("iframe").And.Contain("&lt;script&gt;");
         (await admin.PostAsJsonAsync("/api/v1/help", new { title = "خراب", category = "تست", audience = "staff", contentJson = "{not json", sortOrder = 1, isPublished = true }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task Deleting_an_article_stamps_the_app_clock()
+    {
+        var admin = await As("admin");
+        var a = await Ok(await admin.PostAsJsonAsync("/api/v1/help", new { title = "راهنمای حذفی", category = "تست", audience = "staff", contentJson = Doc(P("متن")), sortOrder = 1, isPublished = true }));
+        var id = a.GetProperty("id").GetGuid();
+        (await admin.DeleteAsync($"/api/v1/help/{id}")).IsSuccessStatusCode.Should().BeTrue();
+        using var scope = _f.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
+        var deletedAt = await db.HelpArticles.IgnoreQueryFilters().Where(x => x.Id == id).Select(x => x.DeletedAt).FirstAsync();
+        // The test clock is frozen at the factory's start, so the real clock would be seconds away.
+        deletedAt.Should().BeCloseTo(_f.Clock.GetUtcNow(), TimeSpan.FromMilliseconds(1));
     }
 
     [Fact]

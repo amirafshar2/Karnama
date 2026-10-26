@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<AuthService>();
         services.AddScoped<Qa.QaService>();
         services.AddScoped<RoleService>();
+        services.AddScoped<SessionStamps>();
         services.AddScoped<MeService>();
         services.AddScoped<LocalizationService>();
         services.AddScoped<SetupService>();

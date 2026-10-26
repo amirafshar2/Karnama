@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using FluentAssertions;
 using Karnama.Application.Abstractions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -109,15 +110,22 @@ public sealed class FakeMediaServer : Karnama.Application.Abstractions.IMediaSer
     public ConcurrentDictionary<string, (string Source, bool OnDemand)> Paths { get; } = new();
     public HashSet<string> Down { get; } = [];
     public int Snapshots;
+    /// <summary>Configured but switched off / network down: every call fails like the real client does.</summary>
+    public volatile bool Unreachable;
     public bool IsConfigured => true;
-    public Task<bool> UpsertPathAsync(string path, string source, bool onDemand, CancellationToken ct) { Paths[path] = (source, onDemand); return Task.FromResult(true); }
-    public Task<bool> RemovePathAsync(string path, CancellationToken ct) => Task.FromResult(Paths.TryRemove(path, out _));
+    public Task<bool> UpsertPathAsync(string path, string source, bool onDemand, CancellationToken ct)
+    {
+        if (Unreachable) return Task.FromResult(false);
+        Paths[path] = (source, onDemand);
+        return Task.FromResult(true);
+    }
+    public Task<bool> RemovePathAsync(string path, CancellationToken ct) => Task.FromResult(!Unreachable && Paths.TryRemove(path, out _));
     public Task<IReadOnlyDictionary<string, bool>?> ReadyPathsAsync(CancellationToken ct) =>
-        Task.FromResult<IReadOnlyDictionary<string, bool>?>(Paths.Keys.ToDictionary(k => k, k => !Down.Contains(k)));
+        Task.FromResult<IReadOnlyDictionary<string, bool>?>(Unreachable ? null : Paths.Keys.ToDictionary(k => k, k => !Down.Contains(k)));
     public Task<byte[]?> SnapshotAsync(string path, CancellationToken ct)
     {
         Interlocked.Increment(ref Snapshots);
-        return Task.FromResult<byte[]?>(Down.Contains(path) ? null : [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 0xFF, 0xD9]);
+        return Task.FromResult<byte[]?>(Unreachable || Down.Contains(path) ? null : [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 0xFF, 0xD9]);
     }
     public string WhepUrl(string path) => $"https://cctv.test/{path}/whep";
     public Task<int> KickOldSessionsAsync(TimeSpan maxAge, CancellationToken ct) => Task.FromResult(0);
@@ -230,6 +238,59 @@ public static class Http
         var r = await f.CreateClient().PostAsJsonAsync("/api/v1/auth/demo", new { role });
         r.EnsureSuccessStatusCode();
         return (await r.JsonAsync()).GetProperty("accessToken").GetString()!;
+    }
+
+    /// <summary>
+    /// A real (non-demo, non-owner) staff user with the given roles, signed in through OTP as the Android client,
+    /// so the refresh token comes back in the body. Each phone can only be used once per factory.
+    /// </summary>
+    public static async Task<(Guid UserId, string Access, string Refresh)> StaffLoginAsync(this KarnamaFactory f, string phone, params Guid[] roleIds)
+    {
+        Guid userId;
+        using (var scope = f.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
+            var user = Karnama.Domain.Identity.User.Create(phone, "کاربر " + phone[^4..], Karnama.Domain.Identity.UserKind.Staff).Value;
+            foreach (var id in roleIds) user.AssignRole(id);
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+            userId = user.Id;
+        }
+        var c = f.CreateClient();
+        c.DefaultRequestHeaders.Add("X-Client", "android");
+        var req = await c.PostAsJsonAsync("/api/v1/auth/otp/request", new { phone });
+        req.EnsureSuccessStatusCode();
+        var challengeId = (await req.JsonAsync()).GetProperty("challengeId").GetGuid();
+        var code = await f.Sms.WaitForCodeAsync(phone);
+        var verify = await c.PostAsJsonAsync("/api/v1/auth/otp/verify", new { challengeId, code });
+        verify.EnsureSuccessStatusCode();
+        var session = (await verify.JsonAsync()).GetProperty("session");
+        return (userId, session.GetProperty("accessToken").GetString()!, session.GetProperty("refreshToken").GetString()!);
+    }
+
+    /// <summary>Android-style refresh; null when the API refuses (401).</summary>
+    public static async Task<(string Access, string Refresh)?> RefreshAsync(this KarnamaFactory f, string refresh)
+    {
+        var c = f.CreateClient();
+        c.DefaultRequestHeaders.Add("X-Client", "android");
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/refresh");
+        req.Headers.Add("X-Refresh-Token", refresh);
+        var r = await c.SendAsync(req);
+        if (!r.IsSuccessStatusCode) return null;
+        var body = await r.JsonAsync();
+        return (body.GetProperty("accessToken").GetString()!, body.GetProperty("refreshToken").GetString()!);
+    }
+
+    /// <summary>Creates a role through the API (as the demo admin) and returns its id.</summary>
+    public static async Task<Guid> CreateRoleAsync(this HttpClient admin, string name, params (string Code, string Scope)[] grants)
+    {
+        var r = await admin.PostAsJsonAsync("/api/v1/roles", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = name },
+            permissions = grants.Select(g => new { code = g.Code, scope = g.Scope }).ToArray(),
+        }, Json);
+        r.StatusCode.Should().Be(System.Net.HttpStatusCode.Created, await r.Content.ReadAsStringAsync());
+        return (await r.JsonAsync()).GetProperty("id").GetGuid();
     }
 }
 

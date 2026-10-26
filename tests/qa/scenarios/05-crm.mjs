@@ -208,4 +208,10 @@ export async function run(rec, { crowd }) {
     if (after !== before) await manager.post(`/api/v1/crm/leads/${w.lead.id}/assign`, { ownerId: before }); // put it back
     eq(after, before, "owner of a won lead unchanged by round-robin");
   });
+
+  await rec.step("2.5.m", "«hand to…» list (/crm/marketers) = the rotation: all QA marketers, not the manager", async () => {
+    const list = (await manager.get("/api/v1/crm/marketers")).map((m) => m.id);
+    for (let i = 0; i < 5; i++) check(list.includes(mid[i]), `${marketersP[i].name} listed`);
+    check(!list.includes(userId(manager)), "the manager is not offered as a marketer");
+  });
 }

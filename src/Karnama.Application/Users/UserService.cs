@@ -29,7 +29,7 @@ public sealed class UpsertUserValidator : AbstractValidator<UpsertUserRequest>
 /// Staff accounts and their roles. Rules: only an Owner can grant or remove the Owner role; the last active real Owner
 /// can't lose it or be deactivated; demo sessions can only touch demo accounts.
 /// </summary>
-public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, TimeProvider clock, IRealtimeNotifier realtime, IExcelExporter excel)
+public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, TimeProvider clock, IRealtimeNotifier realtime, IExcelExporter excel, SessionStamps stamps)
 {
     public async Task<KeysetPage<UserListItemDto>> ListAsync(KeysetQuery q, UserKind? kind, CancellationToken ct)
     {
@@ -98,6 +98,7 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         db.MarkModified(user);
         audit.Add("users.updated", nameof(User), id.ToString(), new { r.DisplayName, beforeRoles, afterRoles = r.RoleIds, r.IsActive });
         await db.SaveChangesAsync(ct);
+        await stamps.ForgetAsync([user.Id], ct);
         await realtime.PermissionsChangedAsync([user.Id], ct);
         return ToDto(user, await RoleNamesAsync(ct));
     }
@@ -117,6 +118,7 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         await db.RefreshTokens.Where(t => t.UserId == id && t.RevokedAt == null).ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, clock.GetUtcNow()), ct);
         audit.Add("users.deleted", nameof(User), id.ToString());
         await db.SaveChangesAsync(ct);
+        await stamps.ForgetAsync([user.Id], ct);
         return Result.Success();
     }
 
@@ -188,6 +190,7 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
 
         foreach (var r in user.Roles.Select(r => r.RoleId).Where(id => !wanted.Contains(id)).ToList()) user.RemoveRole(r);
         foreach (var id in wanted) user.AssignRole(id);
+        if (changed.Count > 0) user.BumpSecurityStamp(); // tokens issued with the old roles stop working
         return Result.Success();
     }
 

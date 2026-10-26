@@ -29,7 +29,11 @@ public sealed record SaveLeadRequest(string Name, string? Phone, string? Busines
     List<string>? Tags, long? Budget, string? Note, Guid? StageId, Guid? OwnerId, DateTimeOffset? NextFollowUpAt, bool Force = false, uint? Version = null);
 public sealed record MoveLeadRequest(Guid StageId, string? LostReason);
 public sealed record AssignLeadRequest(Guid? OwnerId);
-public sealed record RoundRobinRequest(List<Guid> LeadIds);
+/// <summary>
+/// Empty <paramref name="LeadIds"/> = every unassigned open lead. Given ids: closed (won/lost) leads are always skipped,
+/// leads that already have an owner only move when <paramref name="Reassign"/> is true.
+/// </summary>
+public sealed record RoundRobinRequest(List<Guid>? LeadIds, bool Reassign = false);
 public sealed record CallRequest(CallDirection Direction, int? DurationSeconds, CallOutcome Outcome, string? Note, DateTimeOffset? NextFollowUpAt);
 public sealed record ActivityRequest(ActivityKind Kind, MessageChannel? Channel, string? Note, DateTimeOffset? NextFollowUpAt);
 public sealed record FollowUpRequest(DateTimeOffset? At);
@@ -170,10 +174,13 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
     public async Task<Result<IReadOnlyList<MarketerDto>>> MarketersAsync(CancellationToken ct)
     {
         if (!CanUse) return Error.Forbidden();
-        var ids = await notifier.StaffWithAsync(Permissions.CrmLeads, PermissionScope.Own, ct);
+        // The rotation (marketers), plus anyone else who still owns open leads so the owner filter and the
+        // current owner in the lead sheet keep their name. Owners/managers without leads are not offered.
+        var rotation = await RotationAsync(ct);
         var openStages = await db.LeadStages.AsNoTracking().Where(s => s.Kind == StageKind.Open).Select(s => s.Id).ToListAsync(ct);
         var counts = await db.Leads.AsNoTracking().Where(l => l.OwnerId != null && openStages.Contains(l.StageId)).GroupBy(l => l.OwnerId!.Value)
             .Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(g => g.Key, g => g.N, ct);
+        var ids = rotation.Concat(counts.Keys).Distinct().ToList();
         var users = await db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).OrderBy(u => u.DisplayName).Select(u => new { u.Id, u.DisplayName }).ToListAsync(ct);
         return users.Select(u => new MarketerDto(u.Id, u.DisplayName, counts.GetValueOrDefault(u.Id))).ToList();
     }
@@ -316,9 +323,11 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         if (!CanAssign) return Error.Forbidden();
         var ids = r.LeadIds ?? [];
         var openStages = await db.LeadStages.AsNoTracking().Where(s => s.Kind == StageKind.Open).Select(s => s.Id).ToListAsync(ct);
+        // Never a closed lead: moving a won lead would move its sale credit (the report counts by owner).
+        var query = db.Leads.Where(l => openStages.Contains(l.StageId));
         var leads = ids.Count > 0
-            ? await db.Leads.Where(l => ids.Contains(l.Id)).OrderBy(l => l.CreatedAt).ToListAsync(ct)
-            : await db.Leads.Where(l => l.OwnerId == null && openStages.Contains(l.StageId)).OrderBy(l => l.CreatedAt).Take(200).ToListAsync(ct);
+            ? await query.Where(l => ids.Contains(l.Id) && (r.Reassign || l.OwnerId == null)).OrderBy(l => l.CreatedAt).ToListAsync(ct)
+            : await query.Where(l => l.OwnerId == null).OrderBy(l => l.CreatedAt).Take(200).ToListAsync(ct);
         var n = 0;
         foreach (var l in leads)
         {
@@ -586,13 +595,18 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         return open.Count > 1 && open[0].Id == l.StageId ? open[1] : null;
     }
 
-    private async Task<Guid?> NextInTurnAsync(CancellationToken ct)
+    /// <summary>Marketers = holders of the "own leads" scope only (managers with every lead aren't in the rotation).</summary>
+    private async Task<List<Guid>> RotationAsync(CancellationToken ct)
     {
-        // Marketers = holders of the "own leads" scope only (managers with every lead aren't in the rotation).
         var all = await notifier.StaffWithAsync(Permissions.CrmLeads, PermissionScope.Own, ct);
         var everyone = await notifier.StaffWithAsync(Permissions.CrmLeads, PermissionScope.All, ct);
         var rotation = all.Except(everyone).Order().ToList();
-        if (rotation.Count == 0) rotation = all.Order().ToList();
+        return rotation.Count == 0 ? all.Order().ToList() : rotation;
+    }
+
+    private async Task<Guid?> NextInTurnAsync(CancellationToken ct)
+    {
+        var rotation = await RotationAsync(ct);
         if (rotation.Count == 0) return null;
         var settings = await SettingsAsync(ct);
         var i = settings.LastAssignedId is { } last ? rotation.IndexOf(last) : -1;

@@ -192,4 +192,34 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         (await admin.PostAsJsonAsync($"/api/v1/media/{asset.Id}/assign", new { toUserId = unlinked, workItemId = (Guid?)null, toClient = false }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
+
+    [Fact]
+    public async Task Targets_show_the_link_of_the_files_messenger_and_a_person_must_be_staff()
+    {
+        var admin = await As("admin");
+        await LinkAsync("09000000002", 640_002);
+        await Ok(await PostUpdateAsync(Video(Interlocked.Increment(ref _update), 640_002, "rush-targets")));
+        var asset = await Db(db => db.MediaAssets.FirstAsync(m => m.FileUniqueId == "rush-targets"));
+
+        // Linked on Bale only: reachable for a Bale file, not for this Telegram one.
+        var baleOnly = await Db(async db =>
+        {
+            var id = await db.Users.Where(u => u.Phone == "09000000006").Select(u => u.Id).FirstAsync();
+            await db.MessengerLinks.Where(l => l.UserId == id).ExecuteDeleteAsync();
+            db.MessengerLinks.Add(new MessengerLink(id, Messenger.Bale, 640_006, DateTimeOffset.UtcNow));
+            await db.SaveChangesAsync();
+            return id;
+        });
+        bool Linked(JsonElement t, Guid id) => t.GetProperty("staff").EnumerateArray().Single(s => s.GetProperty("id").GetGuid() == id).GetProperty("linked").GetBoolean();
+        Linked(await Ok(await admin.GetAsync($"/api/v1/media/targets?mediaId={asset.Id}")), baleOnly).Should().BeFalse();
+        Linked(await Ok(await admin.GetAsync("/api/v1/media/targets")), baleOnly).Should().BeTrue("without a file: linked on any messenger");
+        (await admin.GetAsync($"/api/v1/media/targets?mediaId={Guid.NewGuid()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // A client's portal account (even one linked on Telegram) can't be picked as a "person".
+        var client = await LinkAsync("09000000004", 640_004);
+        var toClient = await admin.PostAsJsonAsync($"/api/v1/media/{asset.Id}/assign", new { toUserId = client, workItemId = (Guid?)null, toClient = false });
+        toClient.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await toClient.JsonAsync()).GetProperty("code").GetString().Should().Be("media.staffOnly");
+        (await Db(db => db.MediaAssets.AsNoTracking().FirstAsync(m => m.Id == asset.Id))).AssignedToId.Should().BeNull();
+    }
 }

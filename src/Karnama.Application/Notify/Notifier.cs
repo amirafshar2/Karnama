@@ -29,10 +29,12 @@ public sealed class NotifyOptions
 /// </summary>
 public sealed class Notifier(IAppDbContext db, TimeProvider clock, IChangeFeed changes)
 {
-    public async Task NotifyAsync(IEnumerable<Guid> userIds, string kind, string title, string? body, string? link, bool important, string eventKey, CancellationToken ct)
+    /// <returns>How many notifications were created (people who already had this event key, or muted it, don't count).</returns>
+    public async Task<int> NotifyAsync(IEnumerable<Guid> userIds, string kind, string title, string? body, string? link, bool important, string eventKey, CancellationToken ct)
     {
         var ids = userIds.Where(u => u != Guid.Empty).Distinct().ToList();
-        if (ids.Count == 0) return;
+        if (ids.Count == 0) return 0;
+        var created = 0;
         var now = clock.GetUtcNow();
         var prefs = await db.NotificationPrefs.AsNoTracking().Where(p => ids.Contains(p.UserId)).ToDictionaryAsync(p => p.UserId, ct);
         var links = await db.MessengerLinks.AsNoTracking().Where(l => ids.Contains(l.UserId)).Select(l => new { l.UserId, l.Messenger }).ToListAsync(ct);
@@ -46,6 +48,7 @@ public sealed class Notifier(IAppDbContext db, TimeProvider clock, IChangeFeed c
             if (p.Muted.Contains(kind) && !important) continue;
             var n = new Notification(uid, kind, title, body, link, important, now, key);
             db.Notifications.Add(n);
+            created++;
             changes.Record("notification", n.Id, null, uid, null, "new");
 
             var text = body is null ? title : $"{title}\n{body}";
@@ -55,6 +58,7 @@ public sealed class Notifier(IAppDbContext db, TimeProvider clock, IChangeFeed c
             if (p.Channels.Contains(Channel.Telegram) && links.Any(l => l.UserId == uid && l.Messenger == Messenger.Telegram)) Queue(Channel.Telegram);
             if (important && p.Channels.Contains(Channel.Sms)) Queue(Channel.Sms);
         }
+        return created;
     }
 
     /// <summary>Active staff who hold a permission at a scope (e.g. everyone who reviews work).</summary>

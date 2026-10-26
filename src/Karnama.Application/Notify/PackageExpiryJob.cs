@@ -20,6 +20,7 @@ public sealed class PackageExpiryJob(IAppDbContext db, Notifier notifier, TimePr
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
+    /// <returns>The number of notifications actually created (0 when a run finds nothing new).</returns>
     public async Task<int> RunAsync(CancellationToken ct)
     {
         var now = clock.GetUtcNow();
@@ -42,9 +43,8 @@ public sealed class PackageExpiryJob(IAppDbContext db, Notifier notifier, TimePr
         async Task Both(Client c, string kind, string title, string? clientBody, bool important, string key)
         {
             if (c.PortalUserId is { } portal)
-                await notifier.NotifyAsync([portal], kind, title, clientBody, "/profile", important, key, ct);
-            await notifier.NotifyAsync(managers, kind, $"{c.BusinessName}: {title}", null, "/clients", important, key, ct);
-            sent++;
+                sent += await notifier.NotifyAsync([portal], kind, title, clientBody, "/profile", important, key, ct);
+            sent += await notifier.NotifyAsync(managers, kind, $"{c.BusinessName}: {title}", null, "/clients", important, key, ct);
         }
 
         var ended = new List<ClientPackage>();
@@ -64,7 +64,7 @@ public sealed class PackageExpiryJob(IAppDbContext db, Notifier notifier, TimePr
             await Both(c, "package.expiring", title, "برای تمدید، از صفحه‌ی پروفایل «درخواست تمدید» را بزنید.", t <= 3, $"pkg:{p.Id:N}:{t}");
         }
 
-        if (settings.ContractEndPasswords && ended.Count > 0) await ContractEndAsync(ended, clients, now, ct);
+        if (settings.ContractEndPasswords && ended.Count > 0) sent += await ContractEndAsync(ended, clients, now, ct);
 
         foreach (var p in quotaPackages)
         {
@@ -84,8 +84,9 @@ public sealed class PackageExpiryJob(IAppDbContext db, Notifier notifier, TimePr
     }
 
     /// <summary>Only when the client has no other running package and the vault still holds a password for them.</summary>
-    private async Task ContractEndAsync(List<ClientPackage> ended, Dictionary<Guid, Client> clients, DateTimeOffset now, CancellationToken ct)
+    private async Task<int> ContractEndAsync(List<ClientPackage> ended, Dictionary<Guid, Client> clients, DateTimeOffset now, CancellationToken ct)
     {
+        var sent = 0;
         var clientIds = ended.Select(p => p.ClientId).Distinct().ToList();
         var stillActive = await db.ClientPackages.AsNoTracking()
             .Where(p => clientIds.Contains(p.ClientId) && p.Status == ClientPackageStatus.Active && p.EndsAt > now).Select(p => p.ClientId).ToListAsync(ct);
@@ -95,12 +96,13 @@ public sealed class PackageExpiryJob(IAppDbContext db, Notifier notifier, TimePr
         foreach (var id in clientIds.Except(stillActive).Intersect(withSecrets))
         {
             if (!clients.TryGetValue(id, out var c)) continue;
-            await notifier.NotifyAsync(keepers, "credentials.contractEnded", $"قرارداد {c.BusinessName} تمام شد: رمزهای ذخیره‌شده‌اش را پاک کنید",
+            sent += await notifier.NotifyAsync(keepers, "credentials.contractEnded", $"قرارداد {c.BusinessName} تمام شد: رمزهای ذخیره‌شده‌اش را پاک کنید",
                 "اگر تمدید نمی‌شود، از صفحه‌ی مشتری رمزها را حذف کنید.", "/clients", true, $"contract-end:{id:N}:{Iran.Today(now):yyyyMMdd}", ct);
             if (c.PortalUserId is { } portal)
-                await notifier.NotifyAsync([portal], "credentials.changePassword", "قرارداد تمام شد؛ برای امنیت رمز حساب‌هایتان را عوض کنید",
+                sent += await notifier.NotifyAsync([portal], "credentials.changePassword", "قرارداد تمام شد؛ برای امنیت رمز حساب‌هایتان را عوض کنید",
                     "رمزهایی که به آژانس داده بودید را در خود اینستاگرام عوض کنید و اگر آژانس را در Business Suite اضافه کرده بودید، دسترسی را بردارید.",
                     "/profile", true, $"contract-end:{id:N}:{Iran.Today(now):yyyyMMdd}", ct);
         }
+        return sent;
     }
 }

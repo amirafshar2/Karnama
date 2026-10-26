@@ -59,7 +59,8 @@ public sealed class UpsertPackageValidator : AbstractValidator<UpsertPackageRequ
     }
 }
 
-public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, TimeProvider clock, IContentRenderer renderer, IMediaStore media, IExcelExporter excel)
+public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, TimeProvider clock, IContentRenderer renderer, IMediaStore media, IExcelExporter excel,
+    IPublicCache cache)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -100,6 +101,7 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
         db.Packages.Add(created.Value);
         audit.Add("packages.created", nameof(Package), created.Value.Id.ToString(), new { r.Name, r.Sku, r.Price, r.Status });
         await db.SaveChangesAsync(ct);
+        await cache.EvictAsync(ct);   // the public site shows packages (prices, pages)
         return await ToDtoAsync(created.Value, ct);
     }
 
@@ -118,6 +120,7 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
         // Price changes are always audited (docs/PROMPT.md §5.10).
         audit.Add("packages.updated", nameof(Package), id.ToString(), new { before, after = new { r.Price, r.SpecialPrice, r.Status } });
         await db.SaveChangesAsync(ct);
+        await cache.EvictAsync(ct);   // the public site shows packages (prices, pages)
         return await ToDtoAsync(p, ct);
     }
 
@@ -130,6 +133,7 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
         p.SetCover(saved.Value);
         audit.Add("packages.cover", nameof(Package), id.ToString(), new { cover = saved.Value });
         await db.SaveChangesAsync(ct);
+        await cache.EvictAsync(ct);   // the public site shows packages (prices, pages)
         return await ToDtoAsync(p, ct);
     }
 
@@ -140,6 +144,7 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
         p.Delete(me.UserId, clock.GetUtcNow());
         audit.Add("packages.deleted", nameof(Package), id.ToString());
         await db.SaveChangesAsync(ct);
+        await cache.EvictAsync(ct);   // the public site shows packages (prices, pages)
         return Result.Success();
     }
 
@@ -152,6 +157,7 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
         p.Restore();
         audit.Add("packages.restored", nameof(Package), id.ToString());
         await db.SaveChangesAsync(ct);
+        await cache.EvictAsync(ct);   // the public site shows packages (prices, pages)
         return await ToDtoAsync(p, ct);
     }
 

@@ -104,6 +104,47 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     }
 
     [Fact]
+    public async Task Client_chat_switched_off_stops_clients_listing_starting_and_sending()
+    {
+        var client = await As("client");
+        var admin = await As("admin");
+        var adminId = await UserAsync("09000000001");
+        var conv = await Ok(await client.PostAsJsonAsync("/api/v1/chat/direct", new { userId = adminId }));
+        var id = conv.GetProperty("id").GetGuid();
+        await Ok(await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "سلام", clientKey = Guid.NewGuid() }));
+
+        await Ok(await admin.PutAsJsonAsync("/api/v1/settings/chat", new { workerToWorker = false, clientChat = false }));
+        try
+        {
+            (await Ok(await client.GetAsync("/api/v1/chat/contacts"))).GetArrayLength().Should().Be(0);
+            var start = await client.PostAsJsonAsync("/api/v1/chat/direct", new { userId = adminId });
+            start.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await start.JsonAsync()).GetProperty("code").GetString().Should().Be("chat.clientChatOff");
+            (await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "هنوز هستید؟", clientKey = Guid.NewGuid() }))
+                .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            using (var form = new MultipartFormDataContent())
+            {
+                var file = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
+                file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                form.Add(file, "file", "a.png");
+                (await client.PostAsync($"/api/v1/chat/{id}/files", form)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            }
+            (await admin.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "پاسخ", clientKey = Guid.NewGuid() }))
+                .StatusCode.Should().Be(HttpStatusCode.Forbidden, "the setting closes client chats for both sides");
+            (await Ok(await client.GetAsync($"/api/v1/chat/{id}/messages"))).GetProperty("items").GetArrayLength().Should().BeGreaterThan(0, "history stays readable");
+
+            // Staff chats are untouched.
+            var editorConv = await Ok(await admin.PostAsJsonAsync("/api/v1/chat/direct", new { userId = await UserAsync("09000000005") }));
+            await Ok(await admin.PostAsJsonAsync($"/api/v1/chat/{editorConv.GetProperty("id").GetGuid()}/messages", new { body = "سلام تیم", clientKey = Guid.NewGuid() }));
+        }
+        finally
+        {
+            await Ok(await admin.PutAsJsonAsync("/api/v1/settings/chat", new { workerToWorker = false, clientChat = true }));
+        }
+        await Ok(await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "دوباره سلام", clientKey = Guid.NewGuid() }));
+    }
+
+    [Fact]
     public async Task Work_chat_voice_and_files_follow_the_rules()
     {
         var admin = await As("admin");

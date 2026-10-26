@@ -143,8 +143,10 @@ export async function run(rec) {
     eq(Object.keys((await before.get("/api/v1/me")).permissions).filter((k) => k === "crm.leads").length, 0, "no crm before");
     await before.refused("GET", "/api/v1/crm/leads", undefined, [403]);
     await admin.put(`/api/v1/users/${user.id}`, { displayName: user.displayName, phone: userPhone, roleIds: [role.id], isActive: true });
-    eq((await before.get("/api/v1/me")).permissions["crm.leads"], "own", "/me (read from the database) shows the new permission at once");
+    // A role change ends the old access token at once (security stamp, finding D B2): the client gets 401 and refreshes.
+    await before.refused("GET", "/api/v1/me", undefined, [401]);
     const after = await qa.login(userPhone);
+    eq((await after.get("/api/v1/me")).permissions["crm.leads"], "own", "/me shows the new permission");
     await after.get("/api/v1/crm/leads"); // allowed with the next token
   });
 
@@ -156,9 +158,16 @@ export async function run(rec) {
     let u = await qa.login(userPhone);
     await u.get("/api/v1/cctv");
     await admin.del(`/api/v1/roles/${role.id}`);
+    await u.refused("GET", "/api/v1/crm/leads", undefined, [401]); // the old token stops at once (finding D B2)
     u = await qa.login(userPhone);
     await u.refused("GET", "/api/v1/crm/leads", undefined, [403]);
     await admin.post(`/api/v1/roles/${role.id}/restore`);
+    u = await qa.login(userPhone);
+    await u.get("/api/v1/crm/leads");
+    // Deactivating the user ends their current token too; reactivated, they sign in again.
+    await admin.put(`/api/v1/users/${user.id}`, { displayName: user.displayName, phone: userPhone, roleIds: [role.id], isActive: false });
+    await u.refused("GET", "/api/v1/me", undefined, [401]);
+    await admin.put(`/api/v1/users/${user.id}`, { displayName: user.displayName, phone: userPhone, roleIds: [role.id], isActive: true });
     u = await qa.login(userPhone);
     await u.get("/api/v1/crm/leads");
     // System roles can't be deleted.

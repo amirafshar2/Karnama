@@ -29,7 +29,7 @@ public sealed class SaveHelpValidator : AbstractValidator<SaveHelpRequest>
 /// Help center (PROMPT2 §13): searchable articles by category, the article behind each page's "؟" button, and editing
 /// for content managers. Staff read staff + everyone articles; clients read client + everyone articles; drafts only editors.
 /// </summary>
-public sealed class HelpService(IAppDbContext db, ICurrentUser me, IAuditWriter audit)
+public sealed class HelpService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, TimeProvider clock)
 {
     private static Error NotFound => Error.NotFound("help.notFound", "مقاله پیدا نشد.");
     private bool CanEdit => me.Kind == UserKind.Staff && me.Has(Permissions.ContentManage, PermissionScope.All);
@@ -115,7 +115,7 @@ public sealed class HelpService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         if (!CanEdit) return Error.Forbidden();
         var a = await db.HelpArticles.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (a is null) return NotFound;
-        a.Delete(me.UserId, DateTimeOffset.UtcNow);
+        a.Delete(me.UserId, clock.GetUtcNow());
         audit.Add("help.deleted", nameof(HelpArticle), a.Id.ToString(), new { a.Title });
         await db.SaveChangesAsync(ct);
         return Result.Success();

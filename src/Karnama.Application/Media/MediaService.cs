@@ -190,10 +190,22 @@ public sealed class MediaService(
         return a is null ? NotFound : (await ToDtosAsync([a], ct))[0];
     }
 
-    public async Task<Result<MediaTargetsDto>> TargetsAsync(CancellationToken ct)
+    /// <summary>
+    /// Receivers for the assign sheet. With <paramref name="mediaId"/>, "linked" means linked on that file's messenger
+    /// (the bot can only copy a file inside the messenger it came from); without it, linked on any messenger.
+    /// </summary>
+    public async Task<Result<MediaTargetsDto>> TargetsAsync(Guid? mediaId, CancellationToken ct)
     {
         if (!me.Has(Permissions.MediaAssign, PermissionScope.All)) return Error.Forbidden();
-        var linked = await db.MessengerLinks.AsNoTracking().Select(l => l.UserId).Distinct().ToListAsync(ct);
+        Messenger? messenger = null;
+        if (mediaId is { } mid)
+        {
+            messenger = await db.MediaAssets.AsNoTracking().Where(x => x.Id == mid).Select(x => (Messenger?)x.Messenger).FirstOrDefaultAsync(ct);
+            if (messenger is null) return NotFound;
+        }
+        var links = db.MessengerLinks.AsNoTracking();
+        if (messenger is { } m) links = links.Where(l => l.Messenger == m);
+        var linked = await links.Select(l => l.UserId).Distinct().ToListAsync(ct);
         var staff = await db.Users.AsNoTracking().Where(u => u.IsActive && u.Kind == UserKind.Staff).OrderBy(u => u.DisplayName)
             .Select(u => new { u.Id, u.DisplayName }).Take(200).ToListAsync(ct);
         var work = await db.WorkItems.AsNoTracking().Where(w => w.Status != WorkStatus.Done && w.Status != WorkStatus.Cancelled)
@@ -229,7 +241,14 @@ public sealed class MediaService(
             if (portal is not { } p) return Error.Validation("media.clientNoPortal", "این مشتری پنل ندارد.");
             target = p;
         }
-        else if (r.ToUserId is { } to) target = to;
+        else if (r.ToUserId is { } to)
+        {
+            // A person is staff only: a client receives through toClient, which resolves the client of this file's work
+            // (never someone else's client by a mis-click).
+            if (!await db.Users.AsNoTracking().AnyAsync(u => u.Id == to && u.Kind == UserKind.Staff, ct))
+                return Error.Validation("media.staffOnly", "فایل را فقط به همکاران یا به مشتری همان کار می‌شود فرستاد.");
+            target = to;
+        }
         else return Error.Validation("media.noTarget", "گیرنده را انتخاب کنید.");
 
         var result = await AssignCoreAsync(asset, uid, target, ct);

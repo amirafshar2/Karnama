@@ -1,4 +1,5 @@
 using Karnama.Application.Abstractions;
+using Karnama.Application.Auth;
 using Karnama.Application.Common;
 using Karnama.Domain.Auditing;
 using Karnama.Domain.Common;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Karnama.Application.Roles;
 
-public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, IRealtimeNotifier realtime, TimeProvider clock)
+public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, IRealtimeNotifier realtime, TimeProvider clock, SessionStamps stamps)
 {
     public static IReadOnlyList<PermissionDefinitionDto> Catalog() =>
         Permissions.Catalog.Select(p => new PermissionDefinitionDto(p.Code, p.Group, p.AllowedScopes)).ToList();
@@ -63,6 +64,8 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     {
         var created = Role.Create(new LocalizedText(request.Name), request.Description, ToGrants(request));
         if (created.IsFailure) return created.Error!;
+        var guard = await GuardAsync(null, ToGrants(request), ct);
+        if (guard.IsFailure) return guard.Error!;
 
         var role = created.Value;
         db.Roles.Add(role);
@@ -79,6 +82,8 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         db.SetOriginalVersion(role, v);
 
         var before = role.Permissions.Select(p => new GrantDto(p.Code, p.Scope)).ToList();
+        var guard = await GuardAsync(role.Id, before.Select(g => new PermissionGrant(g.Code, g.Scope)).Concat(ToGrants(request)), ct);
+        if (guard.IsFailure) return guard.Error!;
         var updated = role.Update(new LocalizedText(request.Name), request.Description, ToGrants(request));
         if (updated.IsFailure) return updated.Error!;
 
@@ -86,22 +91,25 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         db.MarkModified(role);
         audit.Add(AuditActions.RoleUpdated, nameof(Role), role.Id.ToString(), new { name = request.Name, before, after = request.Permissions });
         await db.SaveChangesAsync(ct);
-        await NotifyMembersAsync(role.Id, ct);
+        var after = role.Permissions.Select(p => new GrantDto(p.Code, p.Scope)).ToHashSet();
+        await NotifyMembersAsync(role.Id, grantsChanged: !after.SetEquals(before), ct);
         return ToDetail(role);
     }
 
     public async Task<Result> DeleteAsync(Guid id, uint? version, CancellationToken ct)
     {
-        var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
+        var role = await db.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role is null) return Error.NotFound("roles.notFound", "نقش پیدا نشد.");
         if (version is { } v) db.SetOriginalVersion(role, v);
+        var guard = await GuardAsync(role.Id, role.Permissions.Select(p => new PermissionGrant(p.Code, p.Scope)), ct);
+        if (guard.IsFailure) return guard;
 
         var deleted = role.Delete(me.UserId, clock.GetUtcNow());
         if (deleted.IsFailure) return deleted;
 
         audit.Add(AuditActions.RoleDeleted, nameof(Role), role.Id.ToString());
         await db.SaveChangesAsync(ct);
-        await NotifyMembersAsync(role.Id, ct);
+        await NotifyMembersAsync(role.Id, grantsChanged: true, ct);
         return Result.Success();
     }
 
@@ -109,15 +117,35 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     {
         var role = await db.Roles.IgnoreQueryFilters().Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role is null) return Error.NotFound("roles.notFound", "نقش پیدا نشد.");
+        var guard = await GuardAsync(role.Id, role.Permissions.Select(p => new PermissionGrant(p.Code, p.Scope)), ct);
+        if (guard.IsFailure) return guard.Error!;
         role.Restore();
         audit.Add(AuditActions.RoleRestored, nameof(Role), role.Id.ToString());
         await db.SaveChangesAsync(ct);
-        await NotifyMembersAsync(role.Id, ct);
+        await NotifyMembersAsync(role.Id, grantsChanged: true, ct);
         return ToDetail(role);
     }
 
-    private async Task NotifyMembersAsync(Guid roleId, CancellationToken ct)
+    /// <summary>
+    /// No privilege escalation through roles (same rule as <c>users.roleTooStrong</c>): a non-owner can only create,
+    /// edit, delete or restore a role whose every grant (before and after) they hold themselves at that scope or wider,
+    /// and can't edit a role they hold. Owners are unrestricted. Checked against the database, not the token.
+    /// </summary>
+    private async Task<Result> GuardAsync(Guid? roleId, IEnumerable<PermissionGrant> grants, CancellationToken ct)
     {
+        var callerId = me.UserId ?? Guid.Empty;
+        if (await PermissionLoader.IsOwnerAsync(db, callerId, ct)) return Result.Success();
+        if (roleId is { } rid && await db.UserRoles.AnyAsync(ur => ur.UserId == callerId && ur.RoleId == rid, ct))
+            return Error.Forbidden("roles.ownRole", "نقشی را که خودتان دارید فقط مالک می‌تواند تغییر دهد.");
+        var mine = await PermissionLoader.LoadAsync(db, callerId, ct);
+        if (grants.Any(g => !mine.TryGetValue(g.Code, out var scope) || scope < g.Scope))
+            return Error.Forbidden("roles.tooStrong", "این نقش دسترسی‌هایی دارد که خودتان ندارید؛ فقط مالک می‌تواند آن را بسازد یا تغییر دهد.");
+        return Result.Success();
+    }
+
+    private async Task NotifyMembersAsync(Guid roleId, bool grantsChanged, CancellationToken ct)
+    {
+        if (grantsChanged) await stamps.BumpRoleMembersAsync(roleId, ct);
         var userIds = await db.UserRoles.AsNoTracking().Where(ur => ur.RoleId == roleId).Select(ur => ur.UserId).ToListAsync(ct);
         if (userIds.Count > 0) await realtime.PermissionsChangedAsync(userIds, ct);
     }
