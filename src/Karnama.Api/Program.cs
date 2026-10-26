@@ -57,6 +57,13 @@ builder.Services.AddAuthentication("Bearer").AddJwtBearer("Bearer", o =>
         NameClaimType = JwtRegisteredClaimNames.Sub,
         ClockSkew = TimeSpan.FromSeconds(30),
     };
+    // QA mode: tokens are issued on the movable QA clock, so they are checked against the same clock.
+    if (config.GetValue<bool>("Qa:Enabled"))
+        o.TokenValidationParameters.LifetimeValidator = (notBefore, expires, _, p) =>
+        {
+            var now = (o.TimeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+            return (notBefore is null || notBefore <= now + p.ClockSkew) && (expires is null || expires >= now - p.ClockSkew);
+        };
     o.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
     {
         // Browsers can't set headers on WebSockets: accept the token from the query string for hubs only.
@@ -188,6 +195,7 @@ app.MapAssets();
 app.MapHelp();
 app.MapDevices();
 app.MapCctv();
+if (config.GetValue<bool>("Qa:Enabled")) app.MapQa();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

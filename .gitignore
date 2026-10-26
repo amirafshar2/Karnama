@@ -51,3 +51,5 @@ dump.rdb
 deploy/.env.prod
 deploy/backups/
 start-dev.log
+tests/qa/logs/
+tests/qa/reports/

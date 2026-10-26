@@ -20,6 +20,9 @@ public static class StartupGuard
         if (demo && !env.IsDevelopment())
             errors.Add($"DemoLogin__Enabled در محیط {env.EnvironmentName} روشن است. ورود سریع دمو فقط در Development مجاز است (در Production ممنوع).");
 
+        if (config.GetValue<bool>("Qa:Enabled") && !env.IsDevelopment())
+            errors.Add($"Qa__Enabled در محیط {env.EnvironmentName} روشن است. حالت QA (ساعت جابه‌جاشونده، ورود بدون کد) فقط در Development مجاز است.");
+
         if (env.IsProduction())
         {
             if (string.IsNullOrWhiteSpace(config.GetConnectionString("Redis")))

@@ -19,7 +19,16 @@ public static class DependencyInjection
     {
         StartupGuard.Validate(config, env);
 
-        services.AddSingleton(TimeProvider.System);
+        if (config.GetValue<bool>("Qa:Enabled"))
+        {
+            var qa = new Qa.QaClock();
+            services.AddSingleton(qa);
+            services.AddSingleton<TimeProvider>(qa);
+            services.AddSingleton<IQaClock>(qa);
+            services.AddScoped<IQaSeeder, Qa.QaCrowdSeed>();
+        }
+        else services.AddSingleton(TimeProvider.System);
+        services.Configure<QaOptions>(config.GetSection(QaOptions.Section));
         services.Configure<JwtOptions>(config.GetSection(JwtOptions.Section));
         services.Configure<OtpOptions>(config.GetSection(OtpOptions.Section));
         services.Configure<SetupOptions>(config.GetSection(SetupOptions.Section));

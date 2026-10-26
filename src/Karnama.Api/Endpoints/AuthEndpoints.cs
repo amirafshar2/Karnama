@@ -67,7 +67,7 @@ internal static class AuthEndpoints
     };
 
     /// <summary>Web: refresh token only in an HttpOnly cookie. Android: in the body, to be kept in the Keystore.</summary>
-    private static object SessionBody(HttpContext http, SessionTokens s)
+    internal static object SessionBody(HttpContext http, SessionTokens s)
     {
         if (s.Client == ClientKind.Android)
             return new { accessToken = s.AccessToken, expiresAt = s.AccessTokenExpiresAt, refreshToken = s.RefreshToken, refreshExpiresAt = s.RefreshTokenExpiresAt };

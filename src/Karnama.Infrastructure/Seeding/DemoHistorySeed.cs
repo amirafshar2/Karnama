@@ -45,8 +45,12 @@ internal static class DemoHistorySeed
                 var late = p.LateEvery > 0 && back % p.LateEvery == 0 ? 10 + rnd.Next(25) : 0;
                 var inAt = Iran.At(day, new TimeOnly(9, 0)).AddMinutes(late);
                 var shift = Shift.Open(user.Id, day, inAt, [], Trust.Green, false, null, false, late);
-                shift.Close(Iran.At(day, new TimeOnly(17, 0)).AddMinutes(rnd.Next(40)), [], Trust.Green, false, null, false, 0, null);
+                var outAt = Iran.At(day, new TimeOnly(17, 0)).AddMinutes(rnd.Next(40));
+                shift.Close(outAt, [], Trust.Green, false, null, false, 0, null);
                 db.Shifts.Add(shift);
+                // The events behind the shift, like a real day (hours always add up from events).
+                db.AttendanceEvents.Add(new AttendanceEvent(user.Id, shift.Id, AttendanceEventKind.ClockIn, inAt, inAt, null, $"demo-in-{shift.Id:N}", "[]", Trust.Green, null, null));
+                db.AttendanceEvents.Add(new AttendanceEvent(user.Id, shift.Id, AttendanceEventKind.ClockOut, outAt, outAt, null, $"demo-out-{shift.Id:N}", "[]", Trust.Green, null, null));
 
                 // Finished work on some days.
                 if (rnd.NextDouble() > p.PerWeek / 6.0) continue;

@@ -15,6 +15,7 @@ public static class DependencyInjection
         ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("fa");
         services.AddValidatorsFromAssemblyContaining<RequestOtpValidator>(includeInternalTypes: true);
         services.AddScoped<AuthService>();
+        services.AddScoped<Qa.QaService>();
         services.AddScoped<RoleService>();
         services.AddScoped<MeService>();
         services.AddScoped<LocalizationService>();

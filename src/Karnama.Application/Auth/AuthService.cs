@@ -20,7 +20,8 @@ public sealed class AuthService(
     TimeProvider clock,
     IOptions<OtpOptions> otpOptions,
     IOptions<DemoLoginOptions> demoOptions,
-    ILogger<AuthService> logger)
+    ILogger<AuthService> logger,
+    IOptions<QaOptions>? qaOptions = null)
 {
     private const string TotpIssuer = "Karnama";
 
@@ -266,6 +267,19 @@ public sealed class AuthService(
 
         var session = await IssueSessionAsync(user, client, Guid.CreateVersion7(), ct);
         audit.Add(AuditActions.DemoLogin, nameof(User), user.Id.ToString(), new { role = account.Key }, actorOverride: user.Id, isDemoOverride: true);
+        await db.SaveChangesAsync(ct);
+        return session;
+    }
+
+    /// <summary>QA only (docs/PROMPT3.md Q0, Development + Qa:Enabled): a session for any active user by phone, no OTP. Audited.</summary>
+    public async Task<Result<SessionTokens>> QaLoginAsync(string phone, ClientKind client, CancellationToken ct)
+    {
+        if (qaOptions?.Value.Enabled != true) return Error.NotFound();
+        if (!PhoneNumber.TryNormalize(phone, out var normalized)) return Error.Validation("auth.invalidPhone", "شماره‌ی موبایل معتبر نیست.");
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == normalized && u.IsActive, ct);
+        if (user is null) return Error.NotFound();
+        var session = await IssueSessionAsync(user, client, Guid.CreateVersion7(), ct);
+        audit.Add("qa.login", nameof(User), user.Id.ToString(), null, actorOverride: user.Id);
         await db.SaveChangesAsync(ct);
         return session;
     }

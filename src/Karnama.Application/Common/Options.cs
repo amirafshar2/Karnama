@@ -32,6 +32,13 @@ public sealed class SeedOptions
     public SeedMode Mode { get; set; } = SeedMode.Empty;
 }
 
+/// <summary>QA mode (docs/PROMPT3.md Q0): a movable clock, sign-in without OTP and job triggers. Development only.</summary>
+public sealed class QaOptions
+{
+    public const string Section = "Qa";
+    public bool Enabled { get; set; }
+}
+
 public sealed class DemoLoginOptions
 {
     public const string Section = "DemoLogin";
