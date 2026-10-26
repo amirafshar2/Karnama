@@ -9,6 +9,7 @@ using Serilog;
 var builder = Host.CreateApplicationBuilder(args);
 DevDotEnv.Load(builder.Environment);
 builder.Configuration.AddEnvironmentVariables();
+PostgresUrl.Normalize(builder.Configuration);
 
 builder.Services.AddSerilog((sp, log) => log.ReadFrom.Configuration(builder.Configuration).WriteTo.Console());
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);

@@ -239,4 +239,12 @@ export const en: Partial<Dictionary> = {
   "texts.resetDone": "Text reset to default.",
   "texts.count": "{count} texts",
   "texts.help": "Edit a text and leave the box to save it. Keep placeholders like {name}; they are replaced with real values.",
+  "texts.section": "Which part?",
+  "texts.allSections": "All parts",
+  "texts.where": "Where it shows:",
+  "texts.who": "Seen by:",
+  "texts.open": "Open this page",
+  "texts.kind": "This text:",
+  "texts.keepBraces": "Keep the words inside {}.",
+  "texts.techKey": "Technical key",
 };

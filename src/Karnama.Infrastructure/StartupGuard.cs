@@ -6,6 +6,9 @@ namespace Karnama.Infrastructure;
 /// <summary>Fail fast with a clear Persian message when a required setting is missing or unsafe.</summary>
 public static class StartupGuard
 {
+    /// <summary>The environment name of a public showcase install (sample data only).</summary>
+    public const string DemoEnvironment = "Demo";
+
     public static void Validate(IConfiguration config, IHostEnvironment env)
     {
         var errors = new List<string>();
@@ -16,9 +19,12 @@ public static class StartupGuard
         RequireSecret(config, "Otp:HashKey", 32, errors);
         RequireSecret(config, "Setup:Token", 16, errors);
 
+        // "Demo" is a public showcase install (e.g. for a client meeting): sample data and one-click role login, nothing real.
         var demo = config.GetValue<bool>("DemoLogin:Enabled");
-        if (demo && !env.IsDevelopment())
-            errors.Add($"DemoLogin__Enabled در محیط {env.EnvironmentName} روشن است. ورود سریع دمو فقط در Development مجاز است (در Production ممنوع).");
+        if (demo && !env.IsDevelopment() && !env.IsEnvironment(DemoEnvironment))
+            errors.Add($"DemoLogin__Enabled در محیط {env.EnvironmentName} روشن است. ورود سریع دمو فقط در Development یا Demo مجاز است (در Production ممنوع).");
+        if (env.IsEnvironment(DemoEnvironment) && !string.Equals(config["Seed:Mode"], "Demo", StringComparison.OrdinalIgnoreCase))
+            errors.Add("محیط Demo فقط با داده‌ی نمونه اجرا می‌شود: Seed__Mode=Demo.");
 
         if (config.GetValue<bool>("Qa:Enabled") && !env.IsDevelopment())
             errors.Add($"Qa__Enabled در محیط {env.EnvironmentName} روشن است. حالت QA (ساعت جابه‌جاشونده، ورود بدون کد) فقط در Development مجاز است.");

@@ -26,3 +26,14 @@
 - هر توکن هم‌خانواده در ممیزی `auth.refresh.grace` ثبت می‌شود.
 - ریسک باقی‌مانده: کسی که کوکی را دزدیده باشد فقط در همان ۳۰ ثانیه‌ی بعد از استفاده‌ی صاحب اصلی می‌تواند از آن استفاده کند. کوکی HttpOnly + Secure + SameSite=Strict است، پس این ریسک کم است.
 - تست‌ها: `Two_parallel_refreshes_with_the_same_token_keep_the_login`، `Same_token_again_within_the_grace_window_keeps_the_login_but_not_after_logout`، `Refresh_rotates_and_reuse_revokes_the_whole_family` (بعد از پنجره).
+
+## دمو روی Render (۵ آبان)
+
+| موضوع | تصمیم |
+|---|---|
+| محیط `Demo` | تازه: ورود با یک کلیک فقط در `Development` و `Demo`. محیط `Demo` فقط با `Seed__Mode=Demo` بالا می‌آید (تست: `A_demo_install_refuses_real_data`). QA در آن ممنوع است. OpenAPI فقط در Development است. |
+| کلیدها | همه با `generateValue` خود Render ساخته می‌شوند. در `render.yaml` هیچ رمزی نیست. |
+| کوکی ورود | سایت درخواست‌های `/api` را به API می‌رساند (`API_PROXY_TARGET`)، پس کوکی `SameSite=Strict` روی یک سایت می‌ماند. دو زیردامنه‌ی `onrender.com` دو «سایت» جدا حساب می‌شوند (Public Suffix List). |
+| لایو (SignalR) | مستقیم به API وصل می‌شود؛ با توکن، نه کوکی. فقط آدرس سایت در CORS اجازه دارد. |
+| محدودیت درخواست | همه‌ی درخواست‌های مرورگر از پشت پروکسی سایت می‌رسند و یک IP دارند، پس سقف‌ها در دمو بالاتر است. در نصب واقعی، Caddy جلوی هر دو است و این تغییر لازم نیست. |
+| آدرس دیتابیس | `PostgresUrl` آدرس `postgresql://…` را به فرم Npgsql تبدیل می‌کند (تست واحد، از جمله رمز با کاراکترهای خاص). |

@@ -5,11 +5,16 @@ import type { NextConfig } from "next";
 //  - mobile (BUILD_TARGET=mobile): static export bundled inside the Android app by Capacitor
 const isMobile = process.env.BUILD_TARGET === "mobile";
 
-const api = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5080";
-const hub = process.env.NEXT_PUBLIC_HUB_BASE ?? api;
+// Optional: serve the API from the site's own address (/api, /hubs) by proxying to API_PROXY_TARGET. Used where the site and
+// the API get two unrelated host names (e.g. two *.onrender.com services): the sign-in cookie (SameSite=Strict) needs one
+// site. Then the browser calls its own origin (NEXT_PUBLIC_API_BASE "" or "/").
+const proxy = (process.env.API_PROXY_TARGET ?? "").replace(/\/$/, "");
+const api = proxy ? "" : (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5080").replace(/\/$/, "");
+const hub = (process.env.NEXT_PUBLIC_HUB_BASE ?? api).replace(/\/$/, "");
 // N11: live camera video (WebRTC/WHEP) is served from the CCTV subdomain through our reverse proxy.
 const cctv = process.env.NEXT_PUBLIC_CCTV_BASE ?? "";
 const ws = (u: string) => u.replace(/^http/, "ws");
+const apiTarget = proxy || api;
 
 // Static pages carry Next's inline bootstrap scripts, so script-src needs 'unsafe-inline' (nonces need
 // per-request rendering). Everything else is locked down: no framing, no plugins, API/hub-only connections.
@@ -58,7 +63,15 @@ const nextConfig: NextConfig = {
     : {
         headers: async () => [{ source: "/:path*", headers: securityHeaders }],
         // Blog and brand images live on the API; the site serves them from its own origin (same-origin, cacheable).
-        rewrites: async () => [{ source: "/media/public/:path*", destination: `${api}/media/public/:path*` }],
+        rewrites: async () => [
+          { source: "/media/public/:path*", destination: `${apiTarget}/media/public/:path*` },
+          ...(proxy
+            ? [
+                { source: "/api/:path*", destination: `${proxy}/api/:path*` },
+                { source: "/hubs/:path*", destination: `${proxy}/hubs/:path*` },
+              ]
+            : []),
+        ],
       }),
   turbopack: {
     rules: {

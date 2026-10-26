@@ -72,4 +72,20 @@ public sealed class StartupGuardTests(PostgresFixture pg) : IClassFixture<Postgr
         var act = () => f.CreateClient();
         act.Should().Throw<InvalidOperationException>().WithMessage("*DemoLogin__Enabled*");
     }
+
+    [Fact]
+    public void A_demo_install_starts_with_sample_data_and_one_click_login()
+    {
+        using var f = new KarnamaFactory(pg.ConnectionString, demoLogin: true, environment: "Demo");
+        var act = () => f.CreateClient();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void A_demo_install_refuses_real_data()
+    {
+        using var f = new KarnamaFactory(pg.ConnectionString, demoLogin: true, seedMode: "Empty", environment: "Demo");
+        var act = () => f.CreateClient();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Seed__Mode=Demo*");
+    }
 }

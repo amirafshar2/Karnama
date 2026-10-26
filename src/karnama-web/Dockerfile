@@ -9,6 +9,8 @@ ARG NEXT_PUBLIC_API_BASE
 ARG NEXT_PUBLIC_HUB_BASE
 ARG NEXT_PUBLIC_SITE_URL
 ARG NEXT_PUBLIC_CCTV_BASE
+# Optional: proxy /api and /hubs to this URL (one site for the sign-in cookie; see next.config.ts).
+ARG API_PROXY_TARGET
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx next build && npm prune --omit=dev --ignore-scripts
 

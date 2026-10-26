@@ -21,6 +21,7 @@ DotEnv.LoadForDevelopment(Directory.GetCurrentDirectory());
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
+PostgresUrl.Normalize(config); // a host may give the database as a postgres:// URL
 
 builder.Host.UseSerilog((ctx, sp, log) =>
 {
