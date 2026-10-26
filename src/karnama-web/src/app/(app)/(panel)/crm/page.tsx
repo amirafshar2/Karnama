@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@/lib/query";
 import { AlarmClock, Phone, Plus, Search, Shuffle } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { BoardScroller } from "@/components/app/board-scroller";
 import { ErrorText, useErrorMessage } from "@/components/app/error-text";
 import { useRequire } from "@/components/app/use-require";
 import { Button } from "@/components/ui/button";
@@ -169,12 +170,29 @@ export default function CrmPage() {
   );
 }
 
-/** Columns on wide screens; one column at a time on phones (pick it with the chips). */
+/** Columns on wide screens (the shared board: jump bar, arrows, drag to pan); one column at a time on phones (pick it with the chips). */
 function Board({ stages, leads, onOpen, onChanged }: { stages: Stage[]; leads: LeadItem[]; onOpen: (id: string) => void; onChanged: () => void }) {
   const { t, formatNumber } = useI18n();
   const active = stages.filter((s) => s.isActive);
   const [mobileStage, setMobileStage] = useState(active[0]?.id ?? "");
   const byStage = useMemo(() => Object.fromEntries(active.map((s) => [s.id, leads.filter((l) => l.stageId === s.id)])), [active, leads]);
+  const column = (s: Stage) => (
+    <section
+      key={s.id}
+      data-col={s.id}
+      className={cn("max-h-full w-full shrink-0 snap-start flex-col self-start rounded-xl bg-muted/50 p-2 md:flex md:w-auto md:max-w-96 md:grow md:basis-64", mobileStage === s.id ? "flex" : "hidden")}
+      data-testid={`crm-col-${s.name}`}
+    >
+      <h2 className="flex items-center justify-between px-1 pb-2 text-sm font-bold">
+        <span className={cn(s.kind === "won" && "text-emerald-700 dark:text-emerald-400", s.kind === "lost" && "text-muted-foreground")}>{s.name}</span>
+        <span className="text-muted-foreground">{formatNumber(byStage[s.id]?.length ?? 0)}</span>
+      </h2>
+      <ul className="kn-col min-h-0 space-y-2 md:overflow-y-auto md:overscroll-contain">
+        {(byStage[s.id] ?? []).map((l) => <LeadCard key={l.id} lead={l} stages={active} onOpen={() => onOpen(l.id)} onChanged={onChanged} />)}
+        {(byStage[s.id] ?? []).length === 0 && <li className="p-3 text-center text-xs text-muted-foreground">{t("crm.columnEmpty")}</li>}
+      </ul>
+    </section>
+  );
   return (
     <>
       <div className="flex gap-2 overflow-x-auto pb-1 md:hidden" role="tablist">
@@ -185,19 +203,11 @@ function Board({ stages, leads, onOpen, onChanged }: { stages: Stage[]; leads: L
           </button>
         ))}
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-2" data-testid="crm-board">
-        {active.map((s) => (
-          <section key={s.id} className={cn("w-full shrink-0 space-y-2 rounded-xl bg-muted/50 p-2 md:w-72", mobileStage !== s.id && "hidden md:block")} data-testid={`crm-col-${s.name}`}>
-            <h2 className="flex items-center justify-between px-1 text-sm font-bold">
-              <span className={cn(s.kind === "won" && "text-emerald-700 dark:text-emerald-400", s.kind === "lost" && "text-muted-foreground")}>{s.name}</span>
-              <span className="text-muted-foreground">{formatNumber(byStage[s.id]?.length ?? 0)}</span>
-            </h2>
-            <ul className="space-y-2">
-              {(byStage[s.id] ?? []).map((l) => <LeadCard key={l.id} lead={l} stages={active} onOpen={() => onOpen(l.id)} onChanged={onChanged} />)}
-              {(byStage[s.id] ?? []).length === 0 && <li className="p-3 text-center text-xs text-muted-foreground">{t("crm.columnEmpty")}</li>}
-            </ul>
-          </section>
-        ))}
+      {/* Phone: the chosen column only. Tablet/desktop: all columns, with the board's jump bar, arrows and mouse panning. */}
+      <div data-testid="crm-board">
+        <BoardScroller testId="crm" columns={active.map((s) => ({ id: s.id, label: s.name, count: byStage[s.id]?.length ?? 0 }))}>
+          {active.map(column)}
+        </BoardScroller>
       </div>
     </>
   );

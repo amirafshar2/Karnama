@@ -381,3 +381,12 @@ flowchart TD
 - **N2:** `Domain/Attendance/Device.cs` (BiometricDevice، DevicePin، DevicePunch)، `Application/Attendance/DeviceService.cs` (ADMS، ثبت شیفت، نگاشت، فایل، سلامت)، `Api/Endpoints/DeviceEndpoints.cs` (`/iclock/*`، `/api/v1/devices/*`)، `Infrastructure/Content/SpreadsheetReader.cs`، صفحه‌ی `attendance/devices`، `fa-n2.ts`، مجوز `devices.manage`، مهاجرت `N2Devices`، دمو: دستگاه `DEMO0001` و شماره‌های ۱ تا ۵. تست: `DeviceTests`، e2e `devices.spec.ts`.
 - **N11:** `Domain/Cctv/Camera.cs`، `Application/Cctv/CctvService.cs`، `Infrastructure/Cctv/MediaMtxServer.cs` (API نسخه‌ی ۳ MediaMTX + عکس با ffmpeg)، `Api/Endpoints/CctvEndpoints.cs`، صفحه‌ی `cctv` (شبکه‌ی ۱/۴/۹، زنده WHEP)، `fa-n11.ts`، مجوزهای `cctv.view`/`cctv.manage`، مهاجرت `N11Cctv`، `deploy/cctv/` (mediamtx.yml، WireGuard، راهنما)، Caddy برای `DEVICES_DOMAIN` و `CCTV_DOMAIN`. تست: `CctvTests`، e2e `cctv.spec.ts`.
 - **امنیت:** `docs/security/2026-10-26-n2-n11-review.md`.
+
+## ریسپانسیو و تابلوها (۵ آبان، بعد از دیدن دمو)
+- **تابلوی کار و فروش:** `components/app/board-scroller.tsx` (مشترک): نوار دکمه‌ی ستون‌ها با تعداد، فلش‌ها، کشیدن جای خالی با موس، چرخ موس به چپ و راست، تابلو هم‌اندازه‌ی صفحه و هر ستون جدا اسکرول می‌شود. ستون خالی تابلوی کار باریک می‌شود. صفحه‌های `work` و `publishing` تمام عرض (`data-wide-page` → `.kn-main:has(...)`).
+- **منوی کناری:** زیر ۱۲۸۰px خودش آیکونی است (مگر کاربر خودش باز کند)، تا جدول‌ها در تبلت له نشوند.
+- **تقویم انتشار:** با container query: ۱، ۲، ۴ یا ۷ روز در هر ردیف بسته به جای واقعی صفحه.
+- **سایت عمومی:** `site-motion.tsx` حالا محتوای تازه را هم می‌بیند (MutationObserver). قبلاً کارت‌های پکیج‌ها، بلاگ و نمونه‌کارها بعد از رفتن از منو نامرئی می‌ماندند.
+- **سایت عمومی:** کارت‌های هیرو دیگر با موس کج نمی‌شوند (لگ)؛ نمونه‌کارها هنگام رفتن موس روی هر ردیف عکس درست را نشان می‌دهند.
+- **بررسی:** ۵۳ مسیر × ۴ اندازه (۳۶۰، ۷۶۸، ۱۰۲۴، ۱۴۴۰) برای سه نقش با Playwright؛ بیرون‌زدگی از صفحه: صفر. e2e: `crm`، `m3`، `site`، `blog` سبز.
+- **امنیت:** `docs/security/2026-10-26-responsive-review.md`.

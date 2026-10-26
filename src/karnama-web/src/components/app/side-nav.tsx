@@ -12,12 +12,27 @@ import { cn } from "@/lib/utils";
 
 const KEY = "karnama.sidebar.collapsed";
 const listeners = new Set<() => void>();
+/** Below this width the full sidebar would squeeze the page (tables wrap a word per line), so it starts as icons. */
+const WIDE = "(min-width: 1280px)";
 function read() {
+  let stored: string | null = null;
   try {
-    return localStorage.getItem(KEY) === "1";
+    stored = localStorage.getItem(KEY);
   } catch {
-    return false;
+    /* storage unavailable */
   }
+  // The person's own choice wins; otherwise it follows the screen width.
+  if (stored === "1" || stored === "0") return stored === "1";
+  return !window.matchMedia(WIDE).matches;
+}
+function subscribe(l: () => void) {
+  listeners.add(l);
+  const mq = window.matchMedia(WIDE);
+  mq.addEventListener("change", l);
+  return () => {
+    listeners.delete(l);
+    mq.removeEventListener("change", l);
+  };
 }
 function write(v: boolean) {
   try {
@@ -30,17 +45,13 @@ function write(v: boolean) {
 
 /**
  * Desktop/tablet sidebar (md+), from 21st: @wensity/sidebar — a dark rail with sections, a lit active pill,
- * a user card at the foot, and a collapse to icons that is remembered per browser.
+ * a user card at the foot, and a collapse to icons that is remembered per browser (until chosen, it is icons below 1280px).
  * Rebuilt without its dependencies (framer-motion, base-ui, tabler) to stay inside the panels' 180 KB budget:
  * the motion is CSS (width + label fade), the icons are the app's lucide set.
  */
 export function SideNav({ items, isActive, onLogout, user }: { items: NavItem[]; isActive: (href: string) => boolean; onLogout: () => void; user: { name: string; role: string | null } }) {
   const { t } = useI18n();
-  const collapsed = useSyncExternalStore(
-    (l) => (listeners.add(l), () => listeners.delete(l)),
-    read,
-    () => false,
-  );
+  const collapsed = useSyncExternalStore(subscribe, read, () => false);
   const Toggle = collapsed ? PanelRightOpen : PanelRightClose;
   const sections = GROUPS.map((g) => ({ g, list: items.filter((i) => (GROUP_OF[i.href] ?? "admin") === g) })).filter((s) => s.list.length > 0);
 

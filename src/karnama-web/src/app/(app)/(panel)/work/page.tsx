@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@/lib/query";
 import { AlertTriangle, MessageSquare, Paperclip } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
+import { BoardScroller } from "@/components/app/board-scroller";
 import { useErrorMessage } from "@/components/app/error-text";
 import { useRequire } from "@/components/app/use-require";
 import { api } from "@/lib/api";
@@ -14,7 +15,6 @@ import { notify } from "@/lib/notify";
 import { useLive } from "@/lib/use-live";
 import { cn } from "@/lib/utils";
 import { COLUMNS, type WorkCard, type WorkStatus } from "@/lib/work-types";
-import { BoardScroller } from "./board-scroller";
 
 registerTexts(faM3);
 
@@ -242,7 +242,7 @@ export default function WorkBoardPage() {
 
       {/* Tablet/desktop: all columns, drag and drop. */}
       <div className="hidden md:block">
-        <BoardScroller columns={COLUMNS} counts={Object.fromEntries(COLUMNS.map((s) => [s, byColumn.get(s)?.length ?? 0]))}>
+        <BoardScroller columns={COLUMNS.map((s) => ({ id: s, label: t(`work.col.${s}` as TextKey), count: byColumn.get(s)?.length ?? 0 }))}>
           {COLUMNS.map(renderColumn)}
         </BoardScroller>
       </div>

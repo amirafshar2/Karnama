@@ -2,10 +2,14 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { faM3 } from "@/lib/i18n/fa-m3";
 import { useI18n } from "@/lib/i18n/provider";
-import type { TextKey } from "@/lib/i18n/registry";
+import { registerTexts } from "@/lib/i18n/registry";
 import { cn } from "@/lib/utils";
-import type { WorkStatus } from "@/lib/work-types";
+
+registerTexts(faM3); // the work.* labels of the jump bar and arrows (also used by the CRM board)
+
+export type BoardColumn = { id: string; label: ReactNode; count: number };
 
 /**
  * The desktop board: seven columns rarely fit, so moving sideways must be easy.
@@ -16,8 +20,11 @@ import type { WorkStatus } from "@/lib/work-types";
  * - Columns snap into place, the edges fade where more columns hide, and on wide screens the columns stretch to fill.
  * - The board is one screen tall and each column scrolls on its own, so the sideways scrollbar is always in view
  *   (before, a long "done" column pushed it far below the fold).
+ *
+ * Each column inside must carry `data-col={id}`; long column lists get the class `kn-col` (they scroll on their own).
+ * Phones get no jump bar or fixed height: the pages show one column there, picked with their own chips.
  */
-export function BoardScroller({ columns, counts, children }: { columns: WorkStatus[]; counts: Record<string, number>; children: ReactNode }) {
+export function BoardScroller({ columns, children, testId = "board" }: { columns: BoardColumn[]; children: ReactNode; testId?: string }) {
   const { t, formatNumber } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState<Set<string>>(new Set());
@@ -78,9 +85,9 @@ export function BoardScroller({ columns, counts, children }: { columns: WorkStat
   }, [measure, children]);
 
   // Scroll only the board (scrollIntoView would also move the page).
-  const jump = (status: WorkStatus) => {
+  const jump = (id: string) => {
     const el = ref.current;
-    const col = el?.querySelector<HTMLElement>(`[data-col="${status}"]`);
+    const col = el?.querySelector<HTMLElement>(`[data-col="${CSS.escape(id)}"]`);
     if (!el || !col) return;
     const rtl = getComputedStyle(el).direction === "rtl";
     const a = col.getBoundingClientRect();
@@ -124,30 +131,30 @@ export function BoardScroller({ columns, counts, children }: { columns: WorkStat
 
   return (
     <div className="space-y-3">
-      <nav aria-label={t("work.jump")} className="flex items-center gap-2">
+      <nav aria-label={t("work.jump")} className="flex items-center gap-2 max-md:hidden">
         {/* In Persian the later columns sit to the left: "previous" points right, "next" points left. */}
-        <button type="button" className={arrow} onClick={() => page(-1)} disabled={!edges.start} aria-label={t("work.prev")} data-testid="board-prev">
+        <button type="button" className={arrow} onClick={() => page(-1)} disabled={!edges.start} aria-label={t("work.prev")} data-testid={`${testId}-prev`}>
           <ChevronRight className="size-5 ltr:rotate-180" aria-hidden="true" />
         </button>
         <ol className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
-          {columns.map((s) => (
-            <li key={s} className="shrink-0">
+          {columns.map((c) => (
+            <li key={c.id} className="shrink-0">
               <button
                 type="button"
-                onClick={() => jump(s)}
-                aria-current={visible.has(s) ? "true" : undefined}
+                onClick={() => jump(c.id)}
+                aria-current={visible.has(c.id) ? "true" : undefined}
                 className={cn(
                   "h-9 rounded-full border px-3 text-sm transition-colors",
-                  visible.has(s) ? "border-foreground/30 bg-foreground/10 font-semibold text-foreground" : "bg-card text-muted-foreground hover:text-foreground",
+                  visible.has(c.id) ? "border-foreground/30 bg-foreground/10 font-semibold text-foreground" : "bg-card text-muted-foreground hover:text-foreground",
                 )}
-                data-testid={`jump-${s}`}
+                data-testid={`jump-${c.id}`}
               >
-                {t(`work.col.${s}` as TextKey)} <span className="tabular-nums opacity-70">{formatNumber(counts[s] ?? 0)}</span>
+                {c.label} <span className="tabular-nums opacity-70">{formatNumber(c.count)}</span>
               </button>
             </li>
           ))}
         </ol>
-        <button type="button" className={arrow} onClick={() => page(1)} disabled={!edges.end} aria-label={t("work.next")} data-testid="board-next">
+        <button type="button" className={arrow} onClick={() => page(1)} disabled={!edges.end} aria-label={t("work.next")} data-testid={`${testId}-next`}>
           <ChevronLeft className="size-5 ltr:rotate-180" aria-hidden="true" />
         </button>
       </nav>
@@ -161,18 +168,18 @@ export function BoardScroller({ columns, counts, children }: { columns: WorkStat
           onPointerUp={endPan}
           onPointerCancel={endPan}
           title={t("work.panHint")}
-          style={height ? { height } : undefined}
+          style={height ? ({ "--board-h": `${height}px` } as React.CSSProperties) : undefined}
           className={cn(
-            "kn-board flex h-[calc(100dvh-18rem)] min-h-96 gap-3 overflow-x-auto pb-3",
+            "kn-board flex gap-3 pb-3 md:h-[var(--board-h,calc(100dvh-18rem))] md:min-h-96 md:overflow-x-auto",
             panning ? "cursor-grabbing select-none" : "cursor-grab snap-x snap-proximity",
           )}
-          data-testid="board-scroll"
+          data-testid={`${testId}-scroll`}
         >
           {children}
         </div>
-        {/* Soft edges where more columns are hidden. */}
-        <div aria-hidden="true" className={cn("pointer-events-none absolute inset-y-0 start-0 w-10 bg-gradient-to-l from-transparent to-background transition-opacity rtl:bg-gradient-to-r", edges.start ? "opacity-100" : "opacity-0")} />
-        <div aria-hidden="true" className={cn("pointer-events-none absolute inset-y-0 end-0 w-10 bg-gradient-to-r from-transparent to-background transition-opacity rtl:bg-gradient-to-l", edges.end ? "opacity-100" : "opacity-0")} />
+        {/* Soft edges where more columns are hidden (phones show one column, so none there). */}
+        <div aria-hidden="true" className={cn("pointer-events-none absolute inset-y-0 start-0 w-10 max-md:hidden bg-gradient-to-l from-transparent to-background transition-opacity rtl:bg-gradient-to-r", edges.start ? "opacity-100" : "opacity-0")} />
+        <div aria-hidden="true" className={cn("pointer-events-none absolute inset-y-0 end-0 w-10 max-md:hidden bg-gradient-to-r from-transparent to-background transition-opacity rtl:bg-gradient-to-l", edges.end ? "opacity-100" : "opacity-0")} />
       </div>
     </div>
   );

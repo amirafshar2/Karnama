@@ -59,7 +59,7 @@ export default function PublishingPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-wide-page>
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-2xl">
           <h1 className="text-2xl font-extrabold">{t("publish.title")}</h1>
@@ -100,60 +100,63 @@ export default function PublishingPage() {
         </select>
       </div>
 
-      {/* Phones: one day under another. Desktop: the week side by side. */}
-      <ol className="grid gap-3 lg:grid-cols-7" aria-busy={jobs.isLoading}>
-        {days.map((d) => {
-          const list = byDay(d);
-          return (
-            <li key={d} className={cn("flex min-h-28 flex-col rounded-xl border bg-muted/30 p-2", d === today && "border-primary ring-1 ring-primary")} data-testid={`pub-day-${d}`}>
-              <div className="mb-2 flex items-baseline justify-between px-1">
-                <span className="text-sm font-bold">{formatDate(d + "T12:00:00", { weekday: "long" })}</span>
-                <span className="text-xs text-muted-foreground">{formatDate(d + "T12:00:00", { day: "numeric", month: "short" })}</span>
-              </div>
-              <ul className="flex-1 space-y-2">
-                {list.map((j) => (
-                  <li key={j.id}>
-                    <button
-                      type="button"
-                      onClick={() => setEditing({ job: j })}
-                      className={cn("w-full rounded-lg border-2 p-2 text-start text-sm hover:shadow-sm", statusTone[j.status])}
-                      data-testid="pub-card"
-                    >
-                      <span className="flex items-center justify-between gap-1">
-                        <span className="font-bold tabular-nums" dir="ltr">
-                          {splitTehran(j.publishAt).time.replace(/\d/g, (c) => formatNumber(Number(c)))}
+      {/* Sized by the space the page really has (not the window: the sidebar takes part of it): one day under another,
+          then 2 or 4 days a row, and the whole week side by side only when each day has room for its cards. */}
+      <div className="@container">
+        <ol className="grid gap-3 @xl:grid-cols-2 @3xl:grid-cols-4 @5xl:grid-cols-7" aria-busy={jobs.isLoading}>
+          {days.map((d) => {
+            const list = byDay(d);
+            return (
+              <li key={d} className={cn("flex min-h-28 flex-col rounded-xl border bg-muted/30 p-2", d === today && "border-primary ring-1 ring-primary")} data-testid={`pub-day-${d}`}>
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-2 px-1">
+                  <span className="text-sm font-bold">{formatDate(d + "T12:00:00", { weekday: "long" })}</span>
+                  <span className="text-xs text-muted-foreground">{formatDate(d + "T12:00:00", { day: "numeric", month: "short" })}</span>
+                </div>
+                <ul className="flex-1 space-y-2">
+                  {list.map((j) => (
+                    <li key={j.id}>
+                      <button
+                        type="button"
+                        onClick={() => setEditing({ job: j })}
+                        className={cn("w-full rounded-lg border-2 p-2 text-start text-sm hover:shadow-sm", statusTone[j.status])}
+                        data-testid="pub-card"
+                      >
+                        <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                          <span className="font-bold tabular-nums" dir="ltr">
+                            {splitTehran(j.publishAt).time.replace(/\d/g, (c) => formatNumber(Number(c)))}
+                          </span>
+                          <span className="text-xs">{t(`publish.status.${j.status}` as TextKey)}</span>
                         </span>
-                        <span className="text-xs">{t(`publish.status.${j.status}` as TextKey)}</span>
-                      </span>
-                      <span className="mt-1 block truncate font-semibold">{j.clientName}</span>
-                      <span className="block truncate text-xs text-muted-foreground" dir="auto">
-                        {j.platformName} @{j.handle}
-                        {j.management === "clientManaged" && ` · ${t("publish.clientManaged")}`}
-                      </span>
-                      {j.caption && <span className="mt-1 line-clamp-2 text-xs">{j.caption}</span>}
-                      {j.postUrl && (
-                        <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold underline">
-                          <ExternalLink className="size-3" aria-hidden="true" />
-                          {t("publish.viewPost")}
+                        <span className="mt-1 block truncate font-semibold">{j.clientName}</span>
+                        <span className="block truncate text-xs text-muted-foreground" dir="auto">
+                          {j.platformName} @{j.handle}
+                          {j.management === "clientManaged" && ` · ${t("publish.clientManaged")}`}
                         </span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {list.length === 0 && <p className="px-1 pb-1 text-xs text-muted-foreground lg:hidden">{t("publish.empty")}</p>}
-              <button
-                type="button"
-                className="mt-2 flex min-h-10 items-center justify-center gap-1 rounded-md text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => setEditing({ day: d })}
-                aria-label={`${t("publish.new")} — ${formatDate(d + "T12:00:00", { weekday: "long", day: "numeric", month: "long" })}`}
-              >
-                <Plus className="size-3.5" aria-hidden="true" />
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+                        {j.caption && <span className="mt-1 line-clamp-2 text-xs">{j.caption}</span>}
+                        {j.postUrl && (
+                          <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold underline">
+                            <ExternalLink className="size-3" aria-hidden="true" />
+                            {t("publish.viewPost")}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {list.length === 0 && <p className="px-1 pb-1 text-xs text-muted-foreground @5xl:hidden">{t("publish.empty")}</p>}
+                <button
+                  type="button"
+                  className="mt-2 flex min-h-10 items-center justify-center gap-1 rounded-md text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={() => setEditing({ day: d })}
+                  aria-label={`${t("publish.new")} — ${formatDate(d + "T12:00:00", { weekday: "long", day: "numeric", month: "long" })}`}
+                >
+                  <Plus className="size-3.5" aria-hidden="true" />
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
 
       {editing && <PublishEditor job={editing.job} initial={{ day: editing.day, clientId: clientId || undefined }} onClose={() => setEditing(null)} onSaved={saved} />}
     </div>
