@@ -5,8 +5,9 @@ import { useEffect } from "react";
 type Conn = { saveData?: boolean; effectiveType?: string };
 
 /**
- * Pointer parallax for the hero's card fan (the whole fan leans a few degrees toward the cursor, mouse only),
- * and the background loop: attached only after the page has loaded, never with reduced motion, data saver or 2G/3G.
+ * The hero's background loop: attached only after the page has loaded, never with reduced motion, data saver or 2G/3G.
+ * (The card fan used to lean toward the cursor; that cost as much per frame as the video itself and felt laggy on
+ * ordinary laptops, so the fan now only lifts the card under the mouse — see .fan__card:hover in site.css.)
  */
 export function HeroTilt() {
   useEffect(() => {
@@ -24,28 +25,5 @@ export function HeroTilt() {
     else window.addEventListener("load", () => setTimeout(start, 200), { once: true });
   }, []);
 
-  useEffect(() => {
-    const fan = document.querySelector<HTMLElement>("[data-fan]");
-    if (!fan || matchMedia("(prefers-reduced-motion: reduce)").matches || !matchMedia("(hover: hover)").matches) return;
-    let raf = 0;
-    let x = 0;
-    let y = 0;
-    const paint = () => {
-      raf = 0;
-      fan.style.transform = `rotateY(${x * 6}deg) rotateX(${-y * 4}deg)`;
-    };
-    const move = (e: PointerEvent) => {
-      x = e.clientX / window.innerWidth - 0.5;
-      y = e.clientY / window.innerHeight - 0.5;
-      if (!raf) raf = requestAnimationFrame(paint);
-    };
-    fan.style.transition = "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)";
-    fan.style.transformStyle = "preserve-3d";
-    window.addEventListener("pointermove", move, { passive: true });
-    return () => {
-      window.removeEventListener("pointermove", move);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
   return null;
 }

@@ -14,6 +14,9 @@ export function HoverReel({ items }: { items: ReelItem[] }) {
   const thumb = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
+  // The frame's photos sit clipped inside it, so the browser's lazy loading never sees them and they stayed blank.
+  // They load all at once the first time the mouse enters the list (not before: the page itself stays light).
+  const [warm, setWarm] = useState(false);
 
   useEffect(() => {
     const el = host.current;
@@ -57,7 +60,7 @@ export function HoverReel({ items }: { items: ReelItem[] }) {
   }, []);
 
   return (
-    <div ref={host} className="reel">
+    <div ref={host} className="reel" onPointerEnter={(e) => e.pointerType === "mouse" && setWarm(true)}>
       <ul className="reel__list" data-testid="cases-reel">
         {items.map((p, i) => (
           <li key={p.href}>
@@ -87,11 +90,12 @@ export function HoverReel({ items }: { items: ReelItem[] }) {
         ))}
       </ul>
       <div ref={thumb} className="reel__thumb" data-open={open ? "" : undefined} aria-hidden="true">
-        <div className="reel__strip" style={{ translate: `0 ${-100 * active}%` }}>
+        {/* translate % is of the strip's own height (all photos stacked), so one row = 100% / count */}
+        <div className="reel__strip" style={{ translate: `0 ${(-100 * active) / Math.max(1, items.length)}%` }}>
           {items.map((p) => (
             <div className="reel__shot" key={p.href}>
               {/* eslint-disable-next-line @next/next/no-img-element -- uploaded photo */}
-              {p.image ? <img src={p.image} alt="" loading="lazy" /> : <div className="size-full bg-[var(--hi)]" />}
+              {p.image && warm ? <img src={p.image} alt="" decoding="async" /> : <div className="size-full bg-[var(--hi)] opacity-30" />}
             </div>
           ))}
         </div>
