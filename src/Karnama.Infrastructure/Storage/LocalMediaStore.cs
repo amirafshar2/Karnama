@@ -23,10 +23,13 @@ internal sealed partial class LocalMediaStore : IMediaStore
         Directory.CreateDirectory(_root);
     }
 
+    private static string NameOf(string? stable) =>
+        stable is { Length: 32 } && stable.All(Uri.IsHexDigit) ? stable.ToLowerInvariant() : Guid.NewGuid().ToString("N");
+
     [GeneratedRegex("^(brand|packages|blog|cases|site)/[0-9a-f]{32}\\.(png|jpg|webp|mp4|webm)$")]
     private static partial Regex IdPattern();
 
-    public async Task<Result<string>> SaveImageAsync(Stream content, long length, string folder, CancellationToken ct)
+    public async Task<Result<string>> SaveImageAsync(Stream content, long length, string folder, CancellationToken ct, string? stableName = null)
     {
         if (length <= 0 || length > MaxImageBytes)
             return Error.Validation("media.tooLarge", "حجم عکس باید کمتر از ۲ مگابایت باشد.");
@@ -45,14 +48,15 @@ internal sealed partial class LocalMediaStore : IMediaStore
         if (ext is null)
             return Error.Validation("media.badType", "فقط عکس PNG، JPG یا WebP قبول می‌شود (SVG مجاز نیست).");
 
-        var id = $"{folder}/{Guid.NewGuid():N}.{ext}";
+        var id = $"{folder}/{NameOf(stableName)}.{ext}";
         var path = Path.Combine(_root, id);
+        if (stableName is not null && File.Exists(path)) return id; // the same built-in demo file, already there
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.WriteAllBytesAsync(path, buffer, ct);
         return id;
     }
 
-    public async Task<Result<string>> SaveVideoAsync(Stream content, long length, string folder, CancellationToken ct)
+    public async Task<Result<string>> SaveVideoAsync(Stream content, long length, string folder, CancellationToken ct, string? stableName = null)
     {
         if (length <= 0 || length > MaxVideoBytes)
             return Error.Validation("media.videoTooLarge", "حجم ویدیو باید کمتر از ۱۸ مگابایت باشد.");
@@ -67,8 +71,9 @@ internal sealed partial class LocalMediaStore : IMediaStore
         var ext = SniffVideo(head.AsSpan(0, got));
         if (ext is null) return Error.Validation("media.badVideo", "فقط ویدیوی MP4 یا WebM قبول می‌شود.");
 
-        var id = $"{folder}/{Guid.NewGuid():N}.{ext}";
+        var id = $"{folder}/{NameOf(stableName)}.{ext}";
         var path = Path.Combine(_root, id);
+        if (stableName is not null && File.Exists(path)) return id; // the same built-in demo file, already there
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         long total = got;
         await using (var file = File.Create(path))

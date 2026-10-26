@@ -345,16 +345,33 @@ function DemoLogin({ onDone }: { onDone: (s: Session) => Promise<void> }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  // On a free host the API sleeps when idle and needs up to a minute to wake: keep asking (and say so) instead of
+  // silently showing no demo buttons. 404 = demo login is off on this install.
+  const [waking, setWaking] = useState(false);
   const { data } = useQuery({
     queryKey: ["demo-options"],
-    queryFn: () =>
-      api<DemoAccount[]>("/api/v1/auth/demo/options", { noAuthRetry: true }).catch((e) => {
-        if (e instanceof ApiError && e.status === 404) return [];
-        throw e;
-      }),
+    queryFn: async () => {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await api<DemoAccount[]>("/api/v1/auth/demo/options", { noAuthRetry: true });
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 404) return [];
+          const transient = !(e instanceof ApiError) || e.status === 0 || e.status >= 500;
+          if (!transient || attempt >= 24) throw e;
+          setWaking(true);
+          await new Promise((r) => setTimeout(r, 5000));
+        }
+      }
+    },
     staleTime: 60_000,
   });
-  if (!data?.length) return null;
+  if (!data?.length)
+    return waking ? (
+      <p className="mt-10 flex items-center gap-2 border-t pt-6 text-sm text-muted-foreground" role="status" data-testid="demo-waking">
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        {t("login.demoWaking")}
+      </p>
+    ) : null;
 
   const login = async (role: string) => {
     setBusy(role);

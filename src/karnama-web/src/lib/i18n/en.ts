@@ -44,6 +44,7 @@ export const en: Partial<Dictionary> = {
   "login.totpConfirm": "Confirm and sign in",
   "login.demoTitle": "Quick demo sign-in",
   "login.demoHint": "Sign in as one of these roles to explore.",
+  "login.demoWaking": "The demo server is starting; wait up to a minute and the sign-in buttons will appear.",
   "login.setupLink": "First-time setup",
   "demo.banner": "Demo mode — all data is sample data",
   "demo.switchRole": "Switch role",

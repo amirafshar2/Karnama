@@ -14,13 +14,17 @@ namespace Karnama.Infrastructure.Seeding;
 /// </summary>
 internal static class DemoSiteSeed
 {
+    /// <summary>Same demo file → same name on every rebuild of a demo install (see IMediaStore.SaveImageAsync).</summary>
+    private static string StableName(string key) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("karnama-demo:" + key)))[..32].ToLowerInvariant();
+
     public static async Task SeedAsync(AppDbContext db, IMediaStore media, CancellationToken ct)
     {
         async Task<string?> Image(string name, string folder)
         {
             await using var s = typeof(DemoSiteSeed).Assembly.GetManifestResourceStream("DemoMedia." + name);
             if (s is null) return null;
-            var r = await media.SaveImageAsync(s, s.Length, folder, ct);
+            var r = await media.SaveImageAsync(s, s.Length, folder, ct, StableName(folder + "/" + name));
             return r.IsSuccess ? r.Value : null;
         }
 
@@ -80,7 +84,7 @@ internal static class DemoSiteSeed
 
         string? video = null;
         await using (var s = typeof(DemoSiteSeed).Assembly.GetManifestResourceStream("DemoMedia.hero.mp4"))
-            if (s is not null && await media.SaveVideoAsync(s, s.Length, "site", ct) is { IsSuccess: true } v) video = v.Value;
+            if (s is not null && await media.SaveVideoAsync(s, s.Length, "site", ct, StableName("site/video")) is { IsSuccess: true } v) video = v.Value;
         var poster = await image("poster.jpg", "site");
         var photos = new List<string>();
         foreach (var name in new[] { "restaurant.jpg", "cafe.jpg", "icecream.jpg", "boutique.jpg", "beauty.jpg", "creator.jpg" })
