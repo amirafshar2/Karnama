@@ -11,7 +11,8 @@ import type { WorkStatus } from "@/lib/work-types";
  * The desktop board: seven columns rarely fit, so moving sideways must be easy.
  * - A bar of column buttons (with counts) jumps to any column; the columns on screen are highlighted.
  * - Arrow buttons page one screen sideways; they fade out at either end.
- * - The empty board background can be dragged with the mouse (cards keep their own drag and drop).
+ * - The empty board background can be dragged with the mouse (cards keep their own drag and drop), and the mouse wheel
+ *   there moves the board sideways (like Trello); over a long column the wheel scrolls that column.
  * - Columns snap into place, the edges fade where more columns hide, and on wide screens the columns stretch to fill.
  * - The board is one screen tall and each column scrolls on its own, so the sideways scrollbar is always in view
  *   (before, a long "done" column pushed it far below the fold).
@@ -58,10 +59,21 @@ export function BoardScroller({ columns, counts, children }: { columns: WorkStat
     const fit = () => setHeight(Math.max(384, Math.round(window.innerHeight - (el.getBoundingClientRect().top + window.scrollY) - 16)));
     fit();
     window.addEventListener("resize", fit);
+    // Wheel → sideways, unless a column under the pointer can still scroll that way itself.
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY) || el.scrollWidth <= el.clientWidth) return;
+      const col = (e.target as HTMLElement).closest<HTMLElement>(".kn-col");
+      if (col && col.scrollHeight > col.clientHeight) return; // a long column scrolls itself
+      e.preventDefault();
+      const rtl = getComputedStyle(el).direction === "rtl";
+      el.scrollBy({ left: (rtl ? -1 : 1) * e.deltaY });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       io.disconnect();
       ro.disconnect();
       window.removeEventListener("resize", fit);
+      el.removeEventListener("wheel", onWheel);
     };
   }, [measure, children]);
 

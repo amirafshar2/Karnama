@@ -157,7 +157,9 @@ export default function WorkBoardPage() {
           if (card) void move(card, status);
         }}
         className={cn(
-          "flex max-h-full max-w-96 shrink-0 grow basis-64 snap-start flex-col self-start rounded-xl bg-muted/50 p-2 transition-colors",
+          "flex max-h-full shrink-0 snap-start flex-col self-start rounded-xl bg-muted/50 p-2 transition-colors",
+          // Empty columns fold to a narrow strip (they still take drops); the rest share the width.
+          cards.length === 0 && dragOver !== status ? "w-44" : "max-w-96 grow basis-60",
           dragOver === status && "bg-accent/40 ring-2 ring-accent",
         )}
         data-col={status}
