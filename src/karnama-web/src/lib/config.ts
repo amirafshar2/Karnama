@@ -5,3 +5,6 @@ export const CLIENT_KIND: "web" | "android" = process.env.NEXT_PUBLIC_CLIENT ===
 
 /** Public media ("/media/public/…"): the website reaches it through its own origin (rewrite); the app asks the API directly. */
 export const mediaUrl = (path: string) => (CLIENT_KIND === "android" || !path.startsWith("/") ? (path.startsWith("/") ? API_BASE + path : path) : path);
+
+/** Where the Android app (APK) is downloaded from, e.g. a GitHub release asset. Empty = "not ready yet" on the download page. */
+export const APK_URL = (process.env.NEXT_PUBLIC_APK_URL ?? "").trim();

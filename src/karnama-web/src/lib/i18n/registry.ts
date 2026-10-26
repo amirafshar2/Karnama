@@ -23,10 +23,12 @@ import { faCore } from "./fa";
 import type { faAuth, faDashboard, faProfile } from "./fa-pages";
 import type { faRoles } from "./fa-roles";
 import type { faSettings } from "./fa-settings";
+import type { faAppDl } from "./fa-appdl";
 
 /** Every text key in the product (type only — module dictionaries are loaded by the pages that use them). */
 export type TextKey =
   | keyof typeof faCore
+  | keyof typeof faAppDl
   | keyof typeof faAuth
   | keyof typeof faDashboard
   | keyof typeof faProfile

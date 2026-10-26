@@ -92,6 +92,7 @@ export const TEXT_SECTIONS: Record<string, TextSection> = {
   scope: { name: "اندازه‌ی دسترسی", where: "منو ← «نقش‌ها و دسترسی» ← یک نقش: کنار هر اجازه انتخاب می‌کنید «ندارد»، «فقط مال خودش» یا «همه».", who: "مدیرها", href: "/roles" },
   brandSettings: { name: "برند و ظاهر", where: "منو ← «برند و ظاهر»: نام آژانس، لوگو و رنگ‌های سایت و اپ.", who: "مدیرها", href: "/settings/brand" },
   texts: { name: "همین صفحه (متن‌های سایت)", where: "متن‌های همین صفحه‌ای که الان در آن هستید.", who: "مدیرها", href: "/settings/texts" },
+  appdl: { name: "صفحه‌ی دانلود اپ اندروید", where: "منو ← «اپ اندروید»: دکمه‌ی دانلود، کد QR و راهنمای نصب قدم‌به‌قدم.", who: "همه", href: "/app-download" },
   langs: { name: "زبان‌های برنامه", where: "همین صفحه ← کارت «زبان‌های برنامه» بالای صفحه: اضافه کردن زبان تازه.", who: "مدیرها", href: "/settings/texts" },
 };
 

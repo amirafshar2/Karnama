@@ -1,6 +1,7 @@
-import { Cctv, Fingerprint, LifeBuoy, Camera, Gauge, Inbox, MessagesSquare, BarChart3, CalendarClock, Newspaper, Globe, Trophy, PhoneIncoming, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { Smartphone, Cctv, Fingerprint, LifeBuoy, Camera, Gauge, Inbox, MessagesSquare, BarChart3, CalendarClock, Newspaper, Globe, Trophy, PhoneIncoming, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
 import type { TextKey } from "@/lib/i18n/registry";
 import { hasPermission, type Me, type Scope } from "@/lib/types";
+import { CLIENT_KIND } from "@/lib/config";
 
 export type NavItem = {
   href: string;
@@ -10,6 +11,8 @@ export type NavItem = {
   anyOf?: { code: string; scope: Scope }[];
   /** Also shown to client (portal) users, who hold no staff permissions. */
   clients?: boolean;
+  /** Only on the website (e.g. "download the Android app" makes no sense inside the app). */
+  webOnly?: boolean;
 };
 
 export type NavGroup = "work" | "team" | "content" | "admin" | "me";
@@ -18,7 +21,7 @@ export const GROUP_OF: Record<string, NavGroup> = {
   "/dashboard": "work", "/work": "work", "/orders": "work", "/publishing": "work", "/crm": "work", "/chat": "work", "/media": "work", "/clients": "work",
   "/attendance": "team", "/attendance/calendar": "team", "/attendance/live": "team", "/reports": "team", "/attendance/report": "team", "/assets": "team",
   "/content/blog": "content", "/content/home": "content", "/content/cases": "content", "/settings/texts": "content",
-  "/help": "me", "/profile": "me",
+  "/help": "me", "/app-download": "me", "/profile": "me",
 };
 export const GROUPS: NavGroup[] = ["work", "team", "content", "admin", "me"];
 
@@ -61,9 +64,10 @@ export const NAV: NavItem[] = [
   { href: "/attendance/setup", label: "nav.attSetup", icon: Settings2, anyOf: [{ code: "attendance.policies.manage", scope: "all" }] },
   { href: "/attendance/kiosk", label: "nav.kiosk", icon: QrCode, anyOf: [{ code: "attendance.kiosk", scope: "all" }] },
   { href: "/help", label: "nav.help", icon: LifeBuoy },
+  { href: "/app-download", label: "nav.appDownload", icon: Smartphone, webOnly: true },
   { href: "/profile", label: "nav.profile", icon: UserRound },
 ];
 
 export function navFor(me: Me | null) {
-  return NAV.filter((i) => !i.anyOf || i.anyOf.some((p) => hasPermission(me, p.code, p.scope)) || (i.clients && me?.kind === "client"));
+  return NAV.filter((i) => !(i.webOnly && CLIENT_KIND === "android")).filter((i) => !i.anyOf || i.anyOf.some((p) => hasPermission(me, p.code, p.scope)) || (i.clients && me?.kind === "client"));
 }

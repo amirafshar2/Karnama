@@ -54,6 +54,7 @@ export const faCore = {
   "nav.reports": "گزارش کار و امتیاز",
   "nav.assets": "تجهیزات",
   "nav.help": "راهنما",
+  "nav.appDownload": "اپ اندروید",
   "nav.devices": "دستگاه‌های حضور",
   "nav.cctv": "دوربین‌ها",
   "nav.chat": "گفتگو",

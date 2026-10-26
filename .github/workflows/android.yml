@@ -1,0 +1,86 @@
+# Builds the Android app (APK) on every push and publishes it as the GitHub release "android-latest", so the panel's
+# "Android app" page can link to .../releases/download/android-latest/karnama.apk.
+# Only first-party actions (pinned to commit SHAs, like ci.yml); Java and the Android SDK come preinstalled on the runner.
+#
+# Signing: add these repository secrets once (Settings → Secrets and variables → Actions), so every new APK installs over
+# the previous one: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+# Without them a throwaway key is made for each build (works, but a new version then needs the old app removed first).
+# The API address: repository variable ANDROID_API_BASE (default: the Render demo API).
+name: android
+
+on:
+  push:
+    branches: [main, master]
+    paths: ["src/karnama-web/**", "mobile/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # publish the release
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      API: ${{ vars.ANDROID_API_BASE || 'https://karnama-api.onrender.com' }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Web part of the app (static export)
+        working-directory: src/karnama-web
+        run: |
+          npm ci --no-audit --no-fund
+          BUILD_TARGET=mobile NEXT_PUBLIC_CLIENT=android NEXT_PUBLIC_API_BASE="$API" NEXT_PUBLIC_HUB_BASE="$API" npx next build
+
+      - name: Copy it into the Android project
+        working-directory: mobile
+        run: |
+          npm ci --no-audit --no-fund
+          npx cap sync android
+
+      - name: Signing key
+        working-directory: mobile/android
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > app/karnama.jks
+          else
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: signing with a throwaway key (updates will need a reinstall)."
+            KS_PASS=$(openssl rand -hex 16); KEY_PASS=$KS_PASS; KEY_ALIAS=karnama
+            "$JAVA_HOME_21_X64/bin/keytool" -genkeypair -keystore app/karnama.jks -storepass "$KS_PASS" -keypass "$KEY_PASS" \
+              -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Karnama Demo" -noprompt
+          fi
+          umask 077
+          printf 'storeFile=karnama.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KS_PASS" "$KEY_ALIAS" "$KEY_PASS" > keystore.properties
+
+      - name: Build the APK
+        working-directory: mobile/android
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease -PversionCode=${{ github.run_number }} -PversionName=1.0.${{ github.run_number }}
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/karnama.apk"
+          rm -f app/karnama.jks keystore.properties
+
+      - name: Publish as release "android-latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
+          gh release create android-latest karnama.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "اپ اندروید کارنما (نسخه‌ی 1.0.${{ github.run_number }})" \
+            --notes "آخرین نسخه‌ی اپ اندروید. نصب: فایل karnama.apk را روی گوشی باز کنید. API: $API" --latest=false

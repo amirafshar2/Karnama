@@ -1,0 +1,22 @@
+# DEMO image (render.yaml): the API plus its own PostgreSQL in one container, so the demo needs no separate database.
+# Data lives in /tmp: every restart (e.g. after the free instance sleeps) starts a clean demo with fresh sample data.
+# Never use this for a real agency: deploy/docker-compose.prod.yml has the real database, backups and Redis.
+# Build from the repository root:  docker build -f src/Karnama.Api/Dockerfile.demo -t karnama-demo .
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+COPY global.json Directory.Build.props Karnama.sln ./
+COPY src/ src/
+RUN dotnet publish src/Karnama.Api/Karnama.Api.csproj -c Release -o /out /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# The package would create a default cluster as root; the start script makes its own in /tmp instead.
+RUN mkdir -p /etc/postgresql-common && echo "create_main_cluster = false" > /etc/postgresql-common/createcluster.conf \
+ && apt-get update && apt-get install -y --no-install-recommends postgresql && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /out .
+COPY --chmod=755 deploy/demo/start.sh /app/start.sh
+# Workstation GC and memory-saving mode: database and API share the free instance's 512 MB.
+ENV ASPNETCORE_URLS=http://+:8080 DOTNET_EnableDiagnostics=0 DOTNET_gcServer=0 DOTNET_GCConserveMemory=7
+USER app
+EXPOSE 8080
+ENTRYPOINT ["/app/start.sh"]
