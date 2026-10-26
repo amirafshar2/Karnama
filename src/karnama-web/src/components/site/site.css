@@ -282,3 +282,9 @@
   .marquee__track, .ring__orbit, .tier--glow::before, .aurora::before, .aurora::after, .hero__media img { animation: none; }
   .site [data-reveal] { opacity: 1; translate: none; }
 }
+
+/* "Waking up" notice (free host: the API was asleep when the page was rendered). */
+.site-waking { position: fixed; inset-inline: 1rem; bottom: 1rem; z-index: 60; margin-inline: auto; display: flex; width: fit-content; max-width: calc(100% - 2rem); align-items: center; gap: 0.6rem; border-radius: 999px; background: var(--ink, #0b1430); color: var(--on-ink, #fff); padding: 0.7rem 1.1rem; font-size: 0.9rem; box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.5); }
+.site-waking__dot { width: 0.6rem; height: 0.6rem; flex-shrink: 0; border-radius: 999px; background: var(--hi, #3b6cff); animation: site-waking 1.2s ease-in-out infinite; }
+@keyframes site-waking { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .site-waking__dot { animation: none; } }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { wakeApi } from "@/lib/wake";
 
 /**
  * The public site's only always-on script (≈1 KB): one IntersectionObserver marks `[data-reveal]` / `[data-observe]`
@@ -11,6 +12,7 @@ import { useEffect } from "react";
  */
 export function SiteMotion() {
   useEffect(() => {
+    wakeApi(); // a free-host API sleeps; the page may come from cache, so wake it for the next click (no-op elsewhere)
     const root = document.querySelector(".site");
     root?.classList.remove("static");
     const seen = new IntersectionObserver(

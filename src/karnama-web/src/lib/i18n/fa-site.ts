@@ -4,6 +4,7 @@ export const faSite = {
   "site.nav.blog": "بلاگ",
   "site.nav.login": "ورود به پنل",
   "site.skip": "رفتن به محتوا",
+  "site.waking": "سایت در حال آماده شدن است؛ چند لحظه دیگر خودش کامل می‌شود…",
   "site.menu": "منوی سایت",
   "site.footerMenu": "پیوندهای پایین صفحه",
 

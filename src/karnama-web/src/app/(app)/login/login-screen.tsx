@@ -1,5 +1,6 @@
 "use client";
 
+import { wakeApi } from "@/lib/wake";
 import { useQuery } from "@/lib/query";
 import { ArrowRight, Clapperboard, Loader2, PenLine, PhoneCall, Shield, Store, type LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -359,6 +360,7 @@ function DemoLogin({ onDone }: { onDone: (s: Session) => Promise<void> }) {
           const transient = !(e instanceof ApiError) || e.status === 0 || e.status >= 500;
           if (!transient || attempt >= 24) throw e;
           setWaking(true);
+          wakeApi(); // the site's proxy alone does not wake a sleeping free-host API
           await new Promise((r) => setTimeout(r, 5000));
         }
       }

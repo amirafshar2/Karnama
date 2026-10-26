@@ -2,6 +2,7 @@ import { brandCss, DEFAULT_COLORS, isHex } from "@/lib/brand";
 import { getBrand, getT } from "@/lib/site";
 import { SiteFooter, SiteHeader } from "@/components/site/site-chrome";
 import { SiteMotion } from "@/components/site/motion/site-motion";
+import { SiteWaking } from "@/components/site/site-waking";
 import "@/components/site/site.css";
 
 /** Public site: server-rendered HTML, brand colours inlined; only tiny motion islands, no app JavaScript (auth, live updates). */
@@ -21,6 +22,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         </main>
         <SiteFooter brand={brand} t={t} />
         <SiteMotion />
+        {/* No brand = the API did not answer while this page was rendered (asleep on a free host): wake it and reload. */}
+        {!brand && <SiteWaking text={t("site.waking")} />}
       </div>
     </>
   );
