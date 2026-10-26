@@ -1,5 +1,6 @@
 using FluentValidation;
 using Karnama.Application.Auth;
+using Karnama.Application.Common;
 using Karnama.Application.Localization;
 using Karnama.Application.Me;
 using Karnama.Application.Roles;
@@ -18,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<Qa.QaService>();
         services.AddScoped<Localization.LanguageAdminService>();
         services.AddScoped<RoleService>();
+        services.AddSingleton<DbScope>();
         services.AddScoped<SessionStamps>();
         services.AddScoped<MeService>();
         services.AddScoped<LocalizationService>();

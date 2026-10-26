@@ -167,20 +167,60 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var secondCookie = CookieOf(r1);
         secondCookie.Should().NotBe(firstCookie);
 
-        // Old token replayed -> 401 and the new token dies too.
+        // Old token replayed after the short grace window -> 401 and the new token dies too.
+        _f.Clock.Advance(Karnama.Application.Auth.AuthService.RefreshReuseGrace + TimeSpan.FromSeconds(1));
         (await PostWithCookie(c, firstCookie)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await PostWithCookie(c, secondCookie)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task Two_parallel_refreshes_with_the_same_token_only_one_wins()
+    public async Task A_refresh_without_a_cookie_does_not_clear_the_cookie_of_a_new_login()
     {
-        var c = Https();
+        // Tab B opened before signing in (its refresh has no cookie) answers after tab A signed in: A stays signed in.
+        var c = _f.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = false });
+        var none = await c.PostAsync("/api/v1/auth/refresh", null);
+        none.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        none.Headers.Contains("Set-Cookie").Should().BeFalse();
+
+        var bad = await PostWithCookie(c, "karnama_rt=not-a-real-token");
+        bad.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        bad.Headers.GetValues("Set-Cookie").Should().Contain(v => v.StartsWith("karnama_rt=;", StringComparison.Ordinal), "a bad cookie that was sent is cleared");
+    }
+
+    [Fact]
+    public async Task Two_parallel_refreshes_with_the_same_token_keep_the_login()
+    {
+        // A reload while the first refresh is still in flight (3G) sends the same cookie twice: the person stays signed in.
+        var c = _f.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = false });
         var login = await c.PostAsJsonAsync("/api/v1/auth/demo", new { role = "writer" });
         var cookie = CookieOf(login);
 
         var results = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => PostWithCookie(_f.CreateClient(new() { BaseAddress = new Uri("https://localhost"), HandleCookies = false }), cookie)));
-        results.Count(r => r.StatusCode == HttpStatusCode.OK).Should().BeLessThanOrEqualTo(1);
+        results.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.OK);
+        var cookies = results.Select(CookieOf).ToList();
+        cookies.Distinct().Should().HaveCount(5, "every request gets its own token");
+        foreach (var next in cookies) (await PostWithCookie(c, next)).StatusCode.Should().Be(HttpStatusCode.OK, "each sibling keeps working");
+    }
+
+    [Fact]
+    public async Task Same_token_again_within_the_grace_window_keeps_the_login_but_not_after_logout()
+    {
+        var c = _f.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = false });
+        var login = await c.PostAsJsonAsync("/api/v1/auth/demo", new { role = "writer" });
+        var first = CookieOf(login);
+        var r1 = await PostWithCookie(c, first);
+        r1.StatusCode.Should().Be(HttpStatusCode.OK);
+        var again = await PostWithCookie(c, first);     // the reloaded page lost r1's answer
+        again.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Logging out ends the whole login: the grace window does not bring it back.
+        using (var req = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/logout"))
+        {
+            req.Headers.Add("Cookie", CookieOf(again));
+            (await c.SendAsync(req)).IsSuccessStatusCode.Should().BeTrue();
+        }
+        (await PostWithCookie(c, first)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await PostWithCookie(c, CookieOf(r1))).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

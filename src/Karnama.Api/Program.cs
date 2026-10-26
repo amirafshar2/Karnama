@@ -110,9 +110,12 @@ builder.Services.AddResponseCompression(o =>
 builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
 builder.Services.AddOutputCache(o =>
 {
-    o.AddPolicy(OutputCachePolicies.Public, p => p.Expire(TimeSpan.FromSeconds(60)).Tag("public"));
+    // No request locking: with locking, one request does the work for everyone asking the same URL, and if that first
+    // caller leaves (page closed or navigated) every waiting request fails with its "cancelled". The data underneath is
+    // already de-duplicated safely by HybridCache, so each request runs on its own here.
+    o.AddPolicy(OutputCachePolicies.Public, p => p.Expire(TimeSpan.FromSeconds(60)).Tag("public").SetLocking(false));
     // Public site reads (blog, home, packages, portfolio): the Next server asks often; 30s here, evicted on every content change.
-    o.AddPolicy(PublicCache.Policy, p => p.Expire(TimeSpan.FromSeconds(30)).Tag(PublicCache.Tag));
+    o.AddPolicy(PublicCache.Policy, p => p.Expire(TimeSpan.FromSeconds(30)).Tag(PublicCache.Tag).SetLocking(false));
 });
 builder.Services.AddSingleton<Karnama.Application.Abstractions.IPublicCache, PublicCache>();
 
@@ -164,6 +167,9 @@ app.UseSerilogRequestLogging(o =>
 {
     // Path only: query strings (e.g. hub access tokens) are never logged, nor signed download tokens in the path.
     o.MessageTemplate = "HTTP {RequestMethod} {SafePath} responded {StatusCode} in {Elapsed:0} ms";
+    // A caller that went away (page closed or navigated) is not a server error.
+    o.GetLevel = (http, _, ex) => http.RequestAborted.IsCancellationRequested ? Serilog.Events.LogEventLevel.Information
+        : ex is not null || http.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error : Serilog.Events.LogEventLevel.Information;
     o.EnrichDiagnosticContext = (diag, http) =>
     {
         var path = http.Request.Path.Value ?? "";

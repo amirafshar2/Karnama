@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Karnama.IntegrationTests;
 
@@ -71,5 +72,49 @@ public sealed class BrandAndTextsTests(DemoAppFixture app) : IClassFixture<DemoA
         (await admin.DeleteAsync("/api/v1/translations/fa/login.title")).StatusCode.Should().Be(HttpStatusCode.NoContent);
         var after = await (await _f.CreateClient().GetAsync("/api/v1/i18n/fa")).JsonAsync();
         after.GetProperty("texts").TryGetProperty("login.title", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_shared_cache_fill_survives_the_first_caller_going_away()
+    {
+        // Two pages of one person ask for the same texts at once; the first one is closed mid-request.
+        // The cache shares one database read between them: the second must still get its answer (it used to get a 500).
+        var cache = _f.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
+        for (var round = 0; round < 5; round++)
+        {
+            await cache.RemoveByTagAsync(Karnama.Application.Localization.LocalizationService.CacheTag);
+            var first = _f.Services.CreateAsyncScope();
+            using var gone = new CancellationTokenSource();
+            var a = first.ServiceProvider.GetRequiredService<Karnama.Application.Localization.LocalizationService>().GetBundleAsync("fa", gone.Token);
+            await using var second = _f.Services.CreateAsyncScope();
+            var b = second.ServiceProvider.GetRequiredService<Karnama.Application.Localization.LocalizationService>().GetBundleAsync("fa", CancellationToken.None);
+            gone.Cancel();
+            await first.DisposeAsync();
+            try { await a; } catch (OperationCanceledException) { /* the closed page */ }
+            (await b).Should().NotBeNull();
+        }
+    }
+
+    [Fact]
+    public async Task A_cached_public_answer_is_not_lost_when_the_first_asker_leaves()
+    {
+        // Output caching used to run one request for everyone waiting on the same URL; when that first page was closed,
+        // all the others got its "cancelled" as a 500.
+        var store = _f.Services.GetRequiredService<Microsoft.AspNetCore.OutputCaching.IOutputCacheStore>();
+        var cache = _f.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
+        var failures = 0;
+        for (var round = 0; round < 20; round++)
+        {
+            await store.EvictByTagAsync("public", default);
+            await cache.RemoveByTagAsync(Karnama.Application.Localization.LocalizationService.CacheTag);
+            using var gone = new CancellationTokenSource();
+            var first = _f.CreateClient().GetAsync("/api/v1/i18n/languages", gone.Token);
+            var others = Enumerable.Range(0, 4).Select(_ => _f.CreateClient().GetAsync("/api/v1/i18n/languages")).ToList();
+            await Task.Delay(round % 3);
+            gone.Cancel();
+            try { await first; } catch (OperationCanceledException) { /* the closed page */ }
+            foreach (var r in await Task.WhenAll(others)) if (r.StatusCode != HttpStatusCode.OK) failures++;
+        }
+        failures.Should().Be(0);
     }
 }

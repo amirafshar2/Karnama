@@ -14,6 +14,8 @@ bash tests/qa/qa-api.sh 5091 karnama_qa_full            # API جدا با دیت
 QA_DB=karnama_qa_full QA_API=http://localhost:5091 node tests/qa/run.mjs   # همه‌ی سناریوها
 node tests/qa/run.mjs S03 S07                            # فقط چند سناریو
 node tests/qa/coverage.mjs                               # ساخت docs/qa/COVERAGE.md
+bash tests/qa/qa-up.sh && node tests/qa/crowd.mjs        # Q2: ۸۳ نفر همزمان + ۵ مرورگر (CROWD_TICK_MS، CROWD_BROWSERS)
+node tests/qa/crowd-report.mjs                           # ساخت docs/qa/CROWD_RUN.md
 ```
 گزارش هر اجرا: `tests/qa/reports/run-*.json` (در گیت نیست).
 
@@ -22,7 +24,7 @@ node tests/qa/coverage.mjs                               # ساخت docs/qa/COVE
 |---|---|---|
 | Q0 | حالت QA، ساعت، جمعیت، ابزار سناریو | ✅ |
 | Q1 | ۱۴ سناریوی §۲ تک‌تک → یافته‌ها → رفع → اجرای کامل سبز | ✅ ۱۹۸/۱۹۸ |
-| Q2 | ۸۳ نفر همزمان + مرورگرها + اپ | ⬜ |
+| Q2 | ۸۳ نفر همزمان + مرورگرها + اپ (`crowd.mjs`) | ✅ ۵ مشکل پیدا و رفع شد؛ اجرای کامل سبز |
 | Q3/Q4 | ۱۲ شخصیت، دور ۱ و ۲؛ تا دو اجرای سبز پشت‌سرهم | ⬜ |
 | Q5 | تست بار ۱۰۰۰ کاربر | ⬜ |
 | Q6 | گزارش نهایی + الگوی تست سه انسان واقعی | ⬜ |

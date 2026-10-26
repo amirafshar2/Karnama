@@ -13,6 +13,10 @@ export KARNAMA_SKIP_DOTENV=1 ASPNETCORE_ENVIRONMENT=Development
 LOGS="$ROOT/tests/qa/logs"; mkdir -p "$LOGS"
 for p in 5090 3090 3091; do (fuser -k $p/tcp || true) >/dev/null 2>&1; done
 if docker info >/dev/null 2>&1; then PSQL="docker compose exec -T postgres psql -U karnama -d postgres"; else PSQL="psql postgresql://karnama:${POSTGRES_PASSWORD}@localhost:5432/postgres"; fi
+# Telegram through the mock gateway that S03 and crowd.mjs serve on :5193 (secret is a QA-only value).
+export Messengers__TelegramGatewaySecret="${Messengers__TelegramGatewaySecret:-qa-telegram-gateway-secret-0123456789abcdef}"
+export Messengers__TelegramGatewayUrl="${Messengers__TelegramGatewayUrl:-http://127.0.0.1:5193/}"
+export Notify__TelegramArchiveChatId="${Notify__TelegramArchiveChatId:--1009990001}" Notify__TelegramBotUsername="${Notify__TelegramBotUsername:-karnama_qa_bot}"
 $PSQL -c "DROP DATABASE IF EXISTS karnama_qa WITH (FORCE);" -c "CREATE DATABASE karnama_qa;" >/dev/null
 CS="${ConnectionStrings__Default/Database=karnama;/Database=karnama_qa;}"
 dotnet build src/Karnama.Api -c Release -v q -nologo >/dev/null

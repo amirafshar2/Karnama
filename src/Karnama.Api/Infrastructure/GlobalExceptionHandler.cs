@@ -35,7 +35,8 @@ internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> log
                 title = "درخواست نامعتبر است.";
                 code = "errors.badRequest";
                 break;
-            case OperationCanceledException when ct.IsCancellationRequested:
+            // The caller went away (page closed or navigated): nobody reads the answer, so this is not a server error.
+            case OperationCanceledException when ct.IsCancellationRequested || http.RequestAborted.IsCancellationRequested:
                 status = 499;
                 title = "درخواست لغو شد.";
                 code = "errors.cancelled";

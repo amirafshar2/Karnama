@@ -194,10 +194,16 @@ public sealed class AuthService(
         var now = clock.GetUtcNow();
         var hash = tokens.HashRefreshToken(rawToken);
         var current = await db.RefreshTokens.AsNoTracking().FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
-        if (current is null) return invalid;
+        if (current is null) { logger.LogInformation("Refresh refused: unknown token"); return invalid; }
 
         if (current.RevokedAt is not null)
         {
+            // Rotated a moment ago and the login is still alive: the same browser sent its old cookie again (a reload or a
+            // link clicked while the first refresh was in flight, very common on 3G). Give it a sibling token instead of
+            // logging the person out. Outside this short window a returning token still kills the whole login.
+            if (current.ReplacedById is not null && now - current.RevokedAt.Value <= RefreshReuseGrace
+                && await db.RefreshTokens.AnyAsync(t => t.FamilyId == current.FamilyId && t.RevokedAt == null, ct))
+                return await SiblingAsync(current, client, now, ct) is { } sibling ? sibling : invalid;
             if (current.ReplacedById is not null)
             {
                 // A rotated token came back: it was stolen or replayed. Kill the whole login.
@@ -206,13 +212,17 @@ public sealed class AuthService(
                 await db.SaveChangesAsync(ct);
                 logger.LogWarning("Refresh token reuse detected for user {UserId}; family revoked", current.UserId);
             }
+            else logger.LogInformation("Refresh refused: login ended (user {UserId})", current.UserId);
             return invalid;
         }
-        if (now >= current.ExpiresAt) return invalid;
+        if (now >= current.ExpiresAt) { logger.LogInformation("Refresh refused: expired (user {UserId})", current.UserId); return invalid; }
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == current.UserId, ct);
-        if (user is null || !user.IsActive) return invalid;
-        if (user.IsDemo && !demoOptions.Value.Enabled) return invalid;
+        if (user is null || !user.IsActive || (user.IsDemo && !demoOptions.Value.Enabled))
+        {
+            logger.LogInformation("Refresh refused: account not usable (user {UserId})", current.UserId);
+            return invalid;
+        }
 
         // Claim + insert of the replacement in one transaction: a racing loser waits on the row lock,
         // then sees the claim and revokes the whole family including the new token.
@@ -225,6 +235,11 @@ public sealed class AuthService(
                 .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now).SetProperty(t => t.ReplacedById, replacementId), token);
             if (claimed == 0)
             {
+                // Lost a race with a parallel refresh of the same token. If the winner rotated it just now, this is the same
+                // client (two requests in flight): it gets a sibling token. Anything else is treated as theft.
+                var winner = await db.RefreshTokens.AsNoTracking().FirstAsync(t => t.Id == current.Id, token);
+                if (winner.ReplacedById is not null && winner.RevokedAt is { } at && now - at <= RefreshReuseGrace) return SiblingMarker;
+                logger.LogWarning("Refresh race lost outside the grace window for user {UserId}; family revoked", userId);
                 await RevokeFamilyAsync(current.FamilyId, now, token);
                 return null;
             }
@@ -233,7 +248,23 @@ public sealed class AuthService(
             await db.SaveChangesAsync(token);
             return session;
         }, ct);
+        if (ReferenceEquals(rotated, SiblingMarker)) return await SiblingAsync(current, client, now, ct) is { } sibling ? sibling : invalid;
         return rotated is null ? invalid : rotated;
+    }
+
+    /// <summary>How long a just-rotated refresh token may come back from the same client without being treated as stolen.</summary>
+    public static readonly TimeSpan RefreshReuseGrace = TimeSpan.FromSeconds(30);
+    private static readonly SessionTokens SiblingMarker = new(string.Empty, default, string.Empty, default, ClientKind.Web);
+
+    /// <summary>A new refresh token in the same login family (no rotation of anything else).</summary>
+    private async Task<SessionTokens?> SiblingAsync(RefreshToken current, ClientKind client, DateTimeOffset now, CancellationToken ct)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == current.UserId, ct);
+        if (user is null || !user.IsActive || (user.IsDemo && !demoOptions.Value.Enabled)) return null;
+        var session = await IssueSessionAsync(user, current.Client == ClientKind.Android ? ClientKind.Android : client, current.FamilyId, ct);
+        audit.Add("auth.refresh.grace", nameof(User), user.Id.ToString(), new { family = current.FamilyId }, actorOverride: user.Id);
+        await db.SaveChangesAsync(ct);
+        return session;
     }
 
     public async Task LogoutAsync(string? rawToken, CancellationToken ct)

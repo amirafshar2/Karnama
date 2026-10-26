@@ -34,7 +34,9 @@ internal static class AuthEndpoints
             var client = ClientOf(http);
             var raw = client == ClientKind.Android ? http.Request.Headers["X-Refresh-Token"].ToString() : http.Request.Cookies[RefreshCookie];
             var result = await auth.RefreshAsync(raw, client, ct);
-            if (result.IsFailure) ClearCookie(http);
+            // Clear only a cookie this request actually sent: a page that started with no session (and is answered 401)
+            // must not wipe the cookie another tab has just received by signing in.
+            if (result.IsFailure && !string.IsNullOrEmpty(raw)) ClearCookie(http);
             return result.ToHttp(http, s => Results.Ok(SessionBody(http, s)));
         }).RequireRateLimiting(RateLimits.Refresh);
 
