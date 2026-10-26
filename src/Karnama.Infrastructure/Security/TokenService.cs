@@ -17,6 +17,7 @@ public static class KarnamaClaims
     public const string Demo = "demo";
     public const string Language = "lang";
     public const string Family = "fam";
+    public const string SecurityStamp = Application.Auth.SessionStamps.ClaimType;
     public const string Purpose = "purpose";
     public const string Client = "client";
     public const string TwoFactorPurpose = "2fa";
@@ -43,6 +44,7 @@ internal sealed class TokenService(IOptions<JwtOptions> options, TimeProvider cl
             new(KarnamaClaims.Kind, ((int)s.Kind).ToString(System.Globalization.CultureInfo.InvariantCulture)),
             new(KarnamaClaims.Language, s.LanguageCode),
             new(KarnamaClaims.Family, familyId.ToString("N")),
+            new(KarnamaClaims.SecurityStamp, s.SecurityStamp.ToString(System.Globalization.CultureInfo.InvariantCulture)),
         };
         if (s.IsDemo) claims.Add(new Claim(KarnamaClaims.Demo, "1"));
         claims.AddRange(s.Permissions.Select(p => new Claim(KarnamaClaims.Permission, $"{p.Key}:{(int)p.Value}")));

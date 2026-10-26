@@ -2720,6 +2720,9 @@ namespace Karnama.Infrastructure.Persistence.Migrations
                         .HasMaxLength(11)
                         .HasColumnType("character varying(11)");
 
+                    b.Property<int>("SecurityStamp")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 

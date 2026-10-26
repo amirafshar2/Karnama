@@ -11,7 +11,7 @@ import type { Media, Targets } from "./types";
 
 export function AssignSheet({ media, onClose, onDone }: { media: Media; onClose: () => void; onDone: () => void }) {
   const { t, formatNumber } = useI18n();
-  const targets = useQuery({ queryKey: ["media-targets"], queryFn: () => api<Targets>("/api/v1/media/targets") });
+  const targets = useQuery({ queryKey: ["media-targets", media.id], queryFn: () => api<Targets>(`/api/v1/media/targets?mediaId=${media.id}`) });
   const [workId, setWorkId] = useState(media.workItemId ?? "");
   const [mode, setMode] = useState<"worker" | "client">("worker");
   const [personId, setPersonId] = useState("");

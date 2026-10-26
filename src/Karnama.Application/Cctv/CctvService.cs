@@ -85,6 +85,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
             var created = Camera.Create(r.Name, r.Location, r.SortOrder);
             if (created.IsFailure) return created.Error!;
             c = created.Value!;
+            if (!r.IsActive) c.Update(r.Name, r.Location, r.SortOrder, isActive: false);   // honour "inactive" on create too
             db.Cameras.Add(c);
         }
 
@@ -111,10 +112,13 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
             c.SetSources(sm.Cipher, sm.WrappedKey, main is not null ? Camera.Mask(main) : c.MainMasked, ss?.Cipher, ss?.WrappedKey,
                 sub is not null ? Camera.Mask(sub) : c.SubMasked, sm.KeyVersion);
         }
+        // A configured box that can't be reached: say so (after the input checks) instead of saving a camera nobody can watch.
+        if (media.IsConfigured && c.IsActive && await media.ReadyPathsAsync(ct) is null) return Unreachable;
         audit.Add(id is null ? "cctv.cameraCreated" : "cctv.cameraUpdated", nameof(Camera), c.Id.ToString(),
             new { c.Name, c.Location, c.IsActive, mainChanged = main is not null, subChanged = sub is not null });
         await db.SaveChangesAsync(ct);
-        await PushAsync(c, ct);
+        if (!await PushAsync(c, ct))
+            return Error.Conflict("cctv.unreachable", "دوربین ذخیره شد ولی جعبه‌ی تصویر دفتر جواب نداد؛ وقتی وصل شد «همگام‌سازی» را بزنید.");
         return Dto(c);
     }
 
@@ -143,26 +147,35 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
     }
 
     /// <summary>Main stream only while someone watches live; the substream always (it's cheap on the office network and tells us the camera is up).</summary>
-    private async Task PushAsync(Camera c, CancellationToken ct)
+    /// <returns>False when the box refused or couldn't be reached (removing a stream that isn't there counts as done).</returns>
+    private async Task<bool> PushAsync(Camera c, CancellationToken ct)
     {
-        if (!media.IsConfigured) return;
+        if (!media.IsConfigured) return true;
         if (!c.IsActive)
         {
             await media.RemovePathAsync(c.Path, ct);
             await media.RemovePathAsync(Low(c.Path), ct);
-            return;
+            return true;
         }
-        if (Open(c, sub: false) is { } main) await media.UpsertPathAsync(c.Path, main, onDemand: true, ct);
-        await media.UpsertPathAsync(Low(c.Path), Open(c, sub: true) ?? Open(c, sub: false) ?? "", onDemand: false, ct);
+        var ok = true;
+        if (Open(c, sub: false) is { } main) ok &= await media.UpsertPathAsync(c.Path, main, onDemand: true, ct);
+        ok &= await media.UpsertPathAsync(Low(c.Path), Open(c, sub: true) ?? Open(c, sub: false) ?? "", onDemand: false, ct);
+        return ok;
     }
+
+    private static Error Unreachable => Error.Conflict("cctv.unreachable", "جعبه‌ی تصویر دفتر جواب نمی‌دهد؛ برق و اینترنت آن را بررسی کنید.");
 
     /// <summary>Re-sends every camera to the box (after it was replaced or restarted).</summary>
     public async Task<Result<int>> ResyncAsync(CancellationToken ct)
     {
         if (!CanManage) return Error.Forbidden();
         if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "جعبه‌ی تصویر دفتر هنوز راه‌اندازی نشده است.");
+        if (await media.ReadyPathsAsync(ct) is null) return Unreachable;
         var cams = await db.Cameras.ToListAsync(ct);
-        foreach (var c in cams) await PushAsync(c, ct);
+        var failed = 0;
+        foreach (var c in cams)
+            if (!await PushAsync(c, ct)) failed++;
+        if (failed > 0) return Error.Conflict("cctv.unreachable", $"{failed} دوربین از {cams.Count} به جعبه‌ی تصویر نرسید؛ دوباره امتحان کنید.");
         return cams.Count;
     }
 
@@ -199,6 +212,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
         var c = await db.Cameras.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
         if (c is null) return NotFound;
         if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "جعبه‌ی تصویر دفتر هنوز راه‌اندازی نشده است.");
+        if (await media.ReadyPathsAsync(ct) is null) return Unreachable;   // no token for a box that is down
         var path = high ? c.Path : Low(c.Path);
         var session = Guid.CreateVersion7();
         var token = signer.Sign($"cctv|{path}|{me.UserId}|{session:N}", TokenLife);
@@ -210,6 +224,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
     public async Task<Result> StopLiveAsync(Guid id, LiveStopRequest r, CancellationToken ct)
     {
         if (!CanView) return Error.Forbidden();
+        if (!await db.Cameras.AnyAsync(x => x.Id == id, ct)) return NotFound;   // no audit rows for cameras that don't exist
         var started = await db.AuditLogs.AsNoTracking().Where(a => a.Action == "cctv.liveStarted" && a.EntityId == id.ToString() && a.ActorId == me.UserId)
             .OrderByDescending(a => a.OccurredAt).Take(20).ToListAsync(ct);
         var mine = started.FirstOrDefault(a => a.DataJson?.Contains(r.SessionId.ToString(), StringComparison.Ordinal) == true);

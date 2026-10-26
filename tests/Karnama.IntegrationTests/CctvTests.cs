@@ -154,6 +154,42 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         _f.Media.Down.Clear();
     }
 
+    [Fact]
+    public async Task A_box_that_cannot_be_reached_is_reported_and_stop_needs_a_real_camera()
+    {
+        var admin = await As("admin");
+        var id = await AddCameraAsync(admin, "راهرو");
+        var before = await Db(db => db.Cameras.CountAsync());
+        static async Task<string?> Code(HttpResponseMessage r)
+        {
+            r.StatusCode.Should().Be(HttpStatusCode.Conflict, await r.Content.ReadAsStringAsync());
+            return (await r.JsonAsync()).GetProperty("code").GetString();
+        }
+
+        _f.Media.Unreachable = true;
+        try
+        {
+            (await Code(await admin.PostAsJsonAsync("/api/v1/cctv/cameras", new
+            {
+                name = "حیاط", location = "بیرون", sortOrder = 2, isActive = true, workAreaConfirmed = true, mainUrl = "rtsp://192.168.1.70:554/main",
+            }))).Should().Be("cctv.unreachable");
+            (await Db(db => db.Cameras.CountAsync())).Should().Be(before, "nothing is saved for a box that is down");
+            (await Code(await admin.PostAsync("/api/v1/cctv/resync", null))).Should().Be("cctv.unreachable");
+            (await Code(await admin.PostAsync($"/api/v1/cctv/cameras/{id}/live", null))).Should().Be("cctv.unreachable");
+            // Snapshot keeps its own answer: no frame.
+            (await Code(await admin.GetAsync($"/api/v1/cctv/cameras/{id}/snapshot"))).Should().Be("cctv.noFrame");
+        }
+        finally
+        {
+            _f.Media.Unreachable = false;
+        }
+        (await Ok(await admin.PostAsync("/api/v1/cctv/resync", null))).GetInt32().Should().BeGreaterThan(0);
+
+        var unknown = Guid.NewGuid();
+        (await admin.PostAsJsonAsync($"/api/v1/cctv/cameras/{unknown}/live/stop", new { sessionId = Guid.NewGuid() })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Db(db => db.AuditLogs.CountAsync(a => a.Action == "cctv.liveStopped" && a.EntityId == unknown.ToString()))).Should().Be(0);
+    }
+
     private sealed class HasBody : Microsoft.AspNetCore.Http.Features.IHttpRequestBodyDetectionFeature
     {
         public bool CanHaveBody => true;

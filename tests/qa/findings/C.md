@@ -137,3 +137,20 @@ The API returns `"stage":"handOver"` and `"profile"` (camelCase). Sending the sa
 - A2: the order chat kind is `work` (`ConversationKind.Work`), not `order`.
 - A3: a chat bell is created at most once per conversation per person per hour (event key `chat:<conv>:<user>:<hour>`). The mute test therefore moves the QA clock into a new hour before each check.
 - A4: `POST /api/v1/packages` returns `nameValues`, not `name` (the list endpoint returns `name`).
+
+## After fixes
+
+Fresh QA database (`qa-api.sh 5093 karnama_qa_c`), then `run.mjs S04 S05 S08 S06 S11 S12 S13 S14`: S04 15/15, **S05 13/13**, **S08 12/12** (all invariants green).
+S03 was also run with the Telegram gateway settings from "How to run": 13/13.
+
+| bug | fix | where | test |
+|---|---|---|---|
+| P1 client chat setting | With `clientChat=false` a client gets 0 contacts, `POST /chat/direct` → 403 `chat.clientChatOff`, and nobody can send text or files in a conversation that has a client in it (both sides; history stays readable). Staff chats are untouched. | `ChatService.ContactsAsync`, `DirectAsync`, `SendTextAsync`, `UploadAsync` (`ClientChatBlockedAsync`) | `ChatTests.Client_chat_switched_off_stops_clients_listing_starting_and_sending`; S08 2.8.i |
+| P2 round-robin moves won leads | Round-robin never touches closed (won/lost) leads. With explicit `leadIds`, leads that already have an owner are skipped unless the request says `"reassign": true` (new optional field). The panel button sends `leadIds: []` and is unchanged. | `CrmService.RoundRobinAsync`, `RoundRobinRequest` | `CrmTests.Round_robin_of_selected_leads_skips_closed_ones_and_only_moves_owned_ones_when_reassigning`; S05 2.5.l |
+| P3 "linked" ignores the messenger | `GET /media/targets?mediaId=<id>` reports `linked` for that file's messenger; the assign sheet now passes the file id. Without `mediaId` the old meaning (linked anywhere) stays. Unknown `mediaId` → 404. | `MediaService.TargetsAsync`, `MediaEndpoints`, web `media/assign-sheet.tsx` | `MediaTests.Targets_show_the_link_of_the_files_messenger_and_a_person_must_be_staff` |
+| P4 media to any user | `toUserId` must be a staff account (else 422 `media.staffOnly`); clients are reached only through `toClient:true`, which resolves the client of the file's work. | `MediaService.AssignAsync` | same test |
+| P5 photo `stage` case-sensitive | `stage` is parsed case-insensitively (`profile`, `handOver`, `Return`…); an unknown value is 422 `assets.photoStage` instead of 400. | `AssetEndpoints` | `AssetTests` (photo test extended) |
+| P6 `/crm/marketers` lists managers | Returns the round-robin rotation (holders of `crm.leads:Own` without `:All`), plus anyone who still owns open leads, so the board's owner filter and the lead sheet's current owner keep a name. Owners/managers without leads are no longer offered. | `CrmService.MarketersAsync` / `RotationAsync` | `CrmTests` (same test); new S05 step 2.5.m |
+
+Scenario changes: S05 got step 2.5.m (marketers list = rotation). No other C scenario needed changing.
+Observations and E1–E3 (QA tooling) are unchanged.

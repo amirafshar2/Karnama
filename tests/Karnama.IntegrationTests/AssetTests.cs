@@ -171,6 +171,13 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         get.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
         (await (await As("writer")).GetAsync($"/api/v1/assets/photos/{photo.GetProperty("id").GetGuid()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await (await As("editor")).PostAsync($"/api/v1/assets/{Id(a)}/photos?stage=Profile", Form(png))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // The stage the API writes back (camelCase) is accepted too; an unknown stage is a clear 422.
+        var echoed = await Ok(await admin.PostAsync($"/api/v1/assets/{Id(a)}/photos?stage={photo.GetProperty("stage").GetString()}", Form(png)));
+        echoed.GetProperty("stage").GetString().Should().Be("profile");
+        var bad = await admin.PostAsync($"/api/v1/assets/{Id(a)}/photos?stage=sideways", Form(png));
+        bad.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await bad.JsonAsync()).GetProperty("code").GetString().Should().Be("assets.photoStage");
     }
 
     [Fact]

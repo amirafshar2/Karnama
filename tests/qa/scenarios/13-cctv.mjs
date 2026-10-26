@@ -35,12 +35,23 @@ export async function run(rec, { crowd }) {
     await admin.refused("POST", "/api/v1/cctv/cameras", body({ workAreaConfirmed: false }), [422]);
     await admin.refused("POST", "/api/v1/cctv/cameras", body({ mainUrl: "" }), [422]);
     await admin.refused("POST", "/api/v1/cctv/cameras", body({ mainUrl: "http://evil.example/stream" }), [422]);
-    cam = await admin.post("/api/v1/cctv/cameras", body());
+    if (status?.configured) {
+      // Configured box: when it can't be reached, saving an active camera is refused with a clear 409 (finding D B5);
+      // the camera is then added inactive so the remaining steps still have one.
+      const r = await qa.anon("POST", "/api/v1/cctv/cameras", body(), { token: admin.token });
+      if (r.status === 409) {
+        check(/cctv\.unreachable/.test(JSON.stringify(r.data)), `dead box → cctv.unreachable (${JSON.stringify(r.data).slice(0, 160)})`);
+        cam = await admin.post("/api/v1/cctv/cameras", body({ isActive: false }));
+      } else {
+        eq(r.status, 200, "camera saved on a reachable box");
+        cam = r.data;
+      }
+    } else cam = await admin.post("/api/v1/cctv/cameras", body());
     const text = JSON.stringify(cam) + JSON.stringify(await admin.get("/api/v1/cctv"));
     check(!text.includes("Sup3rSecret"), "camera password never sent back");
     check(cam.mainMasked && cam.hasSubstream, `masked address shown to managers: ${cam.mainMasked}`);
     const forViewer = (await viewer.get("/api/v1/cctv")).cameras.find((c) => c.id === cam.id);
-    check(forViewer && forViewer.mainMasked === null, "viewers don't even see the masked address");
+    check(!cam.isActive || (forViewer && forViewer.mainMasked === null), "viewers don't even see the masked address");
   });
 
   await rec.step("2.13.c", "no cctv.view (staff writer, client) → 403 on list, snapshot, live, stop; viewer can't manage", async () => {
@@ -62,6 +73,7 @@ export async function run(rec, { crowd }) {
     need(cam, "camera");
     const t0 = Date.now();
     const r = await qa.anon("GET", `/api/v1/cctv/cameras/${cam.id}/snapshot`, undefined, { token: viewer.token });
+    if (!cam.isActive) { eq(r.status, 404, "inactive camera (dead-box run) → 404"); return; }
     eq(r.status, 409, `snapshot status (body ${JSON.stringify(r.data).slice(0, 200)})`);
     check(/cctv\.(notConfigured|noFrame)/.test(JSON.stringify(r.data)) || typeof r.data?.detail === "string", "problem details with a reason");
     check(Date.now() - t0 < 12_000, "answers within the 8 s ffmpeg limit");
@@ -74,21 +86,29 @@ export async function run(rec, { crowd }) {
       eq(r.status, 409, "live refused while the media box is not set up");
       return;
     }
+    if (r.status === 404 && !cam.isActive) return; // dead-box run: the camera could only be added inactive
+    if (r.status === 409) {
+      check(/cctv\.unreachable/.test(JSON.stringify(r.data)), "configured but unreachable box → 409 cctv.unreachable, no token");
+      return;
+    }
     eq(r.status, 200, "live token issued");
     live = r.data;
     check(live.token && live.whepUrl && live.idleSeconds === 120, `live dto ${JSON.stringify(live).slice(0, 200)}`);
     check(new Date(live.expiresAt) - Date.now() <= 5 * 60_000 + 60_000, "token lives ~5 minutes");
   });
 
-  await rec.step("2.13.f", "idle stop endpoint: stopping a live view is accepted and audited (also for an unknown session)", async () => {
+  await rec.step("2.13.f", "idle stop endpoint: stopping a live view is accepted and audited (also for an unknown session); unknown camera → 404", async () => {
     need(cam, "camera");
     await viewer.post(`/api/v1/cctv/cameras/${cam.id}/live/stop`, { sessionId: live?.sessionId ?? "00000000-0000-7000-8000-000000000001" });
+    // A camera that doesn't exist → 404, and no audit row is written for it (finding D B6).
+    await viewer.refused("POST", "/api/v1/cctv/cameras/00000000-0000-7000-8000-00000000abcd/live/stop", { sessionId: "00000000-0000-7000-8000-000000000001" }, [404]);
   });
 
-  await rec.step("2.13.g", "resync without a media box → 409; media-auth hook refuses callers outside the tunnel", async () => {
+  await rec.step("2.13.g", "resync without a media box → 409 (dead box → 409 cctv.unreachable); media-auth hook refuses callers outside the tunnel", async () => {
     const r = await qa.anon("POST", "/api/v1/cctv/resync", {}, { token: admin.token });
     if (!status?.configured) eq(r.status, 409, "resync refused when not set up");
-    else check(r.status === 200, `resync answers even with the box down (got ${r.status})`);
+    else check(r.status === 200 || (r.status === 409 && /cctv\.unreachable/.test(JSON.stringify(r.data))),
+      `resync: 200 when the box answers, 409 cctv.unreachable when it doesn't (got ${r.status})`);
     const hook = await qa.anon("POST", "/api/v1/cctv/media-auth", { user: null, password: null, token: "x", ip: "1.2.3.4", action: "read", path: "cam", protocol: "webrtc", id: null, query: "" });
     eq(hook.status, 403, "hook only from the box's tunnel address");
   });

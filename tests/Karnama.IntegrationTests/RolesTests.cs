@@ -121,6 +121,64 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     }
 
     [Fact]
+    public async Task A_roles_manager_cannot_escalate_through_roles()
+    {
+        var admin = _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
+        var rolesOnly = await admin.CreateRoleAsync("فقط نقش‌ها", ("roles.manage", "all"));
+        var (_, access, _) = await _f.StaffLoginAsync("09127771001", rolesOnly);
+        var u = _f.CreateClient().WithToken(access);
+
+        // Raise their own role (QA S12 2.12.k).
+        var own = await (await u.GetAsync($"/api/v1/roles/{rolesOnly}")).JsonAsync();
+        var raise = await u.PutAsJsonAsync($"/api/v1/roles/{rolesOnly}", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "فقط نقش‌ها" },
+            permissions = new[] { new { code = "roles.manage", scope = "all" }, new { code = "users.manage", scope = "all" } },
+            version = own.GetProperty("version").GetUInt32(),
+        }, Http.Json);
+        raise.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await raise.JsonAsync()).GetProperty("code").GetString().Should().Be("roles.ownRole");
+
+        // A new role stronger than themselves.
+        var stronger = await u.PostAsJsonAsync("/api/v1/roles", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "قوی‌تر" },
+            permissions = new[] { new { code = "roles.manage", scope = "all" }, new { code = "settings.manage", scope = "all" } },
+        }, Http.Json);
+        stronger.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await stronger.JsonAsync()).GetProperty("code").GetString().Should().Be("roles.tooStrong");
+
+        // Someone else's role: no adding grants, no touching a role with grants they don't hold, no deleting it.
+        var workers = await admin.CreateRoleAsync("کارگرها", ("work.view", "assigned"));
+        var w = await (await admin.GetAsync($"/api/v1/roles/{workers}")).JsonAsync();
+        var add = await u.PutAsJsonAsync($"/api/v1/roles/{workers}", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "کارگرها" },
+            permissions = new[] { new { code = "work.view", scope = "assigned" }, new { code = "users.manage", scope = "all" } },
+            version = w.GetProperty("version").GetUInt32(),
+        }, Http.Json);
+        add.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await u.DeleteAsync($"/api/v1/roles/{workers}")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await admin.GetAsync($"/api/v1/roles/{workers}")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Within their own grants they can still work: create, then edit a role they don't hold.
+        var created = await u.PostAsJsonAsync("/api/v1/roles", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "دستیار نقش" },
+            permissions = new[] { new { code = "roles.manage", scope = "all" } },
+        }, Http.Json);
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        var c = await created.JsonAsync();
+        var edit = await u.PutAsJsonAsync($"/api/v1/roles/{c.GetProperty("id").GetGuid()}", new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "دستیار نقش ۲" },
+            permissions = new[] { new { code = "roles.manage", scope = "all" } },
+            version = c.GetProperty("version").GetUInt32(),
+        }, Http.Json);
+        edit.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Audit_log_is_append_only()
     {
         await using var conn = new NpgsqlConnection(pg.ConnectionString);

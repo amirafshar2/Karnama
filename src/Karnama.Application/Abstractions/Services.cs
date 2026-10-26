@@ -26,7 +26,7 @@ public interface IOtpCodeService
 
 public sealed record IssuedTokens(string AccessToken, DateTimeOffset AccessTokenExpiresAt, string RefreshToken, DateTimeOffset RefreshTokenExpiresAt);
 
-public sealed record TokenSubject(Guid UserId, UserKind Kind, bool IsDemo, string LanguageCode, IReadOnlyDictionary<string, PermissionScope> Permissions);
+public sealed record TokenSubject(Guid UserId, UserKind Kind, bool IsDemo, string LanguageCode, IReadOnlyDictionary<string, PermissionScope> Permissions, int SecurityStamp = 0);
 
 public interface ITokenService
 {

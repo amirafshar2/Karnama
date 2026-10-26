@@ -106,6 +106,43 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
     }
 
     [Fact]
+    public async Task Round_robin_of_selected_leads_skips_closed_ones_and_only_moves_owned_ones_when_reassigning()
+    {
+        var admin = await As("admin");
+        var (_, second) = await SecondMarketerAsync();
+        var first = await UserAsync("09000000008");
+        async Task<Guid> NewLead(string phone, Guid? owner) =>
+            (await Ok(await admin.PostAsJsonAsync("/api/v1/crm/leads", new { name = "انتخابی " + phone[^2..], phone, ownerId = owner }))).GetProperty("lead").GetProperty("id").GetGuid();
+        var free = await NewLead("09382440001", null);
+        var owned = await NewLead("09382440002", first);
+        var lost = await NewLead("09382440003", first);
+        var stages = await Ok(await admin.GetAsync("/api/v1/crm/stages"));
+        var lostStage = stages.EnumerateArray().First(s => s.GetProperty("kind").GetString() == "lost").GetProperty("id").GetGuid();
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/crm/leads/{lost}/move", new { stageId = lostStage, lostReason = "بودجه نداشت" }));
+        var won = await NewLead("09382440004", first);
+        await Ok(await admin.PostAsync($"/api/v1/crm/leads/{won}/convert", null));
+        Task<Guid?> Owner(Guid id) => Db(db => db.Leads.Where(l => l.Id == id).Select(l => l.OwnerId).FirstAsync());
+
+        (await Ok(await admin.PostAsJsonAsync("/api/v1/crm/round-robin", new { leadIds = new[] { free, owned, lost, won } })))
+            .GetProperty("assigned").GetInt32().Should().Be(1, "only the unassigned open lead");
+        (await Owner(free)).Should().NotBeNull();
+        (await Owner(owned)).Should().Be(first);
+
+        // Explicit reassign: owned open leads move, closed ones (and their sale credit) never do.
+        for (var i = 0; i < 2; i++)
+            (await Ok(await admin.PostAsJsonAsync("/api/v1/crm/round-robin", new { leadIds = new[] { owned, lost, won }, reassign = true })))
+                .GetProperty("assigned").GetInt32().Should().Be(1);
+        (await Owner(lost)).Should().Be(first);
+        (await Owner(won)).Should().Be(first);
+        (await Db(db => db.LeadActivities.CountAsync(a => a.LeadId == owned && a.Kind == Karnama.Domain.Crm.ActivityKind.Assigned))).Should().BeGreaterThan(1, "two turns name two different marketers");
+
+        // The "hand to…" list is the rotation: marketers, not managers or the owner.
+        var marketers = (await Ok(await admin.GetAsync("/api/v1/crm/marketers"))).EnumerateArray().Select(m => m.GetProperty("id").GetGuid()).ToList();
+        marketers.Should().Contain(new[] { first, second });
+        marketers.Should().NotContain(await UserAsync("09000000001")).And.NotContain(await UserAsync("09000000007"));
+    }
+
+    [Fact]
     public async Task Call_result_follow_up_reminder_once_and_conversion_to_client()
     {
         var marketer = await As("marketer");

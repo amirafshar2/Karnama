@@ -193,3 +193,25 @@ These are not verified as bugs: the API run can't see whether a nearby label exp
   The tutorial-video section of PROMPT3 §6 still says black/yellow. That conflict needs a decision by Amir before Q7.
 - **First-run tours are not API-backed.** They live in `components/help/tour.tsx` with `localStorage` `karnama.tour.v1.<userId>`. S14 checks their inputs (`/me` kind and permissions) and the step keys. Visual tour checks belong in Playwright.
 - **Reusing a deleted package's SKU is intended.** A deleted package doesn't block a new one with the same SKU, and restoring the old one then returns 409 `packages.duplicate`. That is intended (`PackageService.RestoreAsync`).
+
+## After fixes
+
+Fresh QA database (`qa-api.sh 5093 karnama_qa_c`), then `run.mjs S04 S05 S08 S06 S11 S12 S13 S14`: S06 16/16, S11 12/12, **S12 14/15** (only G1, the missing language API, is still red), S13 8/8, S14 7/7, invariants green.
+S13 was also run against a configured but dead media box (the `Cctv__*` variables above): 8/8.
+
+| bug | fix | where | test |
+|---|---|---|---|
+| B1 role privilege escalation | A non-owner can create, edit, delete or restore a role only if they hold **every** grant of it (before and after the change) at that scope or wider; otherwise 403 `roles.tooStrong`. They can't edit a role they hold themselves (403 `roles.ownRole`). Owners are unrestricted. Checked against the database, not the token. | `RoleService.GuardAsync` | `RolesTests.A_roles_manager_cannot_escalate_through_roles`; S12 2.12.k |
+| B2 revoked access works for 15 min | New `users.SecurityStamp` column (migration `Q1SecurityStamp`). It moves when the user's roles change, when a role's grants change or it is deleted/restored (all members), on deactivation and on delete. Access tokens carry it (`sst` claim); `OnTokenValidated` compares it with the current value through HybridCache (≤ 30 s, evicted right after a change), so an old token gets 401 at once and the web client refreshes (it already retries once after a refresh on 401). Refresh issues a token with the new stamp; a deactivated user's refresh is refused. Renaming a role or a user doesn't end sessions. The realtime `permissionsChanged` push is unchanged. Tokens of users that don't exist are rejected too. | `User`, `SessionStamps`, `Program.cs`, `TokenService`, `AuthService`, `UserService`, `RoleService` | `SessionStampTests` (in `AuthTests.cs`): role grant change → 401 → refresh → new rights; role removed → 401; deactivated → 401 and refresh refused |
+| B3 `package-expiry` count | The job returns the number of notifications it really created (`Notifier.NotifyAsync` now returns that count). A second run returns 0. | `PackageExpiryJob`, `Notifier` | `NotifyTests.Package_expiry_job_reports_the_notifications_it_really_created` |
+| B4 public cache keeps old packages | Package create/update/cover/delete/restore evict the public cache, like site content does. | `PackageService` | `CatalogTests.Package_changes_reach_the_public_site_at_once` |
+| B5 dead box reports success | Configured but unreachable box: saving an active camera → 409 `cctv.unreachable` (after the input checks, nothing saved); a push that fails after saving → 409 too; resync → 409 `cctv.unreachable`; live → 409 `cctv.unreachable` (no token). Snapshot is unchanged (409 `cctv.noFrame`). Not configured still gives `cctv.notConfigured`. Creating a camera with `isActive:false` now really creates it inactive. | `CctvService` | `CctvTests.A_box_that_cannot_be_reached_is_reported_and_stop_needs_a_real_camera` |
+| B6 `live/stop` any id | Unknown camera → 404, and no audit row. | `CctvService.StopLiveAsync` | same test; S13 2.13.f |
+| B8 help delete clock | Uses the injected `TimeProvider`. | `HelpService` | `HelpTests.Deleting_an_article_stamps_the_app_clock` |
+
+Not fixed here: B7 (seed over-fills packages, seed only), G1–G3 (missing features / decisions), C1 (help-check coverage).
+
+Scenario changes (they assumed the old behaviour):
+- S12 2.12.i: after the role is assigned, the user's **old** token now gets 401 (it used to keep working and only `/me` showed the change); the scenario signs in again and checks `/me` and `/crm/leads`.
+- S12 2.12.j: also checks that the old token gets 401 right after the role is deleted, and after the user is deactivated.
+- S13: a configured-but-dead box now refuses an active camera with 409 `cctv.unreachable`, so 2.13.b adds the camera inactive in that mode; 2.13.e/2.13.g accept 409 `cctv.unreachable`; 2.13.f checks that stopping an unknown camera is 404.

@@ -86,7 +86,11 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         var settings = await SettingsAsync(ct);
         var managers = await ManagersAsync(ct);
         IQueryable<User> q = db.Users.AsNoTracking().Where(u => u.IsActive && u.Id != Me);
-        if (IsClient) q = q.Where(u => managers.Contains(u.Id));
+        if (IsClient)
+        {
+            if (!settings.ClientChat) return new List<ContactDto>();   // "clients chat with managers" is off
+            q = q.Where(u => managers.Contains(u.Id));
+        }
         else if (!IsManager)
         {
             q = settings.WorkerToWorker
@@ -103,6 +107,7 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     public async Task<Result<ConversationDto>> DirectAsync(Guid otherId, CancellationToken ct)
     {
         if (!CanUse) return Error.Forbidden();
+        if (IsClient && !(await SettingsAsync(ct)).ClientChat) return ClientChatOff;
         var contacts = await ContactsAsync(ct);
         if (contacts.IsFailure || contacts.Value!.All(c => c.Id != otherId)) return Error.Forbidden();
         var key = Conversation.Key(Me, otherId);
@@ -286,6 +291,7 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     {
         var conv = await MineTrackedAsync(conversationId, ct);
         if (conv is null) return NotFound;
+        if (await ClientChatBlockedAsync(conv, ct)) return ClientChatOff;
         if (await ExistingAsync(conversationId, r.ClientKey, ct) is { } again) return again;
         var m = ChatMessage.Text(conversationId, Me, r.Body, r.ClientKey == Guid.Empty ? Guid.CreateVersion7() : r.ClientKey, clock.GetUtcNow());
         if (m.IsFailure) return m.Error!;
@@ -297,6 +303,7 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     {
         var conv = await MineTrackedAsync(conversationId, ct);
         if (conv is null) return NotFound;
+        if (await ClientChatBlockedAsync(conv, ct)) return ClientChatOff;
         if (await ExistingAsync(conversationId, clientKey, ct) is { } again) return again;
         if (length <= 0 || length > MaxFileBytes)
             return Error.Validation("chat.fileTooLarge", "فایل تا ۲۰ مگابایت؛ فایل بزرگ‌تر را از ربات تلگرام بفرستید.");
@@ -394,6 +401,17 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     }
 
     // ---------------- helpers ----------------
+
+    private static Error ClientChatOff => Error.Forbidden("chat.clientChatOff", "گفت‌وگو با مشتری‌ها در تنظیمات خاموش است.");
+
+    /// <summary>With "clients chat with managers" off, nobody writes in a conversation that has a client in it (old chats stay readable).</summary>
+    private async Task<bool> ClientChatBlockedAsync(Conversation conv, CancellationToken ct)
+    {
+        if ((await SettingsAsync(ct)).ClientChat) return false;
+        if (IsClient) return true;
+        var members = conv.Members.Select(m => m.UserId).ToList();
+        return await db.Users.AsNoTracking().AnyAsync(u => members.Contains(u.Id) && u.Kind == UserKind.Client, ct);
+    }
 
     private async Task<Conversation?> MineAsync(Guid id, CancellationToken ct) =>
         CanUse ? await db.Conversations.AsNoTracking().Include(c => c.Members).FirstOrDefaultAsync(c => c.Id == id && c.Members.Any(m => m.UserId == Me), ct) : null;

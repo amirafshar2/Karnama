@@ -1,6 +1,7 @@
 using Karnama.Api.Infrastructure;
 using Karnama.Application.Assets;
 using Karnama.Domain.Assets;
+using Karnama.Domain.Common;
 
 namespace Karnama.Api.Endpoints;
 
@@ -21,10 +22,13 @@ internal static class AssetEndpoints
         g.MapDelete("/{id:guid}", async (Guid id, AssetService svc, HttpContext http, CancellationToken ct) => (await svc.DeleteAsync(id, ct)).ToHttp(http));
         g.MapPost("/{id:guid}/status", async (Guid id, StatusRequest body, AssetService svc, HttpContext http, CancellationToken ct) => (await svc.SetStatusAsync(id, body, ct)).ToHttp(http));
         g.MapPost("/{id:guid}/handover", async (Guid id, HandOverRequest body, AssetService svc, HttpContext http, CancellationToken ct) => (await svc.HandOverAsync(id, body, ct)).ToHttp(http));
-        g.MapPost("/{id:guid}/photos", async (Guid id, IFormFile file, AssetPhotoStage stage, Guid? assignmentId, AssetService svc, HttpContext http, CancellationToken ct) =>
+        // `stage` takes the values the API itself writes (camelCase "handOver") as well as "HandOver": case-insensitive.
+        g.MapPost("/{id:guid}/photos", async (Guid id, IFormFile file, string? stage, Guid? assignmentId, AssetService svc, HttpContext http, CancellationToken ct) =>
         {
+            if (CatalogEndpoints.E<AssetPhotoStage>(stage) is not { } photoStage)
+                return Result.Failure(Error.Validation("assets.photoStage", "مرحله‌ی عکس معتبر نیست (profile، handOver یا return).")).ToHttp(http);
             await using var s = file.OpenReadStream();
-            return (await svc.AddPhotoAsync(id, stage, assignmentId, s, file.Length, ct)).ToHttp(http);
+            return (await svc.AddPhotoAsync(id, photoStage, assignmentId, s, file.Length, ct)).ToHttp(http);
         }).DisableAntiforgery().WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(AssetService.MaxPhotoBytes + 64 * 1024));
         g.MapGet("/photos/{photoId:guid}", async (Guid photoId, AssetService svc, HttpContext http, CancellationToken ct) =>
         {

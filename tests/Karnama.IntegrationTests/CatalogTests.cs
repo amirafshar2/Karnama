@@ -14,8 +14,18 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
     /// <summary>Mints an access token with exactly the given permissions (to test scopes without building roles).</summary>
     private HttpClient As(Dictionary<string, PermissionScope> perms, Guid? userId = null)
     {
+        // Tokens are checked against a real, active account on every request, so a throwaway user backs each one.
+        if (userId is null)
+        {
+            using var scope = _f.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
+            var user = User.Create("0919" + Random.Shared.Next(1_000_000, 9_999_999), "توکن تست", UserKind.Staff).Value;
+            db.Users.Add(user);
+            db.SaveChanges();
+            userId = user.Id;
+        }
         var tokens = _f.Services.GetRequiredService<ITokenService>();
-        var token = tokens.CreateAccessToken(new TokenSubject(userId ?? Guid.NewGuid(), UserKind.Staff, false, "fa", perms), Guid.NewGuid(), out _);
+        var token = tokens.CreateAccessToken(new TokenSubject(userId.Value, UserKind.Staff, false, "fa", perms), Guid.NewGuid(), out _);
         return _f.CreateClient().WithToken(token);
     }
 
@@ -122,6 +132,42 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
         var winner = ids[results.ToList().FindIndex(r => r.StatusCode == HttpStatusCode.OK)];
         var before = await (await admin.GetAsync($"/api/v1/clients/{winner}")).JsonAsync();
         before.GetProperty("activePackage").GetProperty("price").GetInt64().Should().Be(10_000_000);
+    }
+
+    [Fact]
+    public async Task Package_changes_reach_the_public_site_at_once()
+    {
+        var admin = await Admin();
+        var serviceId = (await (await admin.GetAsync("/api/v1/services/options")).JsonAsync())[0].GetProperty("id").GetGuid();
+        object Body(long price, uint? version = null) => new
+        {
+            name = new Dictionary<string, string> { ["fa"] = "پکیج کش" }, slug = "pkg-cache-test", sku = "PKG-CACHE", category = "تست",
+            price, period = "monthly", validityDays = 30, defaultManagement = "agencyManaged", access = "usernameOnly",
+            consultSessions = 0, revisionsPerItem = 1, deliveryHours = 24, status = "active", showOnSite = true, sortOrder = 0, badge = "none",
+            quotas = new[] { new { serviceTypeId = serviceId, count = 2 } }, version,
+        };
+        var created = await admin.PostAsJsonAsync("/api/v1/packages", Body(10_000_000), Http.Json);
+        created.StatusCode.Should().Be(HttpStatusCode.Created, await created.Content.ReadAsStringAsync());
+        var p = await created.JsonAsync();
+        var anon = _f.CreateClient();
+        async Task<long?> PublicPrice()
+        {
+            var r = await anon.GetAsync("/api/v1/public/site/packages/pkg-cache-test");
+            return r.StatusCode == HttpStatusCode.NotFound ? null : (await r.JsonAsync()).GetProperty("price").GetInt64();
+        }
+        (await PublicPrice()).Should().Be(10_000_000);
+        (await (await anon.GetAsync("/api/v1/public/site/packages")).JsonAsync()).EnumerateArray().Should().Contain(x => x.GetProperty("slug").GetString() == "pkg-cache-test");
+
+        var updated = await admin.PutAsJsonAsync($"/api/v1/packages/{p.GetProperty("id").GetGuid()}", Body(12_000_000, p.GetProperty("version").GetUInt32()), Http.Json);
+        updated.StatusCode.Should().Be(HttpStatusCode.OK, await updated.Content.ReadAsStringAsync());
+        (await PublicPrice()).Should().Be(12_000_000, "an edit evicts the public cache");
+
+        (await admin.DeleteAsync($"/api/v1/packages/{p.GetProperty("id").GetGuid()}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await PublicPrice()).Should().BeNull("a deleted package leaves the site at once");
+        (await (await anon.GetAsync("/api/v1/public/site/packages")).JsonAsync()).EnumerateArray().Should().NotContain(x => x.GetProperty("slug").GetString() == "pkg-cache-test");
+
+        (await admin.PostAsync($"/api/v1/packages/{p.GetProperty("id").GetGuid()}/restore", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await PublicPrice()).Should().Be(12_000_000);
     }
 
     [Fact]

@@ -288,7 +288,7 @@ public sealed class AuthService(
     {
         var now = clock.GetUtcNow();
         var permissions = await PermissionLoader.LoadAsync(db, user.Id, ct);
-        var subject = new TokenSubject(user.Id, user.Kind, user.IsDemo, user.LanguageCode, permissions);
+        var subject = new TokenSubject(user.Id, user.Kind, user.IsDemo, user.LanguageCode, permissions, user.SecurityStamp);
         var access = tokens.CreateAccessToken(subject, familyId, out var accessExpires);
 
         var raw = tokens.CreateRefreshTokenValue();
