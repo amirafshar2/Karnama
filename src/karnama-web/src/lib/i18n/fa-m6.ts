@@ -2,6 +2,8 @@
 export const faM6 = {
   "bell.title": "اعلان‌ها",
   "bell.empty": "اعلان تازه‌ای ندارید.",
+  "bell.older": "اعلان‌های قدیمی‌تر",
+  "bell.loading": "در حال بارگیری…",
   "bell.readAll": "همه خوانده شد",
   "bell.settings": "تنظیمات اعلان",
   "bell.important": "مهم",

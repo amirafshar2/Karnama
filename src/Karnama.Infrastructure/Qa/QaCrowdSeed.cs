@@ -60,6 +60,8 @@ internal sealed class QaCrowdSeed(AppDbContext db, TimeProvider clock) : IQaSeed
         await db.SaveChangesAsync(ct);
 
         // 50 clients: 25 FullAccess, 25 UsernameOnly; 10 of them end within a week.
+        // The demo packages are capped at 10 buyers; a QA database lifts the cap so the crowd (and scenarios) can still buy them.
+        await db.Packages.ExecuteUpdateAsync(u => u.SetProperty(p => p.Capacity, (int?)null), ct);
         var packages = await db.Packages.Include(p => p.Quotas).ToListAsync(ct);
         var full = packages.Where(p => p.Access == PageAccess.FullAccess).OrderBy(p => p.Price).ToList();
         var userOnly = packages.Where(p => p.Access == PageAccess.UsernameOnly).OrderBy(p => p.Price).ToList();

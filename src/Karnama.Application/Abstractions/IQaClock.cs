@@ -18,3 +18,9 @@ public interface IQaSeeder
 {
     Task<QaCrowd> SeedAsync(CancellationToken ct);
 }
+
+/// <summary>Sends due outbox messages once (normally the Worker's job); QA mode only.</summary>
+public interface IQaOutbox
+{
+    Task<int> DispatchOnceAsync(CancellationToken ct);
+}

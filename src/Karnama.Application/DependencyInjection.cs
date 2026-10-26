@@ -16,6 +16,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssemblyContaining<RequestOtpValidator>(includeInternalTypes: true);
         services.AddScoped<AuthService>();
         services.AddScoped<Qa.QaService>();
+        services.AddScoped<Localization.LanguageAdminService>();
         services.AddScoped<RoleService>();
         services.AddScoped<SessionStamps>();
         services.AddScoped<MeService>();

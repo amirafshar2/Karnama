@@ -179,7 +179,7 @@ export async function run(rec, { crowd }) {
   await rec.step("2.2.g", "تایمر: شروع → مکث → کار دوم → مکث خودکار اولی (فقط یک تایمر باز)", async () => {
     const W1 = s.W1;
     eq(await W1.refused("POST", `/api/v1/attendance/timer/${s.wA2}`, {}, [404]), 404, "timer on someone else's item");
-    await W1.post("/api/v1/attendance/clock-in", { idempotencyKey: key() });
+    await W1.ensureClockedIn();
     await move(W1, s.wA1, "inProgress");
     let me = await W1.post(`/api/v1/attendance/timer/${s.wA1}`);
     eq(me.timer?.workItemId, s.wA1, "timer runs on item 1");

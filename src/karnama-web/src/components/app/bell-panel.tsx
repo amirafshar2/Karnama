@@ -3,7 +3,7 @@
 import { AlertCircle, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { faM6 } from "@/lib/i18n/fa-m6";
 import { useI18n } from "@/lib/i18n/provider";
@@ -43,7 +43,24 @@ export function BellPanel({ inbox, onClose }: { inbox: Inbox | undefined; onClos
     await qc.invalidateQueries({ queryKey: INBOX });
   };
 
-  const items = inbox?.items ?? [];
+  // Older notifications, 30 at a time (the bell itself always shows the newest 30).
+  const [older, setOlder] = useState<Inbox["items"]>([]);
+  const [more, setMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const loadOlder = async () => {
+    const all = [...(inbox?.items ?? []), ...older];
+    const last = all[all.length - 1];
+    if (!last) return;
+    setLoading(true);
+    try {
+      const page = await api<Inbox>(`/api/v1/notifications?before=${encodeURIComponent(last.createdAt)}`);
+      setOlder((o) => [...o, ...page.items]);
+      setMore(page.items.length === 30);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const items = [...(inbox?.items ?? []), ...older];
   return (
     <div
       ref={ref}
@@ -93,6 +110,13 @@ export function BellPanel({ inbox, onClose }: { inbox: Inbox | undefined; onClos
             </button>
           </li>
         ))}
+        {items.length >= 30 && more && (
+          <li className="p-2 text-center">
+            <button type="button" disabled={loading} onClick={() => void loadOlder()} className="min-h-10 w-full rounded-md text-sm font-semibold hover:bg-muted" data-testid="bell-older">
+              {loading ? t("bell.loading") : t("bell.older")}
+            </button>
+          </li>
+        )}
       </ul>
     </div>
   );

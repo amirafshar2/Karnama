@@ -48,8 +48,7 @@ export async function run(rec, { crowd }) {
     const mgr = await as(managerP);
     const pending = await mgr.get("/api/v1/leave/requests?pending=true");
     check(pending.some((l) => l.id === dailyReq.id), "manager sees it in pending");
-    const inbox = await mgr.get("/api/v1/notifications");
-    check(inbox.items.some((n) => n.kind === "leave.request"), "manager got leave.request notification");
+    check(await mgr.hasNotification((n) => n.kind === "leave.request"), "manager got leave.request notification");
     // Balance does not move while pending.
     eq((await balance(m0)).usedDays, 0, "pending does not count");
   });

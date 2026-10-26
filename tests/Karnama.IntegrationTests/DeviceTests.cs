@@ -59,7 +59,7 @@ public sealed class DeviceTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         await Db(async db =>
         {
             await db.WorkTimers.Where(t => t.UserId == userId).ExecuteDeleteAsync();
-            await db.AttendanceEvents.Where(e => e.UserId == userId).ExecuteDeleteAsync();
+            // attendance_events is append-only (DB trigger): old events stay; shifts are what the assertions read.
             return await db.Shifts.Where(s => s.UserId == userId).ExecuteDeleteAsync();
         });
         return userId;

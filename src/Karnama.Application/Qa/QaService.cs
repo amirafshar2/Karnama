@@ -20,7 +20,7 @@ public sealed record QaInvariant(string Name, bool Ok, int Violations, string De
 /// </summary>
 public sealed class QaService(IServiceProvider sp, IAppDbContext db, TimeProvider clock)
 {
-    public static readonly string[] Jobs = ["absences", "forgotten-shifts", "publish-tick", "package-expiry", "asset-alerts", "blog-schedule", "crm-followups"];
+    public static readonly string[] Jobs = ["absences", "forgotten-shifts", "publish-tick", "package-expiry", "asset-alerts", "blog-schedule", "crm-followups", "outbox"];
 
     public QaClockDto Clock() => new(clock.GetUtcNow(), (sp.GetService<IQaClock>()?.Offset ?? TimeSpan.Zero).TotalMinutes);
 
@@ -44,6 +44,7 @@ public sealed class QaService(IServiceProvider sp, IAppDbContext db, TimeProvide
             case "package-expiry": n = await sp.GetRequiredService<Notify.PackageExpiryJob>().RunAsync(ct); break;
             case "asset-alerts": n = await sp.GetRequiredService<Assets.AssetService>().AlertsAsync(ct); break;
             case "blog-schedule": n = await sp.GetRequiredService<Blog.BlogService>().PublishDueAsync(ct); break;
+            case "outbox": n = await sp.GetRequiredService<IQaOutbox>().DispatchOnceAsync(ct); break;
             case "crm-followups": n = await sp.GetRequiredService<Crm.CrmService>().RemindFollowUpsAsync(ct); break;
             default: return null;
         }

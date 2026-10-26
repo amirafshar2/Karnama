@@ -53,3 +53,4 @@ deploy/backups/
 start-dev.log
 tests/qa/logs/
 tests/qa/reports/
+.claude/worktrees/

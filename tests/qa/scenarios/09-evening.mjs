@@ -125,9 +125,8 @@ export async function run(rec, { crowd }) {
     const w = await (await as(E3)).get("/api/v1/notifications");
     const kinds = w.items.map((n) => n.kind);
     check(kinds.some((k) => /attendance|shift|forgot|clock/i.test(k)), `worker got a forgotten-clock-out notification (kinds: ${kinds.join(",") || "none"})`);
-    const m = await (await as(managerP)).get("/api/v1/notifications");
     const name = E3.name.replace(" (QA)", "");
-    check(m.items.some((n) => `${n.title} ${n.body ?? ""}`.includes(name) && !n.kind.startsWith("absence") && !n.kind.startsWith("leave")),
+    check(await (await as(managerP)).hasNotification((n) => `${n.title} ${n.body ?? ""}`.includes(name) && !n.kind.startsWith("absence") && !n.kind.startsWith("leave")),
       "manager got a forgotten-clock-out notification naming the worker");
   });
 

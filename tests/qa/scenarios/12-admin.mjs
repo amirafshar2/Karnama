@@ -210,10 +210,16 @@ export async function run(rec) {
     await admin.del(`/api/v1/translations/en/${key}`);
   });
 
-  await rec.step("2.12.m", "PROMPT R13 'add a new language from the panel': an API to add/activate a language exists", async () => {
-    const spec = await (await fetch(`${process.env.QA_API}/openapi/v1.json`)).json();
-    const langWrite = Object.entries(spec.paths).some(([p, ops]) => /language/i.test(p) && (ops.post || ops.put));
-    check(langWrite, "no endpoint creates/activates a language (only GET /api/v1/i18n/languages); English is pre-seeded");
+  await rec.step("2.12.m", "PROMPT R13 add a language from the panel: Arabic (RTL) added, then switched off; a writer can't; default can't be switched off", async () => {
+    const code = "ar";
+    await writer.refused("POST", "/api/v1/i18n/languages/admin", { code, name: "العربية", direction: "rtl", calendar: "hijri", digits: "latin", isActive: true, sortOrder: 30 }, [403]);
+    const made = await admin.call("POST", "/api/v1/i18n/languages/admin", { code, name: "العربية", direction: "rtl", calendar: "hijri", digits: "latin", isActive: true, sortOrder: 30 }, { expect: [201, 409] });
+    if (made) eq(made.direction, "rtl", "direction");
+    check((await qa.anon("GET", "/api/v1/i18n/languages")).data.some((l) => l.code === code), "new language is public");
+    await admin.refused("POST", "/api/v1/i18n/languages/admin", { code, name: "dup", direction: "rtl", calendar: "hijri", digits: "latin", isActive: true, sortOrder: 30 }, [409]);
+    await admin.put(`/api/v1/i18n/languages/admin/${code}`, { code, name: "العربية", direction: "rtl", calendar: "hijri", digits: "latin", isActive: false, sortOrder: 30 });
+    check(!(await qa.anon("GET", "/api/v1/i18n/languages")).data.some((l) => l.code === code), "switched-off language disappears from the public list");
+    await admin.refused("PUT", "/api/v1/i18n/languages/admin/fa", { code: "fa", name: "فارسی", direction: "rtl", calendar: "persian", digits: "persian", isActive: false, sortOrder: 0 }, [409]);
   });
 
   // ---------------- brand ----------------

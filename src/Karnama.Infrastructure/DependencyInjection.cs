@@ -26,6 +26,8 @@ public static class DependencyInjection
             services.AddSingleton<TimeProvider>(qa);
             services.AddSingleton<IQaClock>(qa);
             services.AddScoped<IQaSeeder, Qa.QaCrowdSeed>();
+            services.AddSingleton<Notify.OutboxDispatcher>();
+            services.AddSingleton<IQaOutbox>(sp => new Qa.QaOutbox(sp.GetRequiredService<Notify.OutboxDispatcher>()));
         }
         else services.AddSingleton(TimeProvider.System);
         services.Configure<QaOptions>(config.GetSection(QaOptions.Section));

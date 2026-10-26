@@ -86,11 +86,14 @@ public sealed class InboxService(IAppDbContext db, ICurrentUser me, TimeProvider
 {
     private Guid Me => me.UserId ?? Guid.Empty;
 
-    public async Task<InboxDto> ListAsync(CancellationToken ct)
+    /// <summary>Newest 30; pass <paramref name="before"/> (the oldest item's time) to page further back.</summary>
+    public async Task<InboxDto> ListAsync(CancellationToken ct, DateTimeOffset? before = null)
     {
         var uid = Me;
         var unread = await db.Notifications.CountAsync(n => n.UserId == uid && n.ReadAt == null, ct);
-        var items = await db.Notifications.AsNoTracking().Where(n => n.UserId == uid).OrderByDescending(n => n.CreatedAt).Take(30).ToListAsync(ct);
+        var q = db.Notifications.AsNoTracking().Where(n => n.UserId == uid);
+        if (before is { } b) q = q.Where(n => n.CreatedAt < b);
+        var items = await q.OrderByDescending(n => n.CreatedAt).Take(30).ToListAsync(ct);
         return new InboxDto(unread, items.Select(n => new NotificationDto(n.Id, n.Kind, n.Title, n.Body, n.Link, n.Important, n.CreatedAt, n.ReadAt != null)).ToList());
     }
 

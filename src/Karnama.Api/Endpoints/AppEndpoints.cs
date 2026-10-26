@@ -51,6 +51,20 @@ internal static class AppEndpoints
         var g = app.MapGroup("/api/v1/i18n").WithTags("I18n");
         g.MapGet("/languages", async (LocalizationService svc, CancellationToken ct) => Results.Ok(await svc.GetLanguagesAsync(ct)))
             .CacheOutput(OutputCachePolicies.Public);
+        var langs = app.MapGroup("/api/v1/i18n/languages/admin").WithTags("I18n").RequirePermission(Permissions.LanguagesManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
+        langs.MapGet("/", async (LanguageAdminService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(ct)));
+        langs.MapPost("/", async (UpsertLanguageRequest body, LanguageAdminService svc, Microsoft.AspNetCore.OutputCaching.IOutputCacheStore store, HttpContext http, CancellationToken ct) =>
+        {
+            var r = await svc.CreateAsync(body, ct);
+            if (r.IsSuccess) await store.EvictByTagAsync("public", ct);   // the public language list is output-cached
+            return r.ToHttp(http, l => Results.Created($"/api/v1/i18n/languages/admin/{l.Code}", l));
+        });
+        langs.MapPut("/{code}", async (string code, UpsertLanguageRequest body, LanguageAdminService svc, Microsoft.AspNetCore.OutputCaching.IOutputCacheStore store, HttpContext http, CancellationToken ct) =>
+        {
+            var r = await svc.UpdateAsync(code, body, ct);
+            if (r.IsSuccess) await store.EvictByTagAsync("public", ct);
+            return r.ToHttp(http);
+        });
         g.MapGet("/{code}", async (string code, LocalizationService svc, HttpContext http, CancellationToken ct) =>
         {
             if (code.Length > 10) return Results.NotFound();

@@ -67,3 +67,45 @@ public sealed partial class TranslationAdminService(IAppDbContext db, IAuditWrit
         return Result.Success();
     }
 }
+
+public sealed record UpsertLanguageRequest(string Code, string Name, Karnama.Domain.Localization.TextDirection Direction,
+    Karnama.Domain.Localization.CalendarKind Calendar, Karnama.Domain.Localization.DigitStyle Digits, bool IsActive, int SortOrder);
+public sealed record LanguageAdminDto(string Code, string Name, Karnama.Domain.Localization.TextDirection Direction, Karnama.Domain.Localization.CalendarKind Calendar,
+    Karnama.Domain.Localization.DigitStyle Digits, bool IsDefault, bool IsActive, int SortOrder);
+
+/// <summary>Languages of the interface (PROMPT R13): add one from the panel, change its direction/calendar/digits, switch it on or off.</summary>
+public sealed class LanguageAdminService(IAppDbContext db, IAuditWriter audit, HybridCache cache)
+{
+    public async Task<IReadOnlyList<LanguageAdminDto>> ListAsync(CancellationToken ct) =>
+        await db.Languages.AsNoTracking().OrderBy(l => l.SortOrder).ThenBy(l => l.Code)
+            .Select(l => new LanguageAdminDto(l.Code, l.Name, l.Direction, l.Calendar, l.Digits, l.IsDefault, l.IsActive, l.SortOrder)).ToListAsync(ct);
+
+    public async Task<Result<LanguageAdminDto>> CreateAsync(UpsertLanguageRequest r, CancellationToken ct)
+    {
+        var code = (r.Code ?? string.Empty).Trim().ToLowerInvariant();
+        if (await db.Languages.AnyAsync(l => l.Code == code, ct)) return Error.Conflict("languages.exists", "این زبان از قبل هست.");
+        var created = Karnama.Domain.Localization.Language.Create(code, r.Name, r.Direction, r.Calendar, r.Digits, false, r.SortOrder);
+        if (created.IsFailure) return created.Error!;
+        var lang = created.Value!;
+        if (!r.IsActive) lang.Update(lang.Name, lang.Direction, lang.Calendar, lang.Digits, false, lang.SortOrder);
+        db.Languages.Add(lang);
+        audit.Add("languages.created", "Language", code, new { r.Direction });
+        await db.SaveChangesAsync(ct);
+        await cache.RemoveByTagAsync(LocalizationService.CacheTag, ct);
+        return Dto(lang);
+    }
+
+    public async Task<Result<LanguageAdminDto>> UpdateAsync(string code, UpsertLanguageRequest r, CancellationToken ct)
+    {
+        var lang = await db.Languages.FirstOrDefaultAsync(l => l.Code == code, ct);
+        if (lang is null) return Error.NotFound("languages.notFound", "زبان پیدا نشد.");
+        var updated = lang.Update(r.Name, r.Direction, r.Calendar, r.Digits, r.IsActive, r.SortOrder);
+        if (updated.IsFailure) return updated.Error!;
+        audit.Add("languages.updated", "Language", code, new { r.Direction, r.IsActive });
+        await db.SaveChangesAsync(ct);
+        await cache.RemoveByTagAsync(LocalizationService.CacheTag, ct);
+        return Dto(lang);
+    }
+
+    private static LanguageAdminDto Dto(Karnama.Domain.Localization.Language l) => new(l.Code, l.Name, l.Direction, l.Calendar, l.Digits, l.IsDefault, l.IsActive, l.SortOrder);
+}

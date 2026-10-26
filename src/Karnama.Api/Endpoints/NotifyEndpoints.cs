@@ -17,7 +17,7 @@ internal static class NotifyEndpoints
     public static void MapNotify(this IEndpointRouteBuilder app)
     {
         var inbox = app.MapGroup("/api/v1/notifications").WithTags("Notifications").RequireAuthorization().AddEndpointFilter<ValidationFilter>();
-        inbox.MapGet("/", async (InboxService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(ct)));
+        inbox.MapGet("/", async (DateTimeOffset? before, InboxService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(ct, before)));
         inbox.MapPost("/read", async (ReadRequest body, InboxService svc, CancellationToken ct) => { await svc.ReadAsync(body.Id, ct); return Results.NoContent(); });
         inbox.MapGet("/prefs", async (InboxService svc, CancellationToken ct) => Results.Ok(await svc.PrefsAsync(ct)));
         inbox.MapPut("/prefs", async (UpdatePrefsRequest body, InboxService svc, CancellationToken ct) => Results.Ok(await svc.UpdatePrefsAsync(body, ct)));

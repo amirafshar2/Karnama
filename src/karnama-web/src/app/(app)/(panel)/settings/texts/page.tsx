@@ -11,6 +11,12 @@ import { faSettings } from "@/lib/i18n/fa-settings";
 import { useI18n } from "@/lib/i18n/provider";
 import { registerTexts, type TextKey } from "@/lib/i18n/registry";
 import { notify } from "@/lib/notify";
+import dynamic from "next/dynamic";
+import { useAuth } from "@/lib/auth";
+import { hasPermission } from "@/lib/types";
+
+// Language management is for the few who hold languages.manage; loaded only for them.
+const LanguagesCard = dynamic(() => import("@/components/app/languages-card").then((m) => m.LanguagesCard), { ssr: false });
 
 registerTexts(faSettings);
 
@@ -21,6 +27,7 @@ export default function TextsPage() {
     { code: "content.manage", scope: "all" },
   ]);
   const { t, languages, lang: uiLang } = useI18n();
+  const { me } = useAuth();
   const qc = useQueryClient();
   const errorMessage = useErrorMessage();
   const [lang, setLang] = useState(uiLang);
@@ -93,6 +100,8 @@ export default function TextsPage() {
         <p className="mt-1 max-w-prose text-muted-foreground">{t("texts.subtitle")}</p>
         <p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("texts.help")}</p>
       </header>
+
+      {hasPermission(me, "languages.manage", "all") && <LanguagesCard />}
 
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium">

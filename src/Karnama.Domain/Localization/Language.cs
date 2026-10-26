@@ -32,6 +32,15 @@ public sealed class Language
             IsDefault = isDefault, IsActive = true, SortOrder = sortOrder,
         };
     }
+
+    /// <summary>Edits a language; the default language can't be switched off (the app would have nothing to fall back to).</summary>
+    public Result Update(string name, TextDirection direction, CalendarKind calendar, DigitStyle digits, bool isActive, int sortOrder)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 50) return Error.Validation("languages.invalidName", "نام زبان معتبر نیست.");
+        if (IsDefault && !isActive) return Error.Conflict("languages.defaultOff", "زبان پیش‌فرض را نمی‌شود غیرفعال کرد.");
+        Name = name.Trim(); Direction = direction; Calendar = calendar; Digits = digits; IsActive = isActive; SortOrder = sortOrder;
+        return Result.Success();
+    }
 }
 
 /// <summary>An admin-provided override for a UI text key in one language.</summary>

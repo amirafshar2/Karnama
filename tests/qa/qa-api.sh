@@ -14,10 +14,14 @@ LOGS="$ROOT/tests/qa/logs"; mkdir -p "$LOGS"
 (fuser -k "$PORT/tcp" || true) >/dev/null 2>&1
 psql "postgresql://karnama:${POSTGRES_PASSWORD}@localhost:5432/postgres" -c "DROP DATABASE IF EXISTS $DB WITH (FORCE);" -c "CREATE DATABASE $DB;" >/dev/null
 CS="${ConnectionStrings__Default/Database=karnama;/Database=$DB;}"
-[ -f src/Karnama.Api/bin/Release/net10.0/Karnama.Api.dll ] || dotnet build src/Karnama.Api -c Release -v q -nologo >/dev/null
+[ -f src/Karnama.Api/bin/Release/net10.0/Karnama.Api.dll ] || dotnet build src/Karnama.Api -c Release -v q -nologo >/dev/null </dev/null
+# Telegram through the mock gateway that scenario S03 serves on :5193 (secret is a QA-only value).
+export Messengers__TelegramGatewaySecret="${Messengers__TelegramGatewaySecret:-qa-telegram-gateway-secret-0123456789abcdef}"
+export Messengers__TelegramGatewayUrl="${Messengers__TelegramGatewayUrl:-http://127.0.0.1:5193/}"
+export Notify__TelegramArchiveChatId="${Notify__TelegramArchiveChatId:--1009990001}" Notify__TelegramBotUsername="${Notify__TelegramBotUsername:-karnama_qa_bot}"
 ( cd src/Karnama.Api && Seed__Mode=Demo DemoLogin__Enabled=true Qa__Enabled=true ConnectionStrings__Default="$CS" ReverseProxy__KnownProxies__0=127.0.0.1 \
   RateLimits__AuthPerIpPerMinute=100000 RateLimits__FormsPerIpPer10Minutes=100000 RateLimits__OtpPerIpPer10Minutes=100000 RateLimits__RefreshPerIpPerMinute=100000 \
   RateLimits__UserBurst=100000 RateLimits__HeavyPerUserPerMinute=100000 RateLimits__DevicePerIpPerMinute=100000 \
-  setsid nohup dotnet bin/Release/net10.0/Karnama.Api.dll --urls "http://localhost:$PORT" > "$LOGS/api-$PORT.log" 2>&1 & )
+  setsid nohup dotnet bin/Release/net10.0/Karnama.Api.dll --urls "http://localhost:$PORT" > "$LOGS/api-$PORT.log" 2>&1 < /dev/null & )
 for _ in $(seq 1 150); do curl -fs "http://localhost:$PORT/health/ready" >/dev/null 2>&1 && break; sleep 1; done
 curl -fs -X POST "http://localhost:$PORT/api/v1/qa/seed-crowd" -o /dev/null && echo "[qa] api :$PORT on $DB ready (crowd seeded)"

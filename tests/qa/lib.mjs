@@ -42,6 +42,23 @@ export class Actor {
   put(p, b, o) { return this.call("PUT", p, b, o); }
   patch(p, b, o) { return this.call("PATCH", p, b, o); }
   del(p, o) { return this.call("DELETE", p, undefined, o); }
+  /** Pages the bell (30 per page) until a notification matches; a busy manager may have more than 30 since this morning. */
+  async hasNotification(pred, pages = 6) {
+    let before = null;
+    for (let i = 0; i < pages; i++) {
+      const page = await this.get("/api/v1/notifications" + (before ? `?before=${encodeURIComponent(before)}` : ""));
+      if (page.items.some(pred)) return true;
+      if (page.items.length < 30) return false;
+      before = page.items[page.items.length - 1].createdAt;
+    }
+    return false;
+  }
+  /** Clocks in unless already in (scenarios share one simulated day, so an earlier scenario may have clocked this person in). */
+  async ensureClockedIn(body = {}) {
+    const r = await raw("POST", "/api/v1/attendance/clock-in", { token: this.token, body: { idempotencyKey: randomUUID(), ...body }, ip: this.ip, android: this.android });
+    if (r.status !== 200 && !(r.status === 409 && r.data?.code === "attendance.alreadyIn")) throw new HttpError(r.status, r.data, "POST", "/api/v1/attendance/clock-in");
+    return r.data;
+  }
   /** Expects a refusal (4xx); returns the status. */
   async refused(method, path, body, codes = [400, 403, 404, 409, 422]) {
     const r = await raw(method, path, { token: this.token, body, ip: this.ip, android: this.android });
