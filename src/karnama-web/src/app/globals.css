@@ -230,6 +230,12 @@
 .kn-side__item[aria-current="page"] { background: var(--brand-yellow); color: var(--primary-foreground); font-weight: 800; box-shadow: 0 8px 24px -10px color-mix(in srgb, var(--brand-yellow) 70%, transparent); }
 .kn-side__item[aria-current="page"]::before { content: ""; position: absolute; inset-inline-start: -12px; top: 25%; bottom: 25%; width: 4px; border-radius: 4px; background: var(--brand-yellow); }
 [data-collapsed] .kn-side__item { justify-content: center; padding-inline: 0; }
+.kn-board { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--foreground) 28%, transparent) transparent; scroll-padding-inline: 0.25rem; }
+.kn-board::-webkit-scrollbar { height: 10px; }
+.kn-col { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--foreground) 20%, transparent) transparent; }
+/* Wide pages (the work board) use the whole width next to the sidebar. */
+.kn-main:has([data-wide-page]) { max-width: none; }
+.kn-board::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--foreground) 28%, transparent); border-radius: 999px; }
 .kn-side__scroll { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.15) transparent; }
 .kn-side :focus-visible { outline-color: var(--brand-yellow); }
 

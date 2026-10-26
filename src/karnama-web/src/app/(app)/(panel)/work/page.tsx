@@ -14,6 +14,7 @@ import { notify } from "@/lib/notify";
 import { useLive } from "@/lib/use-live";
 import { cn } from "@/lib/utils";
 import { COLUMNS, type WorkCard, type WorkStatus } from "@/lib/work-types";
+import { BoardScroller } from "./board-scroller";
 
 registerTexts(faM3);
 
@@ -155,14 +156,18 @@ export default function WorkBoardPage() {
           const card = board.data?.find((c) => c.id === e.dataTransfer.getData("text/plain"));
           if (card) void move(card, status);
         }}
-        className={cn("flex w-72 shrink-0 flex-col self-start rounded-xl bg-muted/50 p-2 transition-colors", dragOver === status && "bg-accent/40 ring-2 ring-accent")}
+        className={cn(
+          "flex max-h-full max-w-96 shrink-0 grow basis-64 snap-start flex-col self-start rounded-xl bg-muted/50 p-2 transition-colors",
+          dragOver === status && "bg-accent/40 ring-2 ring-accent",
+        )}
+        data-col={status}
         data-testid={`col-${status}`}
       >
         <h2 id={`col-${status}`} className="flex items-center justify-between px-2 py-2 text-sm font-bold">
           {t(`work.col.${status}` as TextKey)}
           <span className="rounded-full bg-background px-2 text-xs font-medium">{formatNumber(cards.length)}</span>
         </h2>
-        <ul className="flex min-h-24 flex-col gap-2">
+        <ul className="kn-col flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain">
           {(status === "done" && !allDone ? cards.slice(0, DONE_SHOWN) : cards).map(renderCard)}
           {cards.length === 0 && <li className="px-2 py-6 text-center text-xs text-muted-foreground">{t("work.empty")}</li>}
           {status === "done" && !allDone && cards.length > DONE_SHOWN && (
@@ -178,7 +183,7 @@ export default function WorkBoardPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-wide-page>
       <header>
         <h1 className="text-2xl font-extrabold">{t("work.title")}</h1>
         <p className="mt-1 max-w-prose text-muted-foreground">{t("work.subtitle")}</p>
@@ -234,8 +239,10 @@ export default function WorkBoardPage() {
       </div>
 
       {/* Tablet/desktop: all columns, drag and drop. */}
-      <div className="-mx-4 hidden gap-3 overflow-x-auto px-4 pb-4 md:flex">
-        {COLUMNS.map(renderColumn)}
+      <div className="hidden md:block">
+        <BoardScroller columns={COLUMNS} counts={Object.fromEntries(COLUMNS.map((s) => [s, byColumn.get(s)?.length ?? 0]))}>
+          {COLUMNS.map(renderColumn)}
+        </BoardScroller>
       </div>
 
       {open && <WorkSheet id={open} onClose={() => setOpen(null)} />}
