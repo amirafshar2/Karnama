@@ -8,7 +8,9 @@ namespace Karnama.Application.Me;
 
 public sealed record MeDto(
     Guid Id, string DisplayName, string PhoneMasked, UserKind Kind, bool IsDemo, string LanguageCode,
-    bool TwoFactorEnabled, IReadOnlyList<string> Roles, IReadOnlyDictionary<string, PermissionScope> Permissions);
+    bool TwoFactorEnabled, IReadOnlyList<string> Roles, IReadOnlyDictionary<string, PermissionScope> Permissions,
+    /// <summary>Which demo button this account belongs to (admin, editor, …), so the demo guide can explain that role. Null outside the demo.</summary>
+    string? DemoRole = null);
 
 public sealed record UpdateMeRequest(string? DisplayName, string? LanguageCode);
 
@@ -27,7 +29,8 @@ public sealed class MeService(IAppDbContext db, ICurrentUser me)
         var permissions = await PermissionLoader.LoadAsync(db, id, ct);
 
         return new MeDto(user.Id, user.DisplayName, PhoneNumber.Mask(user.Phone), user.Kind, user.IsDemo, user.LanguageCode,
-            user.TwoFactorEnabled, roleNames.Select(n => n.Get(user.LanguageCode)).ToList(), permissions);
+            user.TwoFactorEnabled, roleNames.Select(n => n.Get(user.LanguageCode)).ToList(), permissions,
+            user.IsDemo ? DemoAccounts.All.FirstOrDefault(a => a.Phone == user.Phone)?.Key : null);
     }
 
     public async Task<Result<MeDto>> UpdateAsync(UpdateMeRequest request, CancellationToken ct)

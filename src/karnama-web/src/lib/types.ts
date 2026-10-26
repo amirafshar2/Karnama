@@ -10,6 +10,8 @@ export type Me = {
   twoFactorEnabled: boolean;
   roles: string[];
   permissions: Record<string, Scope>;
+  /** Which demo login button this is (admin, editor, writer, client, marketer); null outside the demo. */
+  demoRole?: string | null;
 };
 
 export type Language = {

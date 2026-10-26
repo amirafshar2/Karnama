@@ -4,6 +4,7 @@ import { BarChart3, Globe, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { navFor } from "@/components/app/nav";
 import { TilePattern } from "@/components/app/tile-pattern";
+import { DemoGuide } from "@/components/app/demo-guide";
 import { useAuth } from "@/lib/auth";
 import type { TextKey } from "@/lib/i18n/registry";
 import { useI18n } from "@/lib/i18n/provider";
@@ -33,7 +34,13 @@ export default function DashboardPage() {
   const { t, formatDate } = useI18n();
   if (!me) return null;
   // Clients get their own simple panel (docs/PROMPT.md §6.9).
-  if (me.kind === "client") return <PortalHome />;
+  if (me.kind === "client")
+    return (
+      <div className="space-y-6">
+        <DemoGuide />
+        <PortalHome />
+      </div>
+    );
 
   const shortcuts = navFor(me).filter((i) => i.href !== "/dashboard" && i.href !== "/help" && i.href !== "/profile").slice(0, 6);
   const groups = new Map<string, [string, Scope][]>();
@@ -44,6 +51,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <DemoGuide />
       {/* Greeting banner on the brand black with the tile lattice (21st: @scrollxui/hero-with-cards' stage, panel-sized). */}
       <section className="relative isolate overflow-hidden rounded-3xl bg-[var(--brand-black)] p-6 text-white sm:p-8">
         <TilePattern className="absolute inset-0 -z-10 opacity-70 [--tile-line:color-mix(in_srgb,var(--brand-gold)_10%,transparent)] [mask-image:linear-gradient(90deg,transparent,#000)]" id="dash-tile" />
