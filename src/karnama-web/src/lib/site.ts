@@ -10,7 +10,9 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3
 
 export async function siteGet<T>(path: string, revalidate = 60): Promise<T | null> {
   try {
-    const r = await fetch(`${API}${path}`, { next: { revalidate }, headers: { Accept: "application/json" } });
+    // A short time limit: while the API is still starting (or asleep on a free host), a page must not hang the build or
+    // the visitor; it renders with defaults and is refreshed on the next revalidation.
+    const r = await fetch(`${API}${path}`, { next: { revalidate }, headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) });
     if (r.status === 404) return null;
     if (!r.ok) throw new Error(`API ${r.status} for ${path}`);
     return (await r.json()) as T;
