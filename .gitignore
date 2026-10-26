@@ -50,3 +50,4 @@ dump.rdb
 # Server secrets
 deploy/.env.prod
 deploy/backups/
+start-dev.log
