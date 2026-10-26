@@ -90,6 +90,20 @@ public sealed class Order : AuditableEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// The client withdraws its own order from the portal. Only while the agency hasn't accepted it yet:
+    /// after that, work (and package quota) is already planned, so cancelling goes through the agency.
+    /// </summary>
+    public Result CancelByClient()
+    {
+        if (Status is OrderStatus.Completed or OrderStatus.Rejected or OrderStatus.Cancelled)
+            return Error.Conflict("orders.closed", "این سفارش بسته شده است.");
+        if (Status != OrderStatus.Submitted)
+            return Error.Conflict("orders.alreadyAccepted", "آژانس این سفارش را پذیرفته و کار شروع شده است؛ برای لغو به آژانس پیام بدهید.");
+        Status = OrderStatus.Cancelled;
+        return Result.Success();
+    }
+
     public Result Cancel()
     {
         if (Status is OrderStatus.Completed or OrderStatus.Rejected or OrderStatus.Cancelled)

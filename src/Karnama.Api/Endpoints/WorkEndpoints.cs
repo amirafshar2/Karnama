@@ -99,6 +99,7 @@ internal static class PortalEndpoints
         var portal = app.MapGroup("/api/v1/portal").WithTags("Portal").RequireAuthorization().AddEndpointFilter<ValidationFilter>();
         portal.MapGet("/home", async (Karnama.Application.Portal.PortalService svc, HttpContext http, CancellationToken ct) => (await svc.HomeAsync(ct)).ToHttp(http));
         portal.MapGet("/orders/{id:guid}/messages", async (Guid id, Karnama.Application.Portal.PortalService svc, HttpContext http, CancellationToken ct) => (await svc.MessagesAsync(id, ct)).ToHttp(http));
+        portal.MapPost("/orders/{id:guid}/cancel", async (Guid id, Karnama.Application.Portal.PortalService svc, HttpContext http, CancellationToken ct) => (await svc.CancelOrderAsync(id, ct)).ToHttp(http));
         portal.MapPost("/approvals/{workItemId:guid}", async (Guid workItemId, Karnama.Application.Portal.ApprovalRequest body, Karnama.Application.Portal.PortalService svc, HttpContext http, CancellationToken ct) =>
             (await svc.DecideAsync(workItemId, body, ct)).ToHttp(http));
         portal.MapPost("/orders", async (CreateOrderRequest body, OrderService svc, HttpContext http, CancellationToken ct) =>

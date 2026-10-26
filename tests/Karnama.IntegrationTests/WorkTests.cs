@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Karnama.IntegrationTests;
 
@@ -69,6 +71,63 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var extra = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel)));
         extra.GetProperty("outsidePackage").GetBoolean().Should().BeTrue();
         extra.GetProperty("price").GetInt64().Should().Be(25_000_000);
+
+        // PROMPT §6.4: the admins are warned about the extra order (once per order).
+        var bell = (await Ok(await admin.GetAsync("/api/v1/notifications"))).GetProperty("items").EnumerateArray()
+            .Where(i => i.GetProperty("kind").GetString() == "orders.outsidePackage").ToList();
+        bell.Should().ContainSingle(i => i.GetProperty("title").GetString()!.Contains(extra.GetProperty("number").GetInt64().ToString()));
+    }
+
+    [Fact]
+    public async Task Work_goes_only_to_people_who_can_run_it()
+    {
+        var admin = await As("admin");
+        var (clientId, reel, editorId) = await RefsAsync(admin);
+        var o = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel)));
+        var itemId = o.GetProperty("stages")[0].GetProperty("id").GetGuid();
+        var users = (await Ok(await admin.GetAsync("/api/v1/users?limit=100"))).GetProperty("items").EnumerateArray().ToList();
+        var marketer = users.First(u => u.GetProperty("displayName").GetString()!.Contains("بازاریاب")).GetProperty("id").GetGuid();
+
+        var suggestions = (await Ok(await admin.GetAsync($"/api/v1/work/{itemId}/suggestions"))).EnumerateArray().Select(s => s.GetProperty("userId").GetGuid()).ToList();
+        suggestions.Should().Contain(editorId).And.NotContain(marketer);
+
+        var v = (await Ok(await admin.GetAsync($"/api/v1/work/{itemId}"))).GetProperty("card").GetProperty("version").GetUInt32();
+        var bad = await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/assign", new { userId = marketer, version = v });
+        bad.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await bad.Content.ReadAsStringAsync()).Should().Contain("نمی‌تواند کار انجام دهد");
+        (await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/assign", new { userId = editorId, version = v }))).GetProperty("assigneeId").GetGuid().Should().Be(editorId);
+    }
+
+    /// <summary>Moves every stage deadline of an order into the past, as if the plan's time had run out.</summary>
+    private async Task ShiftDeadlinesAsync(Guid orderId, TimeSpan by)
+    {
+        using var scope = _f.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
+        await db.WorkItems.Where(w => w.OrderId == orderId).ExecuteUpdateAsync(
+            s => s.SetProperty(w => w.Deadline, w => w.Deadline + by));
+    }
+
+    [Fact]
+    public async Task A_stage_that_unlocks_late_gets_its_full_window_back()
+    {
+        var admin = await As("admin");
+        var (clientId, reel, _) = await RefsAsync(admin);
+        var o = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel)));
+        var ids = o.GetProperty("stages").EnumerateArray().Select(s => s.GetProperty("id").GetGuid()).ToList();
+        async Task<JsonElement> Card(Guid id) => (await Ok(await admin.GetAsync($"/api/v1/work/{id}"))).GetProperty("card");
+        var plan2 = (await Card(ids[1])).GetProperty("deadline").GetDateTimeOffset();
+        var plan1 = (await Card(ids[0])).GetProperty("deadline").GetDateTimeOffset();
+        var window = plan2 - plan1;   // what the plan gave stage 2
+
+        // 100 hours later stage 1 is finally done: stage 2's planned deadline has long passed.
+        await ShiftDeadlinesAsync(o.GetProperty("id").GetGuid(), TimeSpan.FromHours(-100));
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{ids[0]}/move", new { status = "done", version = (await Card(ids[0])).GetProperty("version").GetUInt32() }));
+        var now = _f.Clock.GetUtcNow();
+        var c2 = await Card(ids[1]);
+        c2.GetProperty("status").GetString().Should().Be("todo");
+        c2.GetProperty("deadline").GetDateTimeOffset().Should().BeCloseTo(now + window, TimeSpan.FromMinutes(1));
+        // Stage 3 is still waiting: it moves only when it unlocks.
+        (await Card(ids[2])).GetProperty("deadline").GetDateTimeOffset().Should().BeCloseTo(o.GetProperty("stages")[2].GetProperty("deadline").GetDateTimeOffset() - TimeSpan.FromHours(100), TimeSpan.FromSeconds(1));
     }
 
     [Fact]

@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@/lib/query";
-import { Loader2, Send } from "lucide-react";
+import { useQuery, useQueryClient } from "@/lib/query";
+import { Loader2, Send, XCircle } from "lucide-react";
 import { useState } from "react";
 import { useErrorMessage } from "@/components/app/error-text";
 import { Button } from "@/components/ui/button";
 import { faM6 } from "@/lib/i18n/fa-m6";
+import { faPortal } from "@/lib/i18n/fa-portal";
 import { registerTexts } from "@/lib/i18n/registry";
 import { notify } from "@/lib/notify";
 import { FilesPanel } from "@/components/app/files-panel";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 import type { OrderDetail } from "@/lib/work-types";
 
 registerTexts(faM6);
+registerTexts(faPortal);
 
 export function PortalOrder({ id, onClose }: { id: string; onClose: () => void }) {
   const { t, dir, formatNumber, formatDate } = useI18n();
@@ -27,6 +29,23 @@ export function PortalOrder({ id, onClose }: { id: string; onClose: () => void }
   const errorMessage = useErrorMessage();
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const qc = useQueryClient();
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  // The client may withdraw an order only while the agency hasn't accepted it (the server checks this too).
+  const cancelOrder = async () => {
+    setCancelling(true);
+    try {
+      await api(`/api/v1/portal/orders/${id}/cancel`, { method: "POST" });
+      notify.success(t("portal.cancelled"));
+      setConfirmingCancel(false);
+      await Promise.all([order.refetch(), qc.invalidateQueries({ queryKey: ["portal-home"] })]);
+    } catch (e) {
+      notify.error(errorMessage(e));
+    } finally {
+      setCancelling(false);
+    }
+  };
   const send = async () => {
     if (!draft.trim()) return;
     setSending(true);
@@ -54,6 +73,28 @@ export function PortalOrder({ id, onClose }: { id: string; onClose: () => void }
           </div>
         ) : (
           <div className="flex-1 space-y-6 overflow-y-auto p-5">
+            {o.status === "submitted" && (
+              <section className="space-y-2 rounded-lg border p-3" aria-live="polite">
+                <p className="text-sm text-muted-foreground">{t("portal.cancelHelp")}</p>
+                {confirmingCancel ? (
+                  <div className="flex flex-wrap items-center gap-2" role="group">
+                    <span className="text-sm">{t("portal.cancelConfirm")}</span>
+                    <Button size="sm" variant="destructive" className="h-12 md:h-10" disabled={cancelling} onClick={() => void cancelOrder()} data-testid="portal-cancel-yes">
+                      {cancelling && <Loader2 className="animate-spin" aria-hidden="true" />}
+                      {t("portal.cancelYes")}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-12 md:h-10" disabled={cancelling} onClick={() => setConfirmingCancel(false)}>
+                      {t("common.cancel")}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="outline" className="h-12 md:h-10" onClick={() => setConfirmingCancel(true)} data-testid="portal-cancel-order">
+                    <XCircle aria-hidden="true" />
+                    {t("portal.cancelOrder")}
+                  </Button>
+                )}
+              </section>
+            )}
             <dl className="grid gap-x-4 gap-y-2 rounded-lg border p-3 text-sm sm:grid-cols-[auto_1fr]">
               {o.answers.map((a) => (
                 <div key={a.key} className="contents">

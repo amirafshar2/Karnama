@@ -105,3 +105,19 @@ Totals: 28 steps, 23 pass, 5 fail. The 5 failures are 4 product bugs (B2–B5) a
 - A timer needs an open shift (`attendance.notIn` 409, unless `AutoClockInOnTimer`), so workers clock in from the office IP first.
 - The QA clock keeps ticking in real time after `setClock`, so deadline checks use a tolerance.
 - Client portal orders ignore `autoAccept` and `priority` by design (asserted as such).
+
+## After fixes
+
+Re-run on a fresh database (Release build): `bash tests/qa/qa-api.sh 5092 karnama_qa_b`, then `QA_API=http://localhost:5092 node tests/qa/run.mjs S02 S10`.
+Result: **S02 18/18, S10 10/10, all 9 invariants green (28/28 steps).**
+
+| id | fix | where |
+|---|---|---|
+| B5 | When a waiting stage unlocks later than the plan expected, its deadline moves forward by that delay. "Planned start" is the latest deadline of the earlier stages (or the accept time). So the next worker always gets the full window the plan gave the stage, and client delay doesn't count against them (PROMPT2 §11). Unlocking early never pulls a deadline in. 2.10.j now gives Z `onTime=true` | `WorkItem.Unlock(now, plannedStart)`, `WorkService.PlannedStart`, both unlock paths (`WorkService.AfterStatusChangeAsync`, `PortalService.DecideAsync`) |
+| B2 | The client can decide only an item in `clientReview`. A done or cancelled item → 409 «این کار بسته شده است», and the stars stay. Another open state → 403, as before | `PortalService.DecideAsync` |
+| B3 | Assign needs `work.run` (assigned scope or wider) → otherwise 422 «این همکار نمی‌تواند کار انجام دهد». Suggestions list only these people (no marketers, no kiosk) | `WorkService.AssignAsync`, `SuggestAsync` |
+| B4 | Without `orders.manage`, a worker can mark a post published only if it belongs to an order where they have a stage assigned. A job without an order → managers only (403 otherwise) | `PublishService.MarkPublishedAsync` |
+| B1 | New `POST /api/v1/portal/orders/{id}/cancel`. A client can cancel its own order only while it is `submitted`. Another client → 404. After acceptance → 409 «… برای لغو به آژانس پیام بدهید». Cancelled/closed → 409. Managers get `order.cancelledByClient`. The portal order sheet has a «لغو سفارش» button with an inline confirmation. Scenario 2.2.m now uses the route (client cancel → twice 409 → other client 404 → accept 409), then shows the accepted-order refusal and the admin cancel | `Order.CancelByClient`, `PortalService.CancelOrderAsync`, `PortalEndpoints`, `portal-order.tsx`, `fa-portal.ts` |
+| N1 | When an accepted order falls outside the package, every `orders.manage` holder gets an `orders.outsidePackage` notice (event key `outside:{orderId}`, so one per order). Checked in 2.2.n | `OrderService.AcceptCoreAsync` |
+
+Integration tests: `WorkTests` (outside-package notice, assign/suggest only `work.run`, late unlock gives the full window back), `PortalTests` (late client approval keeps the next stage fair + a decision is final, client cancel before/after acceptance), `NotifyTests` (only a worker on the order may mark an agency post published).

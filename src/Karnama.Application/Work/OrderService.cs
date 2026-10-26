@@ -197,6 +197,14 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
             changes.Record("work", item.Id, null, null, null, "created");
         }
         audit.Add("orders.accepted", nameof(Order), order.Id.ToString(), new { order.Number, outside, packageId });
+        if (outside)
+        {
+            // PROMPT §6.4: quota used up (or the service isn't in the package) → the order is extra, and the admins are warned.
+            var client = await db.Clients.IgnoreQueryFilters().AsNoTracking().Where(c => c.Id == order.ClientId).Select(c => c.BusinessName).FirstOrDefaultAsync(ct);
+            await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.OrdersManage, PermissionScope.All, ct), "orders.outsidePackage",
+                $"سفارش خارج از پکیج: #{order.Number} ({client})", $"{order.Title} — سهمیه‌ی پکیج برای این خدمت کافی نیست؛ جداگانه حساب می‌شود.",
+                "/orders", false, $"outside:{order.Id:N}", ct);
+        }
         changes.Record("order", order.Id, order.ClientId, null, null, "status");
         return Result.Success();
     }

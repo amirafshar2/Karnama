@@ -115,7 +115,15 @@ public sealed class PublishService(IAppDbContext db, ICurrentUser me, WorkAccess
         if (j is null) return Error.NotFound();
         var portal = await access.PortalClientIdAsync(ct);
         if (portal is { } own) { if (j.ClientId != own) return Error.NotFound(); }
-        else if (!(me.Kind == UserKind.Staff && (CanManage || me.Has(Permissions.WorkRun, PermissionScope.Assigned)))) return Error.Forbidden();
+        else if (!CanManage)
+        {
+            // A worker may confirm only a post they work on: assigned to a stage of the job's order. work.run alone is
+            // not "every job" (QA B4); a job without an order is confirmed by the people who manage orders.
+            if (!(me.Kind == UserKind.Staff && me.Has(Permissions.WorkRun, PermissionScope.Assigned))) return Error.Forbidden();
+            var uid = me.UserId ?? Guid.Empty;
+            var mine = j.OrderId is { } oid && await db.WorkItems.AnyAsync(w => w.OrderId == oid && w.AssigneeId == uid, ct);
+            if (!mine) return Error.Forbidden("publish.notYours", "این انتشار به کار شما مربوط نیست.");
+        }
         var res = j.MarkPublished(me.UserId ?? Guid.Empty, portal is not null, r.PostUrl, clock.GetUtcNow());
         if (res.IsFailure) return res.Error!;
         audit.Add("publish.published", nameof(PublishJob), id.ToString(), new { byClient = portal is not null });
