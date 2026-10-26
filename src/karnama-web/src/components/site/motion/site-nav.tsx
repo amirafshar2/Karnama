@@ -13,7 +13,10 @@ type Item = { href: string; label: string };
 export function SiteNav({ brand, items, cta, login, menu, close }: { brand: React.ReactNode; items: Item[]; cta: Item; login: Item; menu: string; close: string }) {
   const path = usePathname();
   const [scrolled, setScrolled] = useState(false);
-  const [open, setOpen] = useState(false);
+  // The menu is open only for the page it was opened on: navigating closes it without an effect.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === path;
+  const setOpen = (v: boolean) => setOpenOn(v ? path : null);
   const solid = path !== "/";
 
   useEffect(() => {
@@ -22,10 +25,9 @@ export function SiteNav({ brand, items, cta, login, menu, close }: { brand: Reac
     window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
   }, []);
-  useEffect(() => setOpen(false), [path]);
   useEffect(() => {
     if (!open) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpenOn(null);
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, [open]);

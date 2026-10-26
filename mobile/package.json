@@ -21,6 +21,7 @@
     "@capgo/capacitor-mock-location-detector": "8.0.8"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.3"
+    "@capacitor/cli": "8.5.3",
+    "typescript": "5.9.3"
   }
 }
