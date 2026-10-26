@@ -19,7 +19,7 @@ export function Field({ label, help, children, className, optional }: { label: s
       </label>
       {children(id, helpId)}
       {help && (
-        <p id={helpId} className="text-sm text-muted-foreground">
+        <p id={helpId} className="text-sm [overflow-wrap:anywhere] text-muted-foreground">
           {help}
         </p>
       )}
@@ -156,7 +156,7 @@ export function Toggle({ label, help, checked, onChange, testId }: { label: stri
         {label}
       </label>
       {help && (
-        <p id={`${id}-help`} className="text-sm text-muted-foreground">
+        <p id={`${id}-help`} className="text-sm [overflow-wrap:anywhere] text-muted-foreground">
           {help}
         </p>
       )}

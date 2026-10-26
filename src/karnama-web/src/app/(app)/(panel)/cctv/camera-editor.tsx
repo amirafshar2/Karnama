@@ -53,6 +53,13 @@ export function CameraEditor({ camera, onClose, onSaved }: { camera: Camera | nu
       <TextField label={t("cctv.f.location")} help={t("cctv.f.locationHelp")} value={location} onChange={setLocation} optional />
       <TextField label={t("cctv.f.main")} help={camera?.mainMasked ? `${t("cctv.f.mainHelp")} ${t("cctv.f.mainKeep", { masked: camera.mainMasked })}` : t("cctv.f.mainHelp")}
         value={main} onChange={setMain} dir="ltr" autoComplete="off" optional={!!camera} testId="cctv-main" />
+      <details className="rounded-lg border p-3 text-sm">
+        <summary className="cursor-pointer font-medium">{t("cctv.f.examples")}</summary>
+        <dl className="mt-2 space-y-2 text-xs" dir="ltr">
+          <div><dt className="font-semibold">Hikvision</dt><dd className="break-all font-mono">rtsp://user:pass@192.168.1.64:554/Streaming/Channels/101</dd><dd className="break-all font-mono">…/Streaming/Channels/102</dd></div>
+          <div><dt className="font-semibold">Dahua</dt><dd className="break-all font-mono">rtsp://user:pass@192.168.1.108:554/cam/realmonitor?channel=1&amp;subtype=0</dd><dd className="break-all font-mono">…&amp;subtype=1</dd></div>
+        </dl>
+      </details>
       <TextField label={t("cctv.f.sub")} help={t("cctv.f.subHelp")} value={sub} onChange={setSub} dir="ltr" autoComplete="off" optional testId="cctv-sub" />
       <NumberField label={t("cctv.f.order")} help={t("cctv.f.orderHelp")} value={order} onChange={setOrder} min={0} max={1000} />
       {camera && <Toggle label={t("cctv.f.active")} help={t("cctv.f.activeHelp")} checked={active} onChange={setActive} />}
