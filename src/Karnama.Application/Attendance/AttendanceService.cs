@@ -84,13 +84,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
 
         var check = await VerifyAsync(r.Evidence, now, ct);
         var day = Iran.Today(at);
-        var sched = await ScheduleForAsync(Me, ct);
-        var late = 0;
-        if (sched?.For(day) is { } today && !sched.Flexible)
-        {
-            var minutes = (int)(at - Iran.At(day, today.Start)).TotalMinutes;
-            late = minutes > sched.GraceMinutes ? minutes : 0;
-        }
+        var late = LateMinutes(await ScheduleForAsync(Me, ct), day, at);
         var reasons = new[] { check.Reason, timeIssue }.Where(x => x is not null).ToList();
         var shift = Shift.Open(Me, day, at, check.Results, check.Trust, reasons.Count > 0, reasons.Count > 0 ? string.Join(" | ", reasons) : null, offline, late);
         db.Shifts.Add(shift);
@@ -99,9 +93,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         db.AttendanceEvents.Add(Event(shift.Id, AttendanceEventKind.ClockIn, at, now, r, check.Results, check.Trust));
         audit.Add("attendance.clockIn", nameof(Shift), shift.Id.ToString(), new { trust = check.Trust, offline, late });
         changes.Record("presence", Me, null, Me, null, "clockIn");
-        await db.SaveChangesAsync(ct);
-        await changes.PublishAsync(ct);
-        return await TodayAsync(ct);
+        return await SaveOrReplayAsync(r.IdempotencyKey, Error.Conflict("attendance.alreadyIn", "ورود شما از قبل ثبت شده است."), ct);
     }
 
     public async Task<Result<TodayDto>> ClockOutAsync(ClockRequest r, CancellationToken ct)
@@ -113,13 +105,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         if (shift is null) return Error.Conflict("attendance.notIn", "ورودی ثبت نشده است.");
 
         var check = await VerifyAsync(r.Evidence, now, ct);
-        var sched = await ScheduleForAsync(Me, ct);
-        var early = 0;
-        if (sched?.For(shift.Day) is { } day && !sched.Flexible)
-        {
-            var end = Iran.At(shift.Day, day.End);
-            early = at < end ? (int)(end - at).TotalMinutes : 0;
-        }
+        var early = EarlyLeaveMinutes(await ScheduleForAsync(Me, ct), shift.Day, at);
         var reasons = new[] { check.Reason, timeIssue }.Where(x => x is not null).ToList();
         var closed = shift.Close(at, check.Results, check.Trust, reasons.Count > 0, reasons.Count > 0 ? string.Join(" | ", reasons) : null, offline, early, r.Note);
         if (closed.IsFailure) return closed.Error!;
@@ -127,9 +113,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         db.AttendanceEvents.Add(Event(shift.Id, AttendanceEventKind.ClockOut, at, now, r, check.Results, check.Trust));
         audit.Add("attendance.clockOut", nameof(Shift), shift.Id.ToString(), new { trust = check.Trust, offline, early });
         changes.Record("presence", Me, null, Me, null, "clockOut");
-        await db.SaveChangesAsync(ct);
-        await changes.PublishAsync(ct);
-        return await TodayAsync(ct);
+        return await SaveOrReplayAsync(r.IdempotencyKey, Error.Conflict("attendance.notIn", "ورودی ثبت نشده است."), ct);
     }
 
     public async Task<Result<TodayDto>> BreakAsync(bool start, ClockRequest r, CancellationToken ct)
@@ -144,9 +128,8 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         if (start) await StopTimerCoreAsync(at, ct);
         db.AttendanceEvents.Add(Event(shift.Id, start ? AttendanceEventKind.BreakStart : AttendanceEventKind.BreakEnd, at, now, r, [], Trust.Green));
         changes.Record("presence", Me, null, Me, null, start ? "breakStart" : "breakEnd");
-        await db.SaveChangesAsync(ct);
-        await changes.PublishAsync(ct);
-        return await TodayAsync(ct);
+        return await SaveOrReplayAsync(r.IdempotencyKey,
+            start ? Error.Conflict("attendance.onBreak", "استراحت از قبل شروع شده است.") : Error.Conflict("attendance.noBreak", "استراحتی شروع نشده است."), ct);
     }
 
     // ---------------- work timer ----------------
@@ -303,6 +286,42 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
 
     private async Task<bool> DuplicateAsync(string key, CancellationToken ct) =>
         await db.AttendanceEvents.AnyAsync(e => e.UserId == Me && e.IdempotencyKey == key, ct);
+
+    /// <summary>
+    /// Saves a clock action. Two taps or two devices can race past the checks above; the database then refuses the
+    /// loser (one open shift per person, one event per idempotency key, row versions). A loser that carried the same
+    /// key is a retry of the winner → it gets the winner's result; any other loser gets <paramref name="conflict"/>.
+    /// </summary>
+    private async Task<Result<TodayDto>> SaveOrReplayAsync(string key, Error conflict, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex) when (ex is DbUpdateException or Karnama.Application.Common.ConcurrencyConflictException)
+        {
+            if (await DuplicateAsync(key, ct)) return await TodayAsync(ct);
+            return conflict;
+        }
+        await changes.PublishAsync(ct);
+        return await TodayAsync(ct);
+    }
+
+    /// <summary>Minutes late against the schedule (0 = within the grace period, flexible, or not a workday).</summary>
+    internal static int LateMinutes(WorkSchedule? sched, DateOnly day, DateTimeOffset clockIn)
+    {
+        if (sched is null || sched.Flexible || sched.For(day) is not { } d) return 0;
+        var minutes = (int)(clockIn - Iran.At(day, d.Start)).TotalMinutes;
+        return minutes > sched.GraceMinutes ? minutes : 0;
+    }
+
+    /// <summary>Minutes left before the scheduled end (0 = on time or later, flexible, or not a workday).</summary>
+    internal static int EarlyLeaveMinutes(WorkSchedule? sched, DateOnly day, DateTimeOffset clockOut)
+    {
+        if (sched is null || sched.Flexible || sched.For(day) is not { } d) return 0;
+        var end = Iran.At(day, d.End);
+        return clockOut < end ? (int)(end - clockOut).TotalMinutes : 0;
+    }
 
     /// <summary>
     /// Server time minus the elapsed time the device measured (offline queue). A device wall clock far from that is a

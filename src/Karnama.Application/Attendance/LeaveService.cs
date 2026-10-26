@@ -78,6 +78,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         var created = LeaveRequest.Create(forUser, type, r.Hourly, r.From, r.To, r.Reason, r.DocumentFileId, Me, byManager, now);
         if (created.IsFailure) return created.Error!;
         db.LeaveRequests.Add(created.Value!);
+        if (created.Value!.Status == LeaveStatus.Approved) await ExcuseCoveredAbsencesAsync(created.Value!, ct);
         audit.Add(byManager ? "leaves.registered" : "leaves.requested", nameof(LeaveRequest), created.Value!.Id.ToString(), new { forUser, type = type.Name, r.From, r.To });
         // Managers see the request live; the worker sees a manager's registration live.
         changes.Record("presence", forUser, null, forUser, null, "leave");
@@ -108,6 +109,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         if (l is null) return Error.NotFound();
         var d = l.Decide(Me, r.Approve, r.Note, clock.GetUtcNow());
         if (d.IsFailure) return d.Error!;
+        if (r.Approve) await ExcuseCoveredAbsencesAsync(l, ct);
         audit.Add(r.Approve ? "leaves.approved" : "leaves.rejected", nameof(LeaveRequest), id.ToString(), new { l.UserId });
         await notifier.NotifyAsync([l.UserId], "leave.decided", r.Approve ? "مرخصی شما تأیید شد" : "مرخصی شما رد شد", r.Note, "/attendance", false, $"leave-d:{l.Id:N}", ct);
         changes.Record("presence", l.UserId, null, l.UserId, null, "leave");
@@ -192,38 +194,60 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
     }
 
     /// <summary>
-    /// Every few minutes: whoever was due (start + grace), has no shift today and no approved leave → "absence detected".
-    /// Also: absences past the reason deadline become unexcused. Idempotent (one absence per person per day).
+    /// Every few minutes: whoever clocks in (attendance.self), was due (start + grace), has no shift today and no
+    /// approved leave → "absence detected"; the person and the approvers are told (PROMPT §6.7.2).
+    /// Also: absences past the reason deadline become unexcused — unless an approved leave covers them.
+    /// Idempotent (one absence per person per day; notifications carry an event key).
     /// </summary>
     public async Task<(int Detected, int Expired)> DetectAsync(CancellationToken ct)
     {
         var now = clock.GetUtcNow();
         var today = Iran.Today(now);
         var s = await settings.GetAsync(ct);
-        var detected = 0;
+        var newlyAbsent = new List<Guid>();
         if (!await db.Holidays.AnyAsync(h => h.Date == today, ct))
         {
             var schedules = await db.WorkSchedules.AsNoTracking().ToListAsync(ct);
             var fallback = schedules.FirstOrDefault(x => x.UserId == null);
-            var staff = await db.Users.AsNoTracking().Where(u => u.Kind == UserKind.Staff && u.IsActive).Select(u => u.Id).ToListAsync(ct);
+            // Only people who clock in themselves: a kiosk tablet or an integration account is never "absent".
+            var staff = await notifier.StaffWithAsync(Permissions.AttendanceSelf, PermissionScope.Own, ct);
             var present = (await db.Shifts.AsNoTracking().Where(x => x.Day == today).Select(x => x.UserId).ToListAsync(ct)).ToHashSet();
             var already = (await db.Absences.AsNoTracking().Where(x => x.Day == today).Select(x => x.UserId).ToListAsync(ct)).ToHashSet();
-            var leaves = await db.LeaveRequests.AsNoTracking().Where(l => l.Status == LeaveStatus.Approved && l.From <= now && l.To > now).Select(l => l.UserId).ToListAsync(ct);
-            foreach (var uid in staff.Where(u => !present.Contains(u) && !already.Contains(u) && !leaves.Contains(u)))
+            var dayStart = Iran.At(today, TimeOnly.MinValue);
+            var leaves = await db.LeaveRequests.AsNoTracking()
+                .Where(l => l.Status == LeaveStatus.Approved && l.From < dayStart.AddDays(1) && l.To > dayStart).ToListAsync(ct);
+            foreach (var uid in staff.Where(u => !present.Contains(u) && !already.Contains(u)))
             {
                 var sched = schedules.FirstOrDefault(x => x.UserId == uid) ?? fallback;
                 if (sched is null || sched.Flexible || sched.For(today) is not { } day) continue;
                 var expected = Iran.At(today, day.Start);
                 if (now < expected.AddMinutes(sched.GraceMinutes) || now > Iran.At(today, day.End)) continue;
+                if (leaves.Any(l => l.UserId == uid && (l.Covers(now) || l.Covers(expected)))) continue;
                 db.Absences.Add(Absence.Detect(uid, today, expected, now, s.AbsenceReasonHours));
                 await notifier.NotifyAsync([uid], "absence.detected", "ورود امروز ثبت نشد", $"اگر مشکلی پیش آمده، دلیل را تا {s.AbsenceReasonHours} ساعت بنویسید.", "/attendance", true, $"abs:{uid:N}:{today}", ct);
                 changes.Record("presence", uid, null, uid, null, "absence");
-                detected++;
+                newlyAbsent.Add(uid);
             }
+            if (newlyAbsent.Count > 0) await NotifyApproversOfAbsencesAsync(newlyAbsent, today, now, ct);
         }
         var expired = 0;
-        foreach (var a in await db.Absences.Where(x => x.Status == AbsenceStatus.Detected && x.ReasonDeadline <= now).ToListAsync(ct))
-            if (a.ExpireIfNoReason(now)) { expired++; audit.Add("absences.autoUnexcused", nameof(Absence), a.Id.ToString(), actorOverride: null); }
+        var due = await db.Absences.Where(x => x.Status == AbsenceStatus.Detected && x.ReasonDeadline <= now).ToListAsync(ct);
+        if (due.Count > 0)
+        {
+            var dueUsers = due.Select(a => a.UserId).Distinct().ToList();
+            var minDay = Iran.At(due.Min(a => a.Day), TimeOnly.MinValue);
+            var covering = await db.LeaveRequests.AsNoTracking().Where(l => dueUsers.Contains(l.UserId) && l.Status == LeaveStatus.Approved && l.To > minDay).ToListAsync(ct);
+            foreach (var a in due)
+            {
+                if (covering.FirstOrDefault(l => l.UserId == a.UserId && l.Covers(a.ExpectedAt)) is { } leave)
+                {
+                    if (a.ExcuseByLeave(leave.DecidedBy, "مرخصی تأییدشده این روز را پوشش می‌دهد."))
+                        audit.Add("absences.excusedByLeave", nameof(Absence), a.Id.ToString(), new { leave = leave.Id }, actorOverride: null);
+                    continue;
+                }
+                if (a.ExpireIfNoReason(now)) { expired++; audit.Add("absences.autoUnexcused", nameof(Absence), a.Id.ToString(), actorOverride: null); }
+            }
+        }
         try
         {
             await db.SaveChangesAsync(ct);
@@ -231,7 +255,48 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         catch (ConcurrencyConflictException) { /* another worker detected the same day: unique index; next run is clean */ }
         catch (DbUpdateException) { }
         await changes.PublishAsync(ct);
-        return (detected, expired);
+        return (newlyAbsent.Count, expired);
+    }
+
+    /// <summary>
+    /// One notice per detection run to everyone who approves attendance (a whole team missing at 09:10 is one message,
+    /// not dozens). It names the people (never the reader themself); the absence list in the panel has the details.
+    /// </summary>
+    private async Task NotifyApproversOfAbsencesAsync(List<Guid> absent, DateOnly today, DateTimeOffset now, CancellationToken ct)
+    {
+        var names = await NamesAsync(absent, ct);
+        foreach (var approver in await notifier.StaffWithAsync(Permissions.AttendanceApprove, PermissionScope.All, ct))
+        {
+            var others = absent.Where(u => u != approver).Select(u => names.GetValueOrDefault(u) ?? "—").OrderBy(n => n, StringComparer.Ordinal).ToList();
+            if (others.Count == 0) continue;
+            const int maxBody = 900;
+            var body = "";
+            var shown = 0;
+            foreach (var n in others)
+            {
+                var next = shown == 0 ? n : $"{body}، {n}";
+                if (next.Length > maxBody) break;
+                body = next;
+                shown++;
+            }
+            if (shown < others.Count) body += $" و {others.Count - shown} نفر دیگر";
+            var title = others.Count == 1 ? $"غیبت: {others[0]}" : $"غیبت: {others.Count} نفر ورود نزده‌اند";
+            await notifier.NotifyAsync([approver], "absence.team", title, body, "/attendance/live", false, $"abs-team:{today}:{now.ToUnixTimeSeconds()}", ct);
+        }
+    }
+
+    /// <summary>An approved leave or mission resolves the absences it covers (PROMPT §6.7.5: registered after a phone call).</summary>
+    private async Task ExcuseCoveredAbsencesAsync(LeaveRequest l, CancellationToken ct)
+    {
+        var fromDay = Iran.Today(l.From).AddDays(-1);
+        var toDay = Iran.Today(l.To);
+        var absences = await db.Absences.Where(a => a.UserId == l.UserId && a.Day >= fromDay && a.Day <= toDay).ToListAsync(ct);
+        foreach (var a in absences.Where(a => l.Covers(a.ExpectedAt)))
+            if (a.ExcuseByLeave(Me, "مرخصی تأییدشده این روز را پوشش می‌دهد."))
+            {
+                audit.Add("absences.excusedByLeave", nameof(Absence), a.Id.ToString(), new { leave = l.Id });
+                changes.Record("presence", a.UserId, null, a.UserId, null, "absence");
+            }
     }
 
     // ---------------- calendar & report ----------------
@@ -285,7 +350,9 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
             var sh = shifts.Where(s => s.UserId == u.Id).ToList();
             var lv = leaves.Where(l => l.UserId == u.Id).ToList();
             var ab = absences.Where(a => a.UserId == u.Id).ToList();
-            return new MonthReportRowDto(u.Id, u.DisplayName, sh.Sum(s => s.WorkedMinutes(now)), sh.Sum(s => s.LateMinutes) + ab.Sum(a => a.LateMinutes),
+            // An absence that turned into a late arrival carries the same minutes as that day's shift: count them once
+            // (the shift's, which a correction may have changed). Absence minutes count only for a day with no shift.
+            return new MonthReportRowDto(u.Id, u.DisplayName, sh.Sum(s => s.WorkedMinutes(now)), sh.Sum(s => s.LateMinutes) + ab.Where(a => sh.All(s => s.Day != a.Day)).Sum(a => a.LateMinutes),
                 sh.Count(s => s.LateMinutes > 0), sh.Sum(s => s.EarlyLeaveMinutes),
                 lv.Where(l => types.GetValueOrDefault(l.LeaveTypeId)?.Paid == true).Sum(l => LeaveMinutes(l, dayMinutes)),
                 lv.Where(l => types.GetValueOrDefault(l.LeaveTypeId)?.Paid != true).Sum(l => LeaveMinutes(l, dayMinutes)),

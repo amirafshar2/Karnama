@@ -19,7 +19,7 @@ public sealed record AttendanceSetupDto(AttendanceSettingsDto Settings, IReadOnl
 
 /// <summary>Managers: live presence board, shifts and review, corrections, and the setup (schedules, rules, places, holidays).</summary>
 public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IRequestContext request, AttendanceSettingsStore store, IAuditWriter audit,
-    TimeProvider clock, IChangeFeed changes)
+    TimeProvider clock, IChangeFeed changes, Notify.Notifier notifier)
 {
     private Guid Me => me.UserId ?? Guid.Empty;
     private bool SeesAll => me.Has(Permissions.AttendanceView, PermissionScope.All);
@@ -110,7 +110,11 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         return rows.Select(c => new CorrectionDto(c.Id, c.UserId, names.GetValueOrDefault(c.UserId) ?? "—", c.Day, c.ClockIn, c.ClockOut, c.Reason, c.Status, c.DecisionNote, c.CreatedAt)).ToList();
     }
 
-    /// <summary>Approving appends a correction event and updates (or creates) the shift; nothing is deleted.</summary>
+    /// <summary>
+    /// Approving appends a correction event and updates (or creates) the shift; nothing is deleted. Lateness and early
+    /// leave are recomputed from the schedule for the corrected times. A shift the correction creates or closes also
+    /// gets its clock-in / clock-out events (actor = the approver), so hours always match the event log.
+    /// </summary>
     public async Task<Result<CorrectionDto>> DecideAsync(Guid id, DecisionRequest r, CancellationToken ct)
     {
         if (!me.Has(Permissions.AttendanceCorrect, PermissionScope.All)) return Error.Forbidden();
@@ -126,13 +130,34 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
             if (shift is null)
             {
                 if (c.ClockIn is not { } inAt) return Error.Validation("corrections.needIn", "برای روزی که ورود ندارد، ساعت ورود لازم است.");
+                // Without a clock-out the new shift would stay open: never a second open shift next to the current one.
+                if (c.ClockOut is null && await db.Shifts.AnyAsync(s => s.UserId == c.UserId && s.Status == ShiftStatus.Open, ct))
+                    return Error.Conflict("corrections.openShift",
+                        "این همکار الان شیفت باز دارد؛ برای روزی که شیفت ندارد، ساعت خروج را هم در درخواست اصلاح بخواهید یا بعد از خروج او تأیید کنید.");
                 shift = Shift.Open(c.UserId, c.Day, inAt, [new MethodResult("ManagerApproval", true, "اصلاح تأییدشده")], Trust.Green, false, null, false, 0);
                 db.Shifts.Add(shift);
             }
-            var applied = shift.Correct(c.ClockIn, c.ClockOut);
+            var sched = await ScheduleForAsync(c.UserId, ct);
+            var applied = shift.Correct(c.ClockIn, c.ClockOut,
+                c.ClockIn is { } ci ? AttendanceService.LateMinutes(sched, shift.Day, ci) : null,
+                c.ClockOut is { } co ? AttendanceService.EarlyLeaveMinutes(sched, shift.Day, co) : null);
             if (applied.IsFailure) return applied.Error!;
-            db.AttendanceEvents.Add(new AttendanceEvent(c.UserId, shift.Id, AttendanceEventKind.Correction, now, now, null, $"corr-{c.Id:N}",
-                System.Text.Json.JsonSerializer.Serialize(new { c.ClockIn, c.ClockOut }), Trust.Green, c.Reason, Me));
+            if (c.ClockIn is { } corrected)
+                foreach (var absence in await db.Absences.Where(a => a.UserId == c.UserId && a.Day == shift.Day).ToListAsync(ct))
+                {
+                    absence.BecomeLate(corrected);   // a whole missed day was in fact worked (late, if after the grace)
+                    absence.RecomputeLate(corrected);
+                }
+
+            var json = System.Text.Json.JsonSerializer.Serialize(new { c.ClockIn, c.ClockOut });
+            db.AttendanceEvents.Add(new AttendanceEvent(c.UserId, shift.Id, AttendanceEventKind.Correction, now, now, null, $"corr-{c.Id:N}", json, Trust.Green, c.Reason, Me));
+            var kinds = await db.AttendanceEvents.AsNoTracking().Where(e => e.ShiftId == shift.Id).Select(e => e.Kind).ToListAsync(ct);
+            if (!kinds.Contains(AttendanceEventKind.ClockIn))
+                db.AttendanceEvents.Add(new AttendanceEvent(c.UserId, shift.Id, AttendanceEventKind.ClockIn, shift.ClockInAt, now, null, $"corr-in-{c.Id:N}", json, Trust.Green,
+                    "اصلاح تأییدشده", Me));
+            if (shift.Status == ShiftStatus.Closed && !kinds.Contains(AttendanceEventKind.ClockOut))
+                db.AttendanceEvents.Add(new AttendanceEvent(c.UserId, shift.Id, AttendanceEventKind.ClockOut, shift.ClockOutAt!.Value, now, null, $"corr-out-{c.Id:N}", json,
+                    Trust.Green, "اصلاح تأییدشده", Me));
         }
         audit.Add(r.Approve ? "attendance.correctionApproved" : "attendance.correctionRejected", nameof(AttendanceCorrection), id.ToString(), new { c.UserId, c.Day });
         changes.Record("presence", c.UserId, null, c.UserId, null, "correction");
@@ -140,6 +165,10 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         await changes.PublishAsync(ct);
         return await CorrectionDtoAsync(c, ct);
     }
+
+    private async Task<WorkSchedule?> ScheduleForAsync(Guid userId, CancellationToken ct) =>
+        await db.WorkSchedules.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == userId, ct)
+        ?? await db.WorkSchedules.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == null, ct);
 
     private async Task<CorrectionDto> CorrectionDtoAsync(AttendanceCorrection c, CancellationToken ct)
     {
@@ -270,7 +299,11 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
     }
 
     // ---- background job ----
-    /// <summary>Closes shifts left open past the scheduled end + N hours, at the scheduled end, marked for review.</summary>
+    /// <summary>
+    /// A shift still open at the scheduled end + N hours (PROMPT §6.6 "forgotten"): the worker and the approvers are
+    /// warned once, and the shift is closed at the scheduled end, marked for review (never a guessed time). The close is
+    /// a system clock-out event (no actor) so the hours stay backed by the event log.
+    /// </summary>
     public async Task<int> CloseForgottenAsync(CancellationToken ct)
     {
         var now = clock.GetUtcNow();
@@ -278,21 +311,41 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         var open = await db.Shifts.Where(x => x.Status == ShiftStatus.Open).ToListAsync(ct);
         var schedules = await db.WorkSchedules.AsNoTracking().ToListAsync(ct);
         var fallback = schedules.FirstOrDefault(x => x.UserId == null);
-        var closed = 0;
+        var due = new List<(Shift Shift, DateTimeOffset End)>();
         foreach (var shift in open)
         {
             var day = (schedules.FirstOrDefault(x => x.UserId == shift.UserId) ?? fallback)?.For(shift.Day);
             var end = day is null ? shift.ClockInAt.AddHours(8) : Iran.At(shift.Day, day.End);
             if (end < shift.ClockInAt) end = shift.ClockInAt;
-            if (now < end.AddHours(s.ForgottenAfterHours)) continue;
+            if (now >= end.AddHours(s.ForgottenAfterHours)) due.Add((shift, end));
+        }
+        if (due.Count == 0) return 0;
+
+        var userIds = due.Select(x => x.Shift.UserId).Distinct().ToList();
+        var names = await db.Users.IgnoreQueryFilters().AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        var approvers = await notifier.StaffWithAsync(Permissions.AttendanceApprove, PermissionScope.All, ct);
+        foreach (var (shift, end) in due)
+        {
             shift.AutoClose(end);
+            const string note = "خروج ثبت نشد؛ سیستم شیفت را در پایان برنامه بست.";
+            db.AttendanceEvents.Add(new AttendanceEvent(shift.UserId, shift.Id, AttendanceEventKind.ClockOut, shift.ClockOutAt!.Value, now, null, $"auto-out-{shift.Id:N}",
+                "[]", Trust.Yellow, note, null));
             foreach (var t in await db.WorkTimers.Where(t => t.UserId == shift.UserId && t.StoppedAt == null).ToListAsync(ct)) t.Stop(end);
+
+            var at = Iran.Local(end).ToString("HH:mm");
+            var name = names.GetValueOrDefault(shift.UserId) ?? "—";
+            await notifier.NotifyAsync([shift.UserId], "attendance.forgotten", "خروج شما ثبت نشد",
+                $"شیفت شما ساعت {at} (پایان برنامه) بسته شد و نیازمند بررسی است. ساعت واقعی خروج را با «درخواست اصلاح» ثبت کنید.", "/attendance", true,
+                $"forgot:{shift.Id:N}", ct);
+            await notifier.NotifyAsync(approvers.Where(u => u != shift.UserId), "attendance.forgotten", $"خروج ثبت نشد: {name}",
+                $"شیفت {name} تا {s.ForgottenAfterHours} ساعت بعد از پایان برنامه باز ماند؛ سیستم آن را ساعت {at} بست و نیازمند بررسی است.", "/attendance/live", false,
+                $"forgot:{shift.Id:N}", ct);
+
             audit.Add("attendance.autoClosed", nameof(Shift), shift.Id.ToString(), actorOverride: null);
             changes.Record("presence", shift.UserId, null, shift.UserId, null, "autoClosed");
-            closed++;
         }
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
-        return closed;
+        return due.Count;
     }
 }

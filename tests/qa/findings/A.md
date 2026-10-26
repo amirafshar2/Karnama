@@ -118,3 +118,22 @@ Last report: `tests/qa/reports/run-2026-10-26T10-33-14-073Z.json`.
 - **O1 (2.7.k).** A self-request for leave wholly in the past (`from = today-7`) is accepted as `pending`, and nothing refuses back-dated requests (`LeaveRequest.Create`). §6.7.1 calls it «درخواست از قبل», and after-the-fact absences have their own reason flow (§6.7.3). Decide whether past requests should be refused or sent to the absence flow.
 - **O2.** A daily leave counts calendar days (`LeaveService.LeaveMinutes`). A Wed→Sat leave uses 3 days although Friday is off. Official holidays from the `Holiday` table inside the range are counted too. Confirm the rule with the customer.
 - **O3.** The kiosk code is single use per displayed value. Two people scanning the same on-screen code a second apart makes the second one red «QR تکراری» (a fraud flag on an honest worker). Consider a softer flag, or refreshing the kiosk display on the `kiosk_code_uses` change feed.
+
+## After fixes (B1–B7)
+
+Two fresh runs (`bash tests/qa/qa-api.sh 5091 karnama_qa_a`, Release build, then `node tests/qa/run.mjs S01 S07 S09`): **59/59 steps pass both times, every invariant green** (including `hours-match-events`), and the API log has no 500. No scenario needed changing. Last report: `tests/qa/reports/run-2026-10-26T11-02-58-388Z.json`.
+
+| bug | fix | where |
+|---|---|---|
+| B1 | The report counts absence lateness only for a day with no shift. A became-late absence carries the same minutes as that day's shift. The Excel export reads the same rows. | `LeaveService.ReportAsync` |
+| B2 | Absence detection sends the approvers (`attendance.approve`) one `absence.team` notice per run that names the people (a whole team missing is one message). A forgotten clock-out sends `attendance.forgotten` to the worker (important) and to the approvers, naming the worker. Event key `forgot:{shiftId}`, so it is sent once. | `LeaveService.DetectAsync`, `AttendanceAdminService.CloseForgottenAsync` |
+| B3 | An approved leave or mission (manager decision, or registered by a manager) excuses the open absences it covers, and an automatic «غیرموجه» too. A manager's own decision stays. The expiry step excuses a covered absence and does not mark it unexcused. Detection also skips a leave that covers the expected start. | `LeaveService.RequestAsync/DecideAsync/DetectAsync`, `Absence.ExcuseByLeave` |
+| B4 | `DbUpdateException` + `PostgresException 23505` → 409 ProblemDetails (`errors.duplicate`). Clock-in/out/break save handles a race: a loser with the same idempotency key gets the winner's result (replay, 200), and any other loser gets the normal 409. A correction that would open a second shift → 409 `corrections.openShift` (the correction stays pending). | `GlobalExceptionHandler`, `AttendanceService.SaveOrReplayAsync`, `AttendanceAdminService.DecideAsync` |
+| B5 | An approved correction recomputes `LateMinutes` (new clock-in) and `EarlyLeaveMinutes` (new clock-out) from the schedule. A became-late absence gets the corrected minutes too. | `Shift.Correct`, `AttendanceAdminService.DecideAsync` |
+| B6 | Detection considers only active staff holding `attendance.self`. The kiosk tablet is never absent. | `LeaveService.DetectAsync` |
+| B7 | An auto-closed shift gets a system `ClockOut` event (actor null, key `auto-out-{shiftId}`). A shift created or closed by a correction gets `ClockIn`/`ClockOut` events (actor = approver, keys `corr-in-/corr-out-{correctionId}`), next to the `Correction` event. | `AttendanceAdminService` |
+
+Timing note (§6.6): the warning and the close happen in the same job run, at scheduled end + X hours. The shift is closed at the scheduled end, as before. PROMPT says "warn, then close at the end of the day". The scenario (2.9.g) expects the close at end + X, so that timing was kept.
+
+Integration tests: `tests/Karnama.IntegrationTests/AttendanceRulesTests.cs` (3 tests; its fixture checks JWTs against the fake clock so the test can move through a whole day).
+Suites: unit tests 81/81 pass. Integration tests 101/103 pass. The 2 failures are in `DeviceTests` (`FreshPersonAsync` deletes `attendance_events` → «attendance_events is append-only»). They come from the demo history events added in 542ac77, not from these fixes.

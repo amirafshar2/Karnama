@@ -145,7 +145,9 @@ public sealed class CapturingBotGateway : Karnama.Application.Abstractions.IBotG
         Task.FromResult<byte[]?>([0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46, 0x49, 0x46]);
 }
 
-public class KarnamaFactory(string connectionString, bool demoLogin = true, string seedMode = "Demo", string environment = "Development")
+/// <param name="tokensOnFakeClock">Check JWT lifetimes against <see cref="Clock"/> (tokens are issued on it), so a test can move
+/// the clock by hours or days and keep calling the API with freshly issued tokens.</param>
+public class KarnamaFactory(string connectionString, bool demoLogin = true, string seedMode = "Demo", string environment = "Development", bool tokensOnFakeClock = false)
     : WebApplicationFactory<Program>
 {
     public const string SetupToken = "test-setup-token-123456";
@@ -195,6 +197,14 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
             s.AddSingleton<ISmsSender>(Sms);
             s.RemoveAll<TimeProvider>();
             s.AddSingleton<TimeProvider>(Clock);
+            if (tokensOnFakeClock)
+                s.PostConfigure<Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerOptions>(
+                    Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, o =>
+                        o.TokenValidationParameters.LifetimeValidator = (notBefore, expires, _, p) =>
+                        {
+                            var now = Clock.GetUtcNow().UtcDateTime;
+                            return (notBefore is null || notBefore <= now + p.ClockSkew) && (expires is null || expires >= now - p.ClockSkew);
+                        });
         });
     }
 }
@@ -224,7 +234,7 @@ public static class Http
 }
 
 /// <summary>One database + one running app per test class (xUnit creates a new class instance per test).</summary>
-public class AppFixture(bool demoLogin = true, string seedMode = "Demo") : IAsyncLifetime
+public class AppFixture(bool demoLogin = true, string seedMode = "Demo", bool tokensOnFakeClock = false) : IAsyncLifetime
 {
     public const string OwnerPhone = "09121112233";
     public PostgresFixture Pg { get; } = new();
@@ -233,7 +243,7 @@ public class AppFixture(bool demoLogin = true, string seedMode = "Demo") : IAsyn
     public virtual async Task InitializeAsync()
     {
         await Pg.InitializeAsync();
-        Factory = new KarnamaFactory(Pg.ConnectionString, demoLogin, seedMode);
+        Factory = new KarnamaFactory(Pg.ConnectionString, demoLogin, seedMode, tokensOnFakeClock: tokensOnFakeClock);
         _ = Factory.Server;
     }
 
@@ -244,8 +254,12 @@ public class AppFixture(bool demoLogin = true, string seedMode = "Demo") : IAsyn
     }
 }
 
-public sealed class DemoAppFixture : AppFixture
+public class DemoAppFixture : AppFixture
 {
+    public DemoAppFixture() : this(false) { }
+    protected DemoAppFixture(bool tokensOnFakeClock) : base(tokensOnFakeClock: tokensOnFakeClock) { }
+
+
     /// <summary>Setup is refused in demo installs, so the test owner is written straight to the database.</summary>
     public override async Task InitializeAsync()
     {
@@ -259,5 +273,8 @@ public sealed class DemoAppFixture : AppFixture
         await db.SaveChangesAsync();
     }
 }
+
+/// <summary>Demo install whose tokens are checked against the fake clock (for tests that move time by hours or days).</summary>
+public sealed class FakeClockDemoAppFixture() : DemoAppFixture(tokensOnFakeClock: true);
 
 public sealed class EmptyAppFixture() : AppFixture(demoLogin: false, seedMode: "Empty");

@@ -161,6 +161,28 @@ public sealed class Absence : Entity
         return Result.Success();
     }
 
+    /// <summary>The corrected clock-in of a late arrival changes its minutes too.</summary>
+    public void RecomputeLate(DateTimeOffset clockIn)
+    {
+        if (Status == AbsenceStatus.BecameLate) LateMinutes = Math.Max(0, (int)(clockIn - ExpectedAt).TotalMinutes);
+    }
+
+    /// <summary>
+    /// An approved leave or mission covers this day (e.g. registered by a manager after a phone call): the absence is excused.
+    /// Open absences and automatic "unexcused" ones are resolved; a manager's own decision is left alone.
+    /// </summary>
+    public bool ExcuseByLeave(Guid? by, string note)
+    {
+        var open = Status is AbsenceStatus.Detected or AbsenceStatus.ReasonSubmitted;
+        var autoUnexcused = Status == AbsenceStatus.Unexcused && AutoDecided;
+        if (!open && !autoUnexcused) return false;
+        Status = AbsenceStatus.Excused;
+        DecidedBy = by;
+        DecisionNote = note;
+        AutoDecided = true;
+        return true;
+    }
+
     public bool ExpireIfNoReason(DateTimeOffset now)
     {
         if (Status != AbsenceStatus.Detected || now < ReasonDeadline) return false;

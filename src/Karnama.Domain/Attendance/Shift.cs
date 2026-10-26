@@ -102,14 +102,24 @@ public sealed class Shift : Entity
         if (!accept) Trust = Trust.Red;
     }
 
-    /// <summary>Applies an approved correction (the original times stay in the event log).</summary>
-    public Result Correct(DateTimeOffset? clockIn, DateTimeOffset? clockOut)
+    /// <summary>
+    /// Applies an approved correction (the original times stay in the event log). Lateness and early leave are
+    /// recomputed by the caller from the schedule for the corrected times; null keeps the stored value.
+    /// </summary>
+    public Result Correct(DateTimeOffset? clockIn, DateTimeOffset? clockOut, int? lateMinutes = null, int? earlyLeaveMinutes = null)
     {
         var inAt = clockIn ?? ClockInAt;
         var outAt = clockOut ?? ClockOutAt;
         if (outAt is { } o && o <= inAt) return Error.Validation("attendance.order", "زمان خروج باید بعد از ورود باشد.");
         ClockInAt = inAt;
-        if (outAt is not null) { ClockOutAt = outAt; Status = ShiftStatus.Closed; }
+        if (outAt is not null)
+        {
+            if (OnBreak) EndBreak(outAt.Value);
+            ClockOutAt = outAt;
+            Status = ShiftStatus.Closed;
+        }
+        if (lateMinutes is { } late) LateMinutes = Math.Max(0, late);
+        if (earlyLeaveMinutes is { } early) EarlyLeaveMinutes = Math.Max(0, early);
         NeedsReview = false;
         return Result.Success();
     }

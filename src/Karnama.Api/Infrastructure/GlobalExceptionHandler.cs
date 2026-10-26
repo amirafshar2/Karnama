@@ -1,5 +1,7 @@
 using Karnama.Application.Common;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Karnama.Api.Infrastructure;
 
@@ -19,6 +21,14 @@ internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> log
                 status = StatusCodes.Status409Conflict;
                 title = exception.Message;
                 code = "errors.concurrency";
+                break;
+            // A unique index refused a racing duplicate (double tap, two devices, two managers at once): the data is
+            // safe, so this is a conflict for the caller to refresh — never a server error.
+            case DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } pg }:
+                logger.LogInformation("Unique index {Constraint} refused a duplicate (trace {TraceId})", pg.ConstraintName, traceId);
+                status = StatusCodes.Status409Conflict;
+                title = "این مورد هم‌زمان ثبت شده یا تکراری است. صفحه را تازه کنید و دوباره امتحان کنید.";
+                code = "errors.duplicate";
                 break;
             case BadHttpRequestException bad:
                 status = bad.StatusCode;
