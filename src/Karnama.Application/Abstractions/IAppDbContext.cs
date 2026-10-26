@@ -68,6 +68,10 @@ public interface IAppDbContext
     DbSet<Karnama.Domain.Assets.AssetEvent> AssetEvents { get; }
     DbSet<Karnama.Domain.Assets.AssetPhoto> AssetPhotos { get; }
     DbSet<Karnama.Domain.Content.HelpArticle> HelpArticles { get; }
+    DbSet<BiometricDevice> BiometricDevices { get; }
+    DbSet<DevicePin> DevicePins { get; }
+    DbSet<DevicePunch> DevicePunches { get; }
+    DbSet<Karnama.Domain.Cctv.Camera> Cameras { get; }
     DbSet<ClientCredential> ClientCredentials { get; }
     DbSet<Karnama.Domain.Media.MediaAsset> MediaAssets { get; }
     DbSet<Karnama.Domain.Chat.Conversation> Conversations { get; }

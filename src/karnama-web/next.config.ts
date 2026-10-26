@@ -7,6 +7,8 @@ const isMobile = process.env.BUILD_TARGET === "mobile";
 
 const api = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5080";
 const hub = process.env.NEXT_PUBLIC_HUB_BASE ?? api;
+// N11: live camera video (WebRTC/WHEP) is served from the CCTV subdomain through our reverse proxy.
+const cctv = process.env.NEXT_PUBLIC_CCTV_BASE ?? "";
 const ws = (u: string) => u.replace(/^http/, "ws");
 
 // Static pages carry Next's inline bootstrap scripts, so script-src needs 'unsafe-inline' (nonces need
@@ -19,7 +21,7 @@ const csp = [
   "font-src 'self'",
   // Chat voice messages and private previews play from blob: URLs.
   "media-src 'self' blob:",
-  `connect-src 'self' ${api} ${hub} ${ws(hub)}`,
+  `connect-src 'self' ${api} ${hub} ${ws(hub)}${cctv ? " " + cctv : ""}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

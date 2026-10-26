@@ -77,6 +77,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Karnama.Domain.Assets.AssetEvent> AssetEvents => Set<Karnama.Domain.Assets.AssetEvent>();
     public DbSet<Karnama.Domain.Assets.AssetPhoto> AssetPhotos => Set<Karnama.Domain.Assets.AssetPhoto>();
     public DbSet<Karnama.Domain.Content.HelpArticle> HelpArticles => Set<Karnama.Domain.Content.HelpArticle>();
+    public DbSet<Karnama.Domain.Attendance.BiometricDevice> BiometricDevices => Set<Karnama.Domain.Attendance.BiometricDevice>();
+    public DbSet<Karnama.Domain.Attendance.DevicePin> DevicePins => Set<Karnama.Domain.Attendance.DevicePin>();
+    public DbSet<Karnama.Domain.Attendance.DevicePunch> DevicePunches => Set<Karnama.Domain.Attendance.DevicePunch>();
+    public DbSet<Karnama.Domain.Cctv.Camera> Cameras => Set<Karnama.Domain.Cctv.Camera>();
     public DbSet<ClientCredential> ClientCredentials => Set<ClientCredential>();
     public DbSet<Karnama.Domain.Media.MediaAsset> MediaAssets => Set<Karnama.Domain.Media.MediaAsset>();
     public DbSet<Karnama.Domain.Chat.Conversation> Conversations => Set<Karnama.Domain.Chat.Conversation>();

@@ -47,13 +47,27 @@ public sealed class AttendanceJobs(Karnama.Application.Attendance.AttendanceAdmi
 
 /// <summary>Publishing reminders (M6) and package expiry notices (7/3/1 days).</summary>
 public sealed class NotifyJobs(Karnama.Application.Publishing.PublishService publish, Karnama.Application.Notify.PackageExpiryJob expiry,
-    Karnama.Application.Blog.BlogService blog, Karnama.Application.Crm.CrmService crm, Karnama.Application.Assets.AssetService assets, ILogger<NotifyJobs> logger)
+    Karnama.Application.Blog.BlogService blog, Karnama.Application.Crm.CrmService crm, Karnama.Application.Assets.AssetService assets, Karnama.Application.Attendance.DeviceService devices, Karnama.Application.Cctv.CctvService cctv, ILogger<NotifyJobs> logger)
 {
     [AutomaticRetry(Attempts = 1)]
     public async Task CrmFollowUpsAsync(CancellationToken ct)
     {
         var n = await crm.RemindFollowUpsAsync(ct);
         if (n > 0) logger.LogInformation("Reminded {Count} CRM follow-ups", n);
+    }
+
+    [AutomaticRetry(Attempts = 0)]
+    public async Task CctvHealthAsync(CancellationToken ct)
+    {
+        var n = await cctv.HealthAsync(ct);
+        if (n > 0) logger.LogWarning("{Count} cameras went offline", n);
+    }
+
+    [AutomaticRetry(Attempts = 1)]
+    public async Task DeviceHealthAsync(CancellationToken ct)
+    {
+        var n = await devices.HealthAsync(ct);
+        if (n > 0) logger.LogWarning("{Count} attendance devices went silent", n);
     }
 
     [AutomaticRetry(Attempts = 3)]
@@ -101,6 +115,8 @@ internal sealed class JobRegistrar(IRecurringJobManager jobs) : IHostedService
         jobs.AddOrUpdate<NotifyJobs>("blog-schedule", j => j.BlogScheduleAsync(CancellationToken.None), Cron.Minutely());
         jobs.AddOrUpdate<NotifyJobs>("crm-follow-ups", j => j.CrmFollowUpsAsync(CancellationToken.None), "*/5 * * * *");
         jobs.AddOrUpdate<NotifyJobs>("publish-tick", j => j.PublishTickAsync(CancellationToken.None), Cron.Minutely());
+        jobs.AddOrUpdate<NotifyJobs>("cctv-health", j => j.CctvHealthAsync(CancellationToken.None), Cron.Minutely());
+        jobs.AddOrUpdate<NotifyJobs>("device-health", j => j.DeviceHealthAsync(CancellationToken.None), "*/10 * * * *");
         jobs.AddOrUpdate<NotifyJobs>("asset-alerts", j => j.AssetAlertsAsync(CancellationToken.None), "0 9 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran") });
         jobs.AddOrUpdate<NotifyJobs>("package-expiry", j => j.PackageExpiryAsync(CancellationToken.None), "30 5 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran") });
         return Task.CompletedTask;

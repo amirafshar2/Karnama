@@ -2506,3 +2506,155 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE TABLE biometric_devices (
+        "Id" uuid NOT NULL,
+        "Name" character varying(60) NOT NULL,
+        "Serial" character varying(40) NOT NULL,
+        "Kind" integer NOT NULL,
+        "Mode" integer NOT NULL,
+        "Location" character varying(80),
+        "AllowedIps" jsonb NOT NULL,
+        "IsActive" boolean NOT NULL,
+        "LastSeenAt" timestamp with time zone,
+        "LastIp" character varying(45),
+        "AttStamp" bigint NOT NULL,
+        "ClockSkewSeconds" integer,
+        "SkewWarnedAt" timestamp with time zone,
+        "OfflineWarnedAt" timestamp with time zone,
+        "PendingCommands" jsonb NOT NULL,
+        "NextCommandId" integer NOT NULL,
+        CONSTRAINT "PK_biometric_devices" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE TABLE device_pins (
+        "Id" uuid NOT NULL,
+        "Pin" character varying(9) NOT NULL,
+        "UserId" uuid NOT NULL,
+        CONSTRAINT "PK_device_pins" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE TABLE device_punches (
+        "Id" bigint GENERATED ALWAYS AS IDENTITY,
+        "DeviceId" uuid NOT NULL,
+        "Pin" character varying(9) NOT NULL,
+        "At" timestamp with time zone NOT NULL,
+        "Status" integer NOT NULL,
+        "ReceivedAt" timestamp with time zone NOT NULL,
+        "UserId" uuid,
+        "Outcome" integer NOT NULL,
+        "Note" character varying(200),
+        CONSTRAINT "PK_device_punches" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_device_punches_biometric_devices_DeviceId" FOREIGN KEY ("DeviceId") REFERENCES biometric_devices ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE UNIQUE INDEX "IX_biometric_devices_Serial" ON biometric_devices ("Serial");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE UNIQUE INDEX "IX_device_pins_Pin" ON device_pins ("Pin");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE UNIQUE INDEX "IX_device_pins_UserId" ON device_pins ("UserId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE INDEX "IX_device_punches_At" ON device_punches ("At");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE UNIQUE INDEX "IX_device_punches_DeviceId_Pin_At" ON device_punches ("DeviceId", "Pin", "At");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    CREATE INDEX "IX_device_punches_Outcome_At" ON device_punches ("Outcome", "At");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026030115_N2Devices') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261026030115_N2Devices', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026031244_N11Cctv') THEN
+    CREATE TABLE cameras (
+        "Id" uuid NOT NULL,
+        "Name" character varying(60) NOT NULL,
+        "Location" character varying(80),
+        "Path" character varying(40) NOT NULL,
+        "MainCipher" bytea NOT NULL,
+        "MainKey" bytea NOT NULL,
+        "SubCipher" bytea,
+        "SubKey" bytea,
+        "KeyVersion" integer NOT NULL,
+        "MainMasked" character varying(500) NOT NULL,
+        "SubMasked" character varying(500),
+        "SortOrder" integer NOT NULL,
+        "IsActive" boolean NOT NULL,
+        "Online" boolean NOT NULL,
+        "LastOnlineAt" timestamp with time zone,
+        "OfflineWarnedAt" timestamp with time zone,
+        CONSTRAINT "PK_cameras" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026031244_N11Cctv') THEN
+    CREATE UNIQUE INDEX "IX_cameras_Path" ON cameras ("Path");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026031244_N11Cctv') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261026031244_N11Cctv', '10.0.13');
+    END IF;
+END $EF$;
+COMMIT;
+

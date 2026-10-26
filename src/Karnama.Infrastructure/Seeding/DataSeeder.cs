@@ -49,6 +49,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             await DemoCrmSeed.SeedAsync(db, ct);
             await DemoHistorySeed.SeedAsync(db, ct);
             await DemoAssetSeed.SeedAsync(db, ct);
+            await DemoDeviceSeed.SeedAsync(db, ct);
             await SyncDemoAdminAsync(ct);
         }
         logger.LogInformation("Seed completed (mode: {Mode})", options.Value.Mode);
@@ -190,7 +191,8 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             var manager = grants.Any(g => g.Code == Permissions.WorkAssign);
             PermissionGrant[] wanted = manager
                 ? [new(Permissions.ChatGroupsManage, PermissionScope.All), new(Permissions.ScoresView, PermissionScope.All),
-                   new(Permissions.AssetsView, PermissionScope.All), new(Permissions.AssetsManage, PermissionScope.All), new(Permissions.AssetsAssign, PermissionScope.All)]
+                   new(Permissions.AssetsView, PermissionScope.All), new(Permissions.AssetsManage, PermissionScope.All), new(Permissions.AssetsAssign, PermissionScope.All),
+                   new(Permissions.DevicesManage, PermissionScope.All)]
                 : [new(Permissions.ChatUse, PermissionScope.Own), new(Permissions.ScoresView, PermissionScope.Own), new(Permissions.AssetsView, PermissionScope.Own)];
             var missing = wanted.Where(w => grants.All(g => g.Code != w.Code) && !(w.Code == Permissions.ChatUse && grants.Any(g => g.Code == Permissions.ChatGroupsManage))).ToList();
             if (missing.Count == 0) continue;

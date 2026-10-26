@@ -1,0 +1,36 @@
+# MediaMTX on the office mini-PC / Raspberry Pi (N11). Cameras are added by Karnama through the API (never by hand),
+# so this file only sets security and the network. Replace every <...> value; keep the file readable only by root.
+logLevel: warn
+
+# Every read, publish and API call is checked by Karnama (viewer tokens, our own internal account).
+authMethod: http
+authHTTPAddress: http://10.66.0.1:8081/api/v1/cctv/media-auth
+authHTTPExclude: []
+
+# Control API and RTSP: only on the tunnel address, never on the office LAN or the internet.
+api: yes
+apiAddress: 10.66.0.2:9997
+rtsp: yes
+rtspAddress: 10.66.0.2:8554
+rtspTransports: [tcp]
+rtmp: no
+srt: no
+hls: no
+playback: no
+metrics: no
+pprof: no
+
+# WebRTC: signalling through the tunnel (Caddy on the server proxies /cam-…/whep here); media through the server's
+# UDP/TCP 8189, forwarded down the tunnel (see README) — the office router gets no open port.
+webrtc: yes
+webrtcAddress: 10.66.0.2:8889
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
+webrtcIPsFromInterfaces: no
+webrtcAdditionalHosts: [<SERVER_PUBLIC_IP>]
+
+pathDefaults:
+  # No audio is ever sent to viewers; recording stays on the office NVR.
+  record: no
+
+paths: {}

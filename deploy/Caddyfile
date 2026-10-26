@@ -15,3 +15,44 @@ www.{$SITE_DOMAIN} {
 	}
 	reverse_proxy api:8080
 }
+
+# N2 — attendance devices (ZKTeco ADMS). Many devices can't do HTTPS, so plain HTTP is allowed here, but ONLY /iclock;
+# the API itself accepts a call only from a registered serial number on an allowed office address.
+http://{$DEVICES_DOMAIN}, {$DEVICES_DOMAIN} {
+	@adms path /iclock/*
+	handle @adms {
+		request_body {
+			max_size 512KB
+		}
+		reverse_proxy api:8080
+	}
+	handle {
+		respond 404
+	}
+}
+
+# N11 — live camera video: WebRTC signalling (WHEP) to the office media box through the WireGuard tunnel.
+# The box asks our API whether each viewer's token is valid; nothing else of the box is reachable from outside.
+{$CCTV_DOMAIN} {
+	@whep path_regexp whep ^/cam-[0-9a-f]{12}(-low)?/whep(/.*)?$
+	handle @whep {
+		reverse_proxy {$CCTV_UPSTREAM}
+	}
+	handle {
+		respond 404
+	}
+}
+
+# N11 — the office box's authentication hook, reachable only from the tunnel (10.66.0.0/24).
+:8081 {
+	@hook {
+		path /api/v1/cctv/media-auth
+		remote_ip 10.66.0.0/24
+	}
+	handle @hook {
+		reverse_proxy api:8080
+	}
+	handle {
+		respond 403
+	}
+}

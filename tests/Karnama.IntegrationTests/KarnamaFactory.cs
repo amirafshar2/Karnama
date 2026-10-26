@@ -103,6 +103,26 @@ public sealed class CapturingMessenger : Karnama.Infrastructure.Notify.IMessenge
 }
 
 /// <summary>Stands in for the Telegram gateway / Bale API: records calls; chats listed in <see cref="Blocked"/> answer 403.</summary>
+/// <summary>Stands in for the office media box (MediaMTX): remembers streams, answers with a tiny JPEG.</summary>
+public sealed class FakeMediaServer : Karnama.Application.Abstractions.IMediaServer
+{
+    public ConcurrentDictionary<string, (string Source, bool OnDemand)> Paths { get; } = new();
+    public HashSet<string> Down { get; } = [];
+    public int Snapshots;
+    public bool IsConfigured => true;
+    public Task<bool> UpsertPathAsync(string path, string source, bool onDemand, CancellationToken ct) { Paths[path] = (source, onDemand); return Task.FromResult(true); }
+    public Task<bool> RemovePathAsync(string path, CancellationToken ct) => Task.FromResult(Paths.TryRemove(path, out _));
+    public Task<IReadOnlyDictionary<string, bool>?> ReadyPathsAsync(CancellationToken ct) =>
+        Task.FromResult<IReadOnlyDictionary<string, bool>?>(Paths.Keys.ToDictionary(k => k, k => !Down.Contains(k)));
+    public Task<byte[]?> SnapshotAsync(string path, CancellationToken ct)
+    {
+        Interlocked.Increment(ref Snapshots);
+        return Task.FromResult<byte[]?>(Down.Contains(path) ? null : [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 0xFF, 0xD9]);
+    }
+    public string WhepUrl(string path) => $"https://cctv.test/{path}/whep";
+    public bool IsInternalAccount(string? user, string? password) => user == "internal" && password == "internal-secret";
+}
+
 public sealed class CapturingBotGateway : Karnama.Application.Abstractions.IBotGateway
 {
     public ConcurrentQueue<(Karnama.Domain.Notify.Messenger M, string Method, System.Text.Json.Nodes.JsonObject Args)> Calls { get; } = new();
@@ -133,6 +153,7 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
     public CapturingMessenger Messenger { get; } = new();
     public CapturingBotGateway Bots { get; } = new();
+    public FakeMediaServer Media { get; } = new();
     public const long ArchiveChat = -1001234567890;
     public const string BaleSecret = "bale-webhook-secret-test-0123456789";
     public const string GatewaySecret = "telegram-gateway-secret-test-0123456789";
@@ -159,6 +180,7 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
         builder.UseSetting("Messengers:BaleWebhookSecret", BaleSecret);
         builder.UseSetting("Messengers:TelegramGatewaySecret", GatewaySecret);
         builder.UseSetting("Notify:BaleBotUsername", "karnama_test_bot");
+        builder.UseSetting("Cctv:HookAddresses:0", "10.66.0.2");
         builder.UseSetting("Notify:TelegramArchiveChatId", ArchiveChat.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.ConfigureServices(s =>
         {
@@ -166,6 +188,8 @@ public class KarnamaFactory(string connectionString, bool demoLogin = true, stri
             s.AddSingleton<Karnama.Infrastructure.Notify.IMessengerSender>(Messenger);
             s.RemoveAll<Karnama.Application.Abstractions.IBotGateway>();
             s.AddSingleton<Karnama.Application.Abstractions.IBotGateway>(Bots);
+            s.RemoveAll<Karnama.Application.Abstractions.IMediaServer>();
+            s.AddSingleton<Karnama.Application.Abstractions.IMediaServer>(Media);
             s.RemoveAll<ISmsSender>();
             s.AddSingleton<ISmsSender>(Sms);
             s.RemoveAll<TimeProvider>();

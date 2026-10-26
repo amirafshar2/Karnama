@@ -10,6 +10,7 @@ internal static class RateLimits
     public const string Refresh = "refresh";
     public const string PublicForm = "public-form";
     public const string Heavy = "heavy";
+    public const string Device = "device";
 
     public static IServiceCollection AddKarnamaRateLimits(this IServiceCollection services, IConfiguration config) => services.AddRateLimiter(o =>
     {
@@ -54,6 +55,11 @@ internal static class RateLimits
         o.AddPolicy(Heavy, http => RateLimitPartition.GetFixedWindowLimiter(
             http.User.Identity?.IsAuthenticated == true ? "u:" + http.User.FindFirst("sub")?.Value : "ip:" + IpOf(http),
             _ => new FixedWindowRateLimiterOptions { PermitLimit = heavyPerUser, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+        // Attendance devices (/iclock): a device polls every few seconds; a scanner hammering the path gets cut off.
+        var devicePerIp = config.GetValue("RateLimits:DevicePerIpPerMinute", 120);
+        o.AddPolicy(Device, http => RateLimitPartition.GetFixedWindowLimiter(IpOf(http),
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = devicePerIp, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 
         // Everyone: token bucket per user (or per IP when anonymous) so one broken client can't take the server down.
         o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(http =>

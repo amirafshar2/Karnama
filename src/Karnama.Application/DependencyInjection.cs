@@ -48,6 +48,9 @@ public static class DependencyInjection
         services.AddScoped<Crm.CrmService>();
         services.AddScoped<Assets.AssetService>();
         services.AddScoped<Help.HelpService>();
+        services.AddScoped<Attendance.DeviceService>();
+        services.AddScoped<Cctv.CctvService>();
+        services.AddSingleton<Cctv.SnapshotCache>();
         services.AddScoped<Reports.PerformanceService>();
         services.AddScoped<Notify.PackageExpiryJob>();
         services.AddScoped<Publishing.PublishService>();

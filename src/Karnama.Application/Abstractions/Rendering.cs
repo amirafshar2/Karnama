@@ -55,3 +55,30 @@ public interface IBotGateway
 }
 
 public sealed record BotCallResult(bool Ok, bool Permanent, string? ResultJson, string? Error);
+
+/// <summary>First sheet of an .xlsx, or a .csv file, as rows of text cells (for imports with a preview and column mapping).</summary>
+public interface ISpreadsheetReader
+{
+    /// <returns>Rows (header included), or null when the file isn't a readable sheet.</returns>
+    IReadOnlyList<IReadOnlyList<string>>? Read(byte[] content, string fileName, int maxRows, int maxColumns);
+}
+
+/// <summary>
+/// The media box in the office (MediaMTX, reached through the WireGuard tunnel): it pulls each camera's RTSP stream,
+/// serves WebRTC to viewers through our reverse proxy, and gives single frames for snapshots.
+/// </summary>
+public interface IMediaServer
+{
+    bool IsConfigured { get; }
+    /// <summary>Creates or replaces a stream; <paramref name="onDemand"/> = pulled from the camera only while someone watches.</summary>
+    Task<bool> UpsertPathAsync(string path, string source, bool onDemand, CancellationToken ct);
+    Task<bool> RemovePathAsync(string path, CancellationToken ct);
+    /// <summary>Stream name → receiving from its camera. Null when the box can't be reached.</summary>
+    Task<IReadOnlyDictionary<string, bool>?> ReadyPathsAsync(CancellationToken ct);
+    /// <summary>One JPEG frame of a stream, or null.</summary>
+    Task<byte[]?> SnapshotAsync(string path, CancellationToken ct);
+    /// <summary>Public WebRTC (WHEP) address of a stream, via our reverse proxy.</summary>
+    string WhepUrl(string path);
+    /// <summary>The internal account our own server uses towards the box (snapshots, API).</summary>
+    bool IsInternalAccount(string? user, string? password);
+}

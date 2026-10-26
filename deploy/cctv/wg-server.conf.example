@@ -1,0 +1,12 @@
+# WireGuard on the server: /etc/wireguard/wg0.conf
+[Interface]
+Address = 10.66.0.1/24
+ListenPort = 51820
+PrivateKey = <SERVER_PRIVATE_KEY>
+# Docker containers (api, caddy) reach the box through the host; viewers' WebRTC media (8189) is forwarded to it.
+PostUp = sysctl -w net.ipv4.ip_forward=1; iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE; iptables -t nat -A PREROUTING -i eth0 -p udp --dport 8189 -j DNAT --to-destination 10.66.0.2:8189; iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 8189 -j DNAT --to-destination 10.66.0.2:8189
+PostDown = iptables -t nat -D POSTROUTING -o wg0 -j MASQUERADE; iptables -t nat -D PREROUTING -i eth0 -p udp --dport 8189 -j DNAT --to-destination 10.66.0.2:8189; iptables -t nat -D PREROUTING -i eth0 -p tcp --dport 8189 -j DNAT --to-destination 10.66.0.2:8189
+
+[Peer]
+PublicKey = <OFFICE_PUBLIC_KEY>
+AllowedIPs = 10.66.0.2/32

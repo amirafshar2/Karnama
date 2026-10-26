@@ -183,6 +183,8 @@ app.MapCrm();
 app.MapReports();
 app.MapAssets();
 app.MapHelp();
+app.MapDevices();
+app.MapCctv();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 if (demoLogin) app.Logger.LogWarning("Demo login is ENABLED. Never enable it in Production.");

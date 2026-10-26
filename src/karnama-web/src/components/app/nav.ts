@@ -1,4 +1,4 @@
-import { LifeBuoy, Camera, Gauge, Inbox, MessagesSquare, BarChart3, CalendarClock, Newspaper, Globe, Trophy, PhoneIncoming, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { Cctv, Fingerprint, LifeBuoy, Camera, Gauge, Inbox, MessagesSquare, BarChart3, CalendarClock, Newspaper, Globe, Trophy, PhoneIncoming, Boxes, Briefcase, CalendarDays, ClipboardList, Clock, KanbanSquare, QrCode, Settings2, UsersRound, Languages, LayoutDashboard, Network, Package, Palette, ShieldCheck, UserRound, Users, type LucideIcon } from "lucide-react";
 import type { TextKey } from "@/lib/i18n/registry";
 import { hasPermission, type Me, type Scope } from "@/lib/types";
 
@@ -46,6 +46,8 @@ export const NAV: NavItem[] = [
       { code: "content.manage", scope: "all" },
     ],
   },
+  { href: "/cctv", label: "nav.cctv", icon: Cctv, anyOf: [{ code: "cctv.view", scope: "all" }, { code: "cctv.manage", scope: "all" }] },
+  { href: "/attendance/devices", label: "nav.devices", icon: Fingerprint, anyOf: [{ code: "devices.manage", scope: "all" }] },
   { href: "/attendance/setup", label: "nav.attSetup", icon: Settings2, anyOf: [{ code: "attendance.policies.manage", scope: "all" }] },
   { href: "/attendance/kiosk", label: "nav.kiosk", icon: QrCode, anyOf: [{ code: "attendance.kiosk", scope: "all" }] },
   { href: "/help", label: "nav.help", icon: LifeBuoy },

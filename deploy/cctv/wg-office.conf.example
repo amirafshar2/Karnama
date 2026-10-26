@@ -1,0 +1,11 @@
+# WireGuard on the office box: /etc/wireguard/wg0.conf  (wg genkey | tee office.key | wg pubkey > office.pub)
+# The box dials OUT to the server, so the office router needs no open port.
+[Interface]
+Address = 10.66.0.2/32
+PrivateKey = <OFFICE_PRIVATE_KEY>
+
+[Peer]
+PublicKey = <SERVER_PUBLIC_KEY>
+Endpoint = <SERVER_PUBLIC_IP>:51820
+AllowedIPs = 10.66.0.1/32
+PersistentKeepalive = 25

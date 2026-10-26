@@ -29,6 +29,9 @@ public static class DependencyInjection
         services.Configure<SmsOptions>(config.GetSection(SmsOptions.Section));
         services.Configure<Notify.MessengerOptions>(config.GetSection(Notify.MessengerOptions.Section));
         services.Configure<Application.Notify.NotifyOptions>(config.GetSection(Application.Notify.NotifyOptions.Section));
+        services.Configure<Cctv.CctvOptions>(config.GetSection(Cctv.CctvOptions.Section));
+        services.AddHttpClient("mediamtx", c => c.Timeout = TimeSpan.FromSeconds(8));
+        services.AddSingleton<IMediaServer, Cctv.MediaMtxServer>();
         services.AddHttpClient("bale", c => { c.BaseAddress = new Uri("https://tapi.bale.ai/"); c.Timeout = TimeSpan.FromSeconds(15); });
         services.AddHttpClient("telegram-gateway", c =>
         {
@@ -64,6 +67,7 @@ public static class DependencyInjection
         services.Configure<Application.Files.FileOptions>(config.GetSection(Application.Files.FileOptions.Section));
         services.AddSingleton<IContentRenderer, Content.ContentRenderer>();
         services.AddSingleton<IExcelExporter, Content.ExcelExporter>();
+        services.AddSingleton<ISpreadsheetReader, Content.SpreadsheetReader>();
         services.AddSingleton<OtpDispatcher>();
         services.AddSingleton<IOtpDispatcher>(sp => sp.GetRequiredService<OtpDispatcher>());
         services.AddHostedService<OtpDispatchService>();

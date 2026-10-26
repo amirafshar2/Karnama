@@ -90,3 +90,61 @@ internal sealed class HelpArticleConfiguration : IEntityTypeConfiguration<Karnam
         b.HasIndex(x => new { x.IsPublished, x.SortOrder });
     }
 }
+
+internal sealed class BiometricDeviceConfiguration : IEntityTypeConfiguration<Karnama.Domain.Attendance.BiometricDevice>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Attendance.BiometricDevice> b)
+    {
+        b.ToTable("biometric_devices");
+        b.Property(x => x.Name).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Serial).HasMaxLength(40).IsRequired();
+        b.Property(x => x.Location).HasMaxLength(80);
+        b.Property(x => x.LastIp).HasMaxLength(45);
+        b.Property(x => x.AllowedIps).AsJson();
+        b.Property(x => x.PendingCommands).AsJson();
+        b.Property(x => x.Version).IsRowVersion();
+        b.HasIndex(x => x.Serial).IsUnique();
+    }
+}
+
+internal sealed class DevicePinConfiguration : IEntityTypeConfiguration<Karnama.Domain.Attendance.DevicePin>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Attendance.DevicePin> b)
+    {
+        b.ToTable("device_pins");
+        b.Property(x => x.Pin).HasMaxLength(9).IsRequired();
+        b.HasIndex(x => x.Pin).IsUnique();
+        b.HasIndex(x => x.UserId).IsUnique();
+    }
+}
+
+internal sealed class DevicePunchConfiguration : IEntityTypeConfiguration<Karnama.Domain.Attendance.DevicePunch>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Attendance.DevicePunch> b)
+    {
+        b.ToTable("device_punches");
+        b.Property(x => x.Id).UseIdentityAlwaysColumn();
+        b.Property(x => x.Pin).HasMaxLength(9).IsRequired();
+        b.Property(x => x.Note).HasMaxLength(200);
+        // A re-sent record (same device, person and second) is stored once.
+        b.HasIndex(x => new { x.DeviceId, x.Pin, x.At }).IsUnique();
+        b.HasIndex(x => new { x.Outcome, x.At });
+        b.HasIndex(x => x.At);
+        b.HasOne<Karnama.Domain.Attendance.BiometricDevice>().WithMany().HasForeignKey(x => x.DeviceId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class CameraConfiguration : IEntityTypeConfiguration<Karnama.Domain.Cctv.Camera>
+{
+    public void Configure(EntityTypeBuilder<Karnama.Domain.Cctv.Camera> b)
+    {
+        b.ToTable("cameras");
+        b.Property(x => x.Name).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Location).HasMaxLength(80);
+        b.Property(x => x.Path).HasMaxLength(40).IsRequired();
+        b.Property(x => x.MainMasked).HasMaxLength(500);
+        b.Property(x => x.SubMasked).HasMaxLength(500);
+        b.Property(x => x.Version).IsRowVersion();
+        b.HasIndex(x => x.Path).IsUnique();
+    }
+}

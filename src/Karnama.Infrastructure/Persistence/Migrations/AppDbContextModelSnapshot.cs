@@ -530,6 +530,149 @@ namespace Karnama.Infrastructure.Persistence.Migrations
                     b.ToTable("attendance_policies", (string)null);
                 });
 
+            modelBuilder.Entity("Karnama.Domain.Attendance.BiometricDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AllowedIps")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<long>("AttStamp")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("ClockSkewSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("NextCommandId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("OfflineWarnedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PendingCommands")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Serial")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("SkewWarnedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Serial")
+                        .IsUnique();
+
+                    b.ToTable("biometric_devices", (string)null);
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Attendance.DevicePin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Pin")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Pin")
+                        .IsUnique();
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("device_pins", (string)null);
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Attendance.DevicePunch", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Pin")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("Outcome", "At");
+
+                    b.HasIndex("DeviceId", "Pin", "At")
+                        .IsUnique();
+
+                    b.ToTable("device_punches", (string)null);
+                });
+
             modelBuilder.Entity("Karnama.Domain.Attendance.Holiday", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1259,6 +1402,80 @@ namespace Karnama.Infrastructure.Persistence.Migrations
                     b.HasIndex("ServiceTypeId", "Order");
 
                     b.ToTable("workflow_stages", (string)null);
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Cctv.Camera", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("KeyVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("LastOnlineAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<byte[]>("MainCipher")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("MainKey")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("MainMasked")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset?>("OfflineWarnedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Online")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("SubCipher")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("SubKey")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("SubMasked")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Path")
+                        .IsUnique();
+
+                    b.ToTable("cameras", (string)null);
                 });
 
             modelBuilder.Entity("Karnama.Domain.Chat.ChatMessage", b =>
@@ -3420,6 +3637,15 @@ namespace Karnama.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("AssetId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Karnama.Domain.Attendance.DevicePunch", b =>
+                {
+                    b.HasOne("Karnama.Domain.Attendance.BiometricDevice", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

@@ -29,6 +29,13 @@ x-app-env: &app-env
   Messengers__TelegramGatewayUrl: ${TELEGRAM_GATEWAY_URL}
   Messengers__TelegramGatewaySecret: ${TELEGRAM_GATEWAY_SECRET}
   Notify__TelegramArchiveChatId: ${TELEGRAM_ARCHIVE_CHAT_ID}
+  # N11 cameras (empty = not set up). The box is reached only through WireGuard (deploy/cctv/README.md).
+  Cctv__ApiUrl: ${CCTV_API_URL:-}
+  Cctv__RtspUrl: ${CCTV_RTSP_URL:-}
+  Cctv__PublicUrl: ${CCTV_PUBLIC_URL:-}
+  Cctv__InternalUser: ${CCTV_INTERNAL_USER:-}
+  Cctv__InternalPassword: ${CCTV_INTERNAL_PASSWORD:-}
+  Cctv__HookAddresses__0: ${CCTV_HOOK_ADDRESS:-10.66.0.2}
 
 services:
   postgres:
@@ -84,6 +91,7 @@ services:
       args:
         NEXT_PUBLIC_API_BASE: https://${API_DOMAIN}
         NEXT_PUBLIC_HUB_BASE: https://${API_DOMAIN}
+        NEXT_PUBLIC_CCTV_BASE: ${CCTV_PUBLIC_URL:-}
         NEXT_PUBLIC_SITE_URL: https://${SITE_DOMAIN}
     restart: unless-stopped
     environment:
@@ -95,10 +103,13 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    ports: ["80:80", "443:443", "443:443/udp"]
+    ports: ["80:80", "443:443", "443:443/udp", "8081:8081"]
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}
+      DEVICES_DOMAIN: ${DEVICES_DOMAIN:-devices.invalid}
+      CCTV_DOMAIN: ${CCTV_DOMAIN:-cctv.invalid}
+      CCTV_UPSTREAM: ${CCTV_UPSTREAM:-10.66.0.2:8889}
     volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, caddydata:/data]
     depends_on: [web, api]
 

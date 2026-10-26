@@ -68,6 +68,13 @@ public static class Permissions
     public const string CrmAssign = "crm.assign";
     public const string CrmPipelineManage = "crm.pipeline.manage";
 
+    /// <summary>Office cameras: watch (snapshots + live, audited) / add and edit cameras (PROMPT2 §5).</summary>
+    public const string CctvView = "cctv.view";
+    public const string CctvManage = "cctv.manage";
+
+    /// <summary>Fingerprint/face devices: register, map PINs, import files (PROMPT2 §6).</summary>
+    public const string DevicesManage = "devices.manage";
+
     /// <summary>Own = what I hold; All = every asset (PROMPT2 §3).</summary>
     public const string AssetsView = "assets.view";
     public const string AssetsManage = "assets.manage";
@@ -138,6 +145,10 @@ public static class Permissions
         new(CrmLeads, "crm", OwnOrAll),
         new(CrmAssign, "crm", AllOnly),
         new(CrmPipelineManage, "crm", AllOnly),
+
+        new(DevicesManage, "attendance", AllOnly),
+        new(CctvView, "cctv", AllOnly),
+        new(CctvManage, "cctv", AllOnly),
 
         new(AssetsView, "assets", OwnOrAll),
         new(AssetsManage, "assets", AllOnly),
