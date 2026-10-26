@@ -52,8 +52,29 @@ internal sealed partial class LocalMediaStore : IMediaStore
         var path = Path.Combine(_root, id);
         if (stableName is not null && File.Exists(path)) return id; // the same built-in demo file, already there
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        await File.WriteAllBytesAsync(path, buffer, ct);
+        var part = PartPath(path);
+        await File.WriteAllBytesAsync(part, buffer, ct);
+        Publish(part, path);
         return id;
+    }
+
+    /// <summary>Files are written next to their final name first, so a half-written file is never served.</summary>
+    private static string PartPath(string path) => $"{path}.{Guid.NewGuid():N}.part";
+
+    /// <summary>
+    /// Moves a finished file into place in one step. Two starts of a demo install (or two test hosts) may write the same
+    /// built-in file at the same moment: whoever comes second finds it already there and drops its copy (same bytes).
+    /// </summary>
+    private static void Publish(string part, string path)
+    {
+        try
+        {
+            File.Move(part, path, overwrite: false);
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            File.Delete(part);
+        }
     }
 
     public async Task<Result<string>> SaveVideoAsync(Stream content, long length, string folder, CancellationToken ct, string? stableName = null)
@@ -76,7 +97,8 @@ internal sealed partial class LocalMediaStore : IMediaStore
         if (stableName is not null && File.Exists(path)) return id; // the same built-in demo file, already there
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         long total = got;
-        await using (var file = File.Create(path))
+        var part = PartPath(path);
+        await using (var file = File.Create(part))
         {
             await file.WriteAsync(head.AsMemory(0, got), ct);
             var buffer = new byte[81920];
@@ -90,9 +112,10 @@ internal sealed partial class LocalMediaStore : IMediaStore
         }
         if (total != length)
         {
-            File.Delete(path);
+            File.Delete(part);
             return Error.Validation("media.incomplete", "فایل کامل نرسید. دوباره امتحان کنید.");
         }
+        Publish(part, path);
         return id;
     }
 
