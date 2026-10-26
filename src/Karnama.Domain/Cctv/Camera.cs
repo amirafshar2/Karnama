@@ -83,7 +83,14 @@ public sealed class Camera : Entity
     {
         var user = u.UserInfo.Split(':')[0];
         var auth = u.UserInfo.Length == 0 ? "" : $"{Uri.UnescapeDataString(user)}:••••@";
-        return $"{u.Scheme}://{auth}{u.Host}{(u.IsDefaultPort || u.Port < 0 ? "" : ":" + u.Port)}{u.PathAndQuery}";
+        // Some brands put the password in the query (…?user=admin&password=…): hide those values too.
+        var query = string.Join("&", u.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries).Select(p =>
+        {
+            var kv = p.Split('=', 2);
+            var key = kv[0].ToLowerInvariant();
+            return kv.Length == 2 && (key.Contains("pass") || key.Contains("pwd") || key is "auth" or "token" or "key") ? $"{kv[0]}=••••" : p;
+        }));
+        return $"{u.Scheme}://{auth}{u.Host}{(u.IsDefaultPort || u.Port < 0 ? "" : ":" + u.Port)}{u.AbsolutePath}{(query.Length > 0 ? "?" + query : "")}";
     }
 
     private static bool IsPrivate(System.Net.IPAddress ip)

@@ -103,7 +103,8 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    ports: ["80:80", "443:443", "443:443/udp", "8081:8081"]
+    # 8081 = camera auth hook: loopback until the tunnel exists, then CCTV_HOOK_BIND=10.66.0.1 (deploy/cctv/README.md).
+    ports: ["80:80", "443:443", "443:443/udp", "${CCTV_HOOK_BIND:-127.0.0.1}:8081:8081"]
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}

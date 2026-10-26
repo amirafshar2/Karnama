@@ -114,12 +114,15 @@ if (builder.Environment.IsDevelopment()) builder.Services.AddOpenApi();
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    var proxies = config.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [];
+    var networks = config.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [];
+    // Only replace the safe default (loopback) when real proxies are configured: with both lists empty, ASP.NET would
+    // trust X-Forwarded-For from anyone, and every IP gate (office network, devices, camera hook) could be spoofed.
+    if (proxies.Length + networks.Length == 0) return;
     o.KnownIPNetworks.Clear();
     o.KnownProxies.Clear();
-    foreach (var proxy in config.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
-        o.KnownProxies.Add(System.Net.IPAddress.Parse(proxy));
-    foreach (var network in config.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [])
-        o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+    foreach (var proxy in proxies) o.KnownProxies.Add(System.Net.IPAddress.Parse(proxy));
+    foreach (var network in networks) o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
 });
 
 var app = builder.Build();

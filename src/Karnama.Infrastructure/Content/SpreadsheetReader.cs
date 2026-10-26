@@ -29,6 +29,13 @@ internal sealed class SpreadsheetReader : ISpreadsheetReader
 
     private static List<IReadOnlyList<string>> Xlsx(byte[] content, int maxRows, int maxColumns)
     {
+        // A small .xlsx can unpack to gigabytes (a "zip bomb"); check the unpacked size before ClosedXML loads it all.
+        using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(content), System.IO.Compression.ZipArchiveMode.Read))
+        {
+            var total = zip.Entries.Sum(e => e.Length);
+            if (total > 60L * 1024 * 1024 || zip.Entries.Any(e => e.CompressedLength > 0 && e.Length / e.CompressedLength > 200))
+                throw new InvalidDataException("too large when unpacked");
+        }
         using var ms = new MemoryStream(content);
         using var wb = new XLWorkbook(ms);
         var ws = wb.Worksheets.First();

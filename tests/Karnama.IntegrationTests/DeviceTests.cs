@@ -174,6 +174,16 @@ public sealed class DeviceTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
     }
 
     [Fact]
+    public async Task A_record_far_from_now_is_dropped_so_it_cannot_lock_anyone_out()
+    {
+        var userId = await FreshPersonAsync("3");
+        var now = _f.Clock.GetUtcNow();
+        (await Device("POST", $"/iclock/cdata?SN={Serial}&table=ATTLOG", $"3\t{Local(now.AddYears(3))}\t0\t1\n3\t{Local(now.AddDays(-30))}\t0\t1\n")).Status.Should().Be(200);
+        (await Db(db => db.DevicePunches.CountAsync(p => p.Pin == "3" && (p.At > now.AddHours(1) || p.At < now.AddDays(-8))))).Should().Be(0);
+        (await Db(db => db.Shifts.CountAsync(s => s.UserId == userId))).Should().Be(0);
+    }
+
+    [Fact]
     public void Persian_and_gregorian_dates_and_zk_time()
     {
         DeviceService.ParseDate("۱۴۰۵/۰۸/۰۳ ۰۸:۰۱").Should().Be(Iran.At(new DateOnly(2026, 10, 25), new TimeOnly(8, 1)));

@@ -16,6 +16,8 @@ export function LiveView({ camera, onClose }: { camera: Camera; onClose: () => v
   const { t } = useI18n();
   const video = useRef<HTMLVideoElement>(null);
   const [high, setHigh] = useState(false);
+  // The server cuts sessions after 30 minutes; while someone is really watching, reconnect once on our own.
+  const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<"loading" | "playing" | "failed" | "idle">("loading");
 
   useEffect(() => {
@@ -28,6 +30,14 @@ export function LiveView({ camera, onClose }: { camera: Camera; onClose: () => v
         session = await api<Live>(`/api/v1/cctv/cameras/${camera.id}/live?high=${high}`, { method: "POST" });
         pc = new RTCPeerConnection();
         pc.addTransceiver("video", { direction: "recvonly" });
+        pc.onconnectionstatechange = () => {
+          if (closed || !pc) return;
+          if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+            stop();
+            if (attempt < 3) setAttempt((a) => a + 1);
+            else setState("failed");
+          }
+        };
         pc.ontrack = (e) => {
           if (video.current) video.current.srcObject = e.streams[0] ?? new MediaStream([e.track]);
           setState("playing");
@@ -71,7 +81,7 @@ export function LiveView({ camera, onClose }: { camera: Camera; onClose: () => v
       window.removeEventListener("touchstart", activity);
       stop();
     };
-  }, [camera.id, high]);
+  }, [camera.id, high, attempt]);
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>

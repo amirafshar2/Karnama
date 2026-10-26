@@ -23,7 +23,7 @@ registerTexts(faCrud);
 type Kind = "adms" | "fileImport";
 type Mode = "toggle" | "statusKey";
 type Device = { id: string; name: string; serial: string; kind: Kind; mode: Mode; location: string | null; allowedIps: string[]; isActive: boolean;
-  lastSeenAt: string | null; online: boolean; lastIp: string | null; clockSkewSeconds: number | null; punchesToday: number; pendingCommands: number; version: number };
+  lastSeenAt: string | null; online: boolean; lastIp: string | null; clockSkewSeconds: number | null; punchesToday: number; pendingCommands: number; version: number; addressSet: boolean };
 type Pin = { id: string; pin: string; userId: string; userName: string };
 type Unknown = { pin: string; count: number; lastAt: string; deviceName: string };
 type Punch = { id: number; deviceName: string; pin: string; userName: string | null; at: string; status: number; outcome: string; note: string | null };
@@ -102,6 +102,7 @@ function Devices() {
                 {t("dev.skew", { n: formatNumber(Math.round(Math.abs(d.clockSkewSeconds) / 60)), dir: t(d.clockSkewSeconds > 0 ? "dev.ahead" : "dev.behind") })}
               </p>
             )}
+            {!d.addressSet && <p className="rounded-lg border border-destructive p-3 text-sm font-semibold text-destructive" data-testid="dev-no-address">{t("dev.noAddress")}</p>}
             {d.kind === "adms" && !d.lastSeenAt && url && (
               <p className="rounded-lg bg-muted/50 p-3 text-xs leading-6">
                 <strong className="block">{t("dev.setupTitle")}</strong>

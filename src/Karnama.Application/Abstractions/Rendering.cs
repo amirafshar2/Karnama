@@ -79,6 +79,8 @@ public interface IMediaServer
     Task<byte[]?> SnapshotAsync(string path, CancellationToken ct);
     /// <summary>Public WebRTC (WHEP) address of a stream, via our reverse proxy.</summary>
     string WhepUrl(string path);
+    /// <summary>Closes live sessions older than <paramref name="maxAge"/>: a token is checked only when a session starts.</summary>
+    Task<int> KickOldSessionsAsync(TimeSpan maxAge, CancellationToken ct);
     /// <summary>The internal account our own server uses towards the box (snapshots, API).</summary>
     bool IsInternalAccount(string? user, string? password);
 }

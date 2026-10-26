@@ -105,13 +105,14 @@ internal sealed class MediaMtxServer(IHttpClientFactory http, IOptions<CctvOptio
         {
             RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
         };
-        foreach (var a in new[] { "-hide_banner", "-loglevel", "error", "-rtsp_transport", "tcp", "-i", rtsp.ToString(), "-an", "-frames:v", "1", "-q:v", "6", "-f", "mjpeg", "pipe:1" })
+        foreach (var a in new[] { "-hide_banner", "-loglevel", "error", "-rtsp_transport", "tcp", "-timeout", "5000000", "-i", rtsp.ToString(), "-an", "-frames:v", "1", "-q:v", "6", "-f", "mjpeg", "pipe:1" })
             psi.ArgumentList.Add(a);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(8));
+        Process? p = null;
         try
         {
-            using var p = Process.Start(psi)!;
+            p = Process.Start(psi)!;
             using var ms = new MemoryStream();
             var copy = p.StandardOutput.BaseStream.CopyToAsync(ms, timeout.Token);
             _ = p.StandardError.ReadToEndAsync(timeout.Token);
@@ -123,6 +124,36 @@ internal sealed class MediaMtxServer(IHttpClientFactory http, IOptions<CctvOptio
         {
             logger.LogInformation("Snapshot of {Path} failed: {Message}", path, ex.Message);
             return null;
+        }
+        finally
+        {
+            // A hung ffmpeg (tunnel down) must not outlive the request.
+            try { if (p is { HasExited: false }) p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            p?.Dispose();
+        }
+    }
+
+    /// <summary>Closes WebRTC sessions older than <paramref name="maxAge"/> (the page reconnects while someone is really watching).</summary>
+    public async Task<int> KickOldSessionsAsync(TimeSpan maxAge, CancellationToken ct)
+    {
+        if (!IsConfigured) return 0;
+        try
+        {
+            using var c = Client();
+            using var doc = JsonDocument.Parse(await c.GetStringAsync("v3/webrtcsessions/list?itemsPerPage=1000", ct));
+            var kicked = 0;
+            if (!doc.RootElement.TryGetProperty("items", out var items)) return 0;
+            foreach (var i in items.EnumerateArray())
+            {
+                if (!i.TryGetProperty("created", out var created) || !created.TryGetDateTimeOffset(out var at) || DateTimeOffset.UtcNow - at < maxAge) continue;
+                var id = i.GetProperty("id").GetString();
+                if ((await c.PostAsync($"v3/webrtcsessions/kick/{id}", null, ct)).IsSuccessStatusCode) kicked++;
+            }
+            return kicked;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException)
+        {
+            return 0;
         }
     }
 

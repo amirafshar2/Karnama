@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Karnama.Application.Attendance;
 
 public sealed record DeviceDto(Guid Id, string Name, string Serial, DeviceKind Kind, PunchMode Mode, string? Location, IReadOnlyList<string> AllowedIps, bool IsActive,
-    DateTimeOffset? LastSeenAt, bool Online, string? LastIp, int? ClockSkewSeconds, int PunchesToday, int PendingCommands, uint Version);
+    DateTimeOffset? LastSeenAt, bool Online, string? LastIp, int? ClockSkewSeconds, int PunchesToday, int PendingCommands, uint Version, bool AddressSet = true);
 public sealed record SaveDeviceRequest(string Name, string? Serial, DeviceKind Kind, PunchMode Mode, string? Location, List<string>? AllowedIps, bool IsActive, uint? Version = null);
 public sealed record PinDto(Guid Id, string Pin, Guid UserId, string UserName);
 public sealed record SavePinRequest(string Pin, Guid UserId);
@@ -47,8 +47,15 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
         var d = await db.BiometricDevices.FirstOrDefaultAsync(x => x.Serial == serial && x.Kind == DeviceKind.Adms && x.IsActive, ct);
         if (d is null) return null;
         var allowed = d.AllowedIps.Count > 0 ? d.AllowedIps : (await settings.GetAsync(ct)).OfficeNetworks;
-        if (allowed.Count > 0 && !AttendanceSettingsStore.InNetworks(ip, allowed)) return null;
-        d.Seen(clock.GetUtcNow(), ip?.ToString());
+        // No address configured = nobody: the serial number alone (printed on the device) is not a secret.
+        if (allowed.Count == 0 || !AttendanceSettingsStore.InNetworks(ip, allowed)) return null;
+        var now = clock.GetUtcNow();
+        var address = ip?.ToString();
+        if (d.LastIp is { } previous && address is not null && previous != address)
+            await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.DevicesManage, PermissionScope.All, ct), "devices.address",
+                $"دستگاه «{d.Name}» از نشانی تازه‌ای وصل شد", $"{previous} → {address}. اگر اینترنت دفتر عوض نشده، بررسی کنید.", "/attendance/devices", true,
+                $"device-ip:{d.Id:N}:{address}:{Iran.Today(now):yyyyMMdd}", ct);
+        d.Seen(now, address);
         return d;
     }
 
@@ -94,7 +101,11 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
             var pin = DevicePin.Normalize(f[0]);
             if (pin is null || !DateTime.TryParseExact(f[1].Trim(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var local)) continue;
             var status = f.Length > 2 && int.TryParse(f[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var st) ? st : -1;
-            parsed.Add(DevicePunch.Create(d.Id, pin, Iran.At(DateOnly.FromDateTime(local), TimeOnly.FromDateTime(local)), status, now));
+            var at = Iran.At(DateOnly.FromDateTime(local), TimeOnly.FromDateTime(local));
+            // A device catches up at most a week of records; anything far outside "now" is a wrong clock or a forgery
+            // (a record in 2030 would hold a shift open and lock the person out).
+            if (at < now.AddDays(-7) || at > now.AddMinutes(15)) continue;
+            parsed.Add(DevicePunch.Create(d.Id, pin, at, status, now));
         }
         // A single record arriving as it happens tells us how far the device clock is from ours.
         if (parsed.Count == 1 && Math.Abs((parsed[0].At - now).TotalMinutes) < 30)
@@ -313,7 +324,9 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
         var start = Iran.At(Iran.Today(now), TimeOnly.MinValue);
         var counts = await db.DevicePunches.AsNoTracking().Where(p => p.At >= start).GroupBy(p => p.DeviceId).Select(g => new { g.Key, N = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.N, ct);
-        return (await db.BiometricDevices.AsNoTracking().OrderBy(d => d.Name).ToListAsync(ct)).Select(d => Dto(d, now, counts.GetValueOrDefault(d.Id))).ToList();
+        var office = (await settings.GetAsync(ct)).OfficeNetworks.Count > 0;
+        return (await db.BiometricDevices.AsNoTracking().OrderBy(d => d.Name).ToListAsync(ct))
+            .Select(d => Dto(d, now, counts.GetValueOrDefault(d.Id)) with { AddressSet = d.Kind == DeviceKind.FileImport || office || d.AllowedIps.Count > 0 }).ToList();
     }
 
     private static DeviceDto Dto(BiometricDevice d, DateTimeOffset now, int today) => new(d.Id, d.Name, d.Serial, d.Kind, d.Mode, d.Location, d.AllowedIps, d.IsActive,

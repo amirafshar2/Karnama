@@ -22,9 +22,19 @@ public sealed record MediaAuthRequest(string? User, string? Password, string? To
 /// <summary>Short-lived memory of frames, so ten people looking at the grid cost the office one frame per camera per 10 s.</summary>
 public sealed class SnapshotCache
 {
-    private readonly ConcurrentDictionary<Guid, (DateTimeOffset At, byte[] Jpeg)> _frames = new();
-    public byte[]? Get(Guid camera, DateTimeOffset now) => _frames.TryGetValue(camera, out var f) && now - f.At < TimeSpan.FromSeconds(10) ? f.Jpeg : null;
-    public void Put(Guid camera, DateTimeOffset now, byte[] jpeg) => _frames[camera] = (now, jpeg);
+    private readonly ConcurrentDictionary<Guid, (DateTimeOffset At, byte[]? Jpeg)> _frames = new();
+    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
+    /// <summary>A frame, or a recent failure (null Jpeg) so a dead camera isn't asked again for 10 s.</summary>
+    public bool TryGet(Guid camera, DateTimeOffset now, out byte[]? jpeg)
+    {
+        jpeg = null;
+        if (!_frames.TryGetValue(camera, out var f) || now - f.At >= TimeSpan.FromSeconds(10)) return false;
+        jpeg = f.Jpeg;
+        return true;
+    }
+    public void Put(Guid camera, DateTimeOffset now, byte[]? jpeg) => _frames[camera] = (now, jpeg);
+    /// <summary>One grab per camera at a time; everyone else waits for it.</summary>
+    public SemaphoreSlim Lock(Guid camera) => _locks.GetOrAdd(camera, _ => new SemaphoreSlim(1, 1));
 }
 
 /// <summary>
@@ -164,12 +174,22 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
         var c = await db.Cameras.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
         if (c is null) return NotFound;
         if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "جعبه‌ی تصویر دفتر هنوز راه‌اندازی نشده است.");
-        var now = clock.GetUtcNow();
-        if (cache.Get(c.Id, now) is { } hit) return hit;
-        var frame = await media.SnapshotAsync(Low(c.Path), ct);
-        if (frame is null) return Error.Conflict("cctv.noFrame", "تصویری از این دوربین نرسید؛ شاید خاموش یا قطع است.");
-        cache.Put(c.Id, now, frame);
-        return frame;
+        var gate = cache.Lock(c.Id);
+        await gate.WaitAsync(ct);
+        try
+        {
+            var now = clock.GetUtcNow();
+            if (!cache.TryGet(c.Id, now, out var frame))
+            {
+                frame = await media.SnapshotAsync(Low(c.Path), ct);
+                cache.Put(c.Id, now, frame);
+            }
+            return frame is null ? Error.Conflict("cctv.noFrame", "تصویری از این دوربین نرسید؛ شاید خاموش یا قطع است.") : frame;
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     /// <summary>Live video: a 5-minute token for this camera only. The page stops after 2 minutes without activity.</summary>
@@ -218,10 +238,14 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
 
     // ---------------- health ----------------
 
-    /// <summary>Every minute: which cameras are receiving; a camera that drops warns the managers once per outage.</summary>
+    /// <summary>
+    /// Every minute: which cameras are receiving (a camera that drops warns the managers once per outage), and live
+    /// sessions are cut after 30 minutes — the token is only checked at the start, so this is the hard limit.
+    /// </summary>
     public async Task<int> HealthAsync(CancellationToken ct)
     {
         if (!media.IsConfigured) return 0;
+        await media.KickOldSessionsAsync(TimeSpan.FromMinutes(30), ct);
         var ready = await media.ReadyPathsAsync(ct);
         var now = clock.GetUtcNow();
         var cams = await db.Cameras.Where(c => c.IsActive).ToListAsync(ct);

@@ -120,6 +120,7 @@ public sealed class FakeMediaServer : Karnama.Application.Abstractions.IMediaSer
         return Task.FromResult<byte[]?>(Down.Contains(path) ? null : [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 0xFF, 0xD9]);
     }
     public string WhepUrl(string path) => $"https://cctv.test/{path}/whep";
+    public Task<int> KickOldSessionsAsync(TimeSpan maxAge, CancellationToken ct) => Task.FromResult(0);
     public bool IsInternalAccount(string? user, string? password) => user == "internal" && password == "internal-secret";
 }
 

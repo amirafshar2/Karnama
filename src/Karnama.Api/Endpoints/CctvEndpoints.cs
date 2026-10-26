@@ -34,6 +34,9 @@ internal static class CctvEndpoints
             var hooks = o.Value.HookAddresses;
             if (hooks.Count == 0 || !AttendanceSettingsStore.InNetworks(http.Connection.RemoteIpAddress, hooks)) return Results.StatusCode(StatusCodes.Status403Forbidden);
             return svc.AuthorizeMedia(body) ? Results.Ok() : Results.StatusCode(StatusCodes.Status401Unauthorized);
-        }).AllowAnonymous().RequireRateLimiting(RateLimits.Device).ExcludeFromDescription();
+        })
+        // Every viewer's check arrives from the one box address: a shared rate limit would let anyone lock all viewers
+        // out by spamming the public WHEP URL. The tunnel-address gate above is the protection here.
+        .AllowAnonymous().DisableRateLimiting().ExcludeFromDescription();
     }
 }
