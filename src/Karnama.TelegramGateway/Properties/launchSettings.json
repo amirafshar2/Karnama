@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Karnama.TelegramGateway": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:63236;http://localhost:63237"
+    }
+  }
+}
