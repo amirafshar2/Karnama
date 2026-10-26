@@ -10,7 +10,8 @@ const config: CapacitorConfig = {
   webDir: "../src/karnama-web/out",
   android: {
     // Release builds never talk plain HTTP and never allow WebView debugging.
-    allowMixedContent: false,
+    // Only a debug build for the emulator (KARNAMA_DEBUG=1) may call the developer's own http://10.0.2.2 API.
+    allowMixedContent: process.env.KARNAMA_DEBUG === "1",
     webContentsDebuggingEnabled: process.env.KARNAMA_DEBUG === "1",
     captureInput: true,
   },
