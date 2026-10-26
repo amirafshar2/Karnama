@@ -143,7 +143,7 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
             var next = siblings.Where(x => x.StageOrder > w.StageOrder && x.Status == WorkStatus.Waiting).OrderBy(x => x.StageOrder).FirstOrDefault();
             if (next is not null)
             {
-                next.Unlock();
+                next.Unlock(clock.GetUtcNow(), PlannedStart(next, siblings.Append(w), order.AcceptedAt));
                 changes.Record("work", next.Id, next.ClientId, next.AssigneeId, null, "status");
             }
             if (siblings.All(x => x.Status == WorkStatus.Done))
@@ -159,13 +159,28 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         }
     }
 
+    /// <summary>
+    /// When the plan made at accept time expected <paramref name="next"/> to start: the latest deadline of the stages
+    /// before it (its window begins where theirs ends), or the accept time if none of them had a deadline.
+    /// Used by <see cref="WorkItem.Unlock(DateTimeOffset, DateTimeOffset?)"/> to give back time lost waiting (e.g. for the client).
+    /// </summary>
+    internal static DateTimeOffset? PlannedStart(WorkItem next, IEnumerable<WorkItem> orderItems, DateTimeOffset? acceptedAt) =>
+        orderItems.Where(x => x.StageOrder < next.StageOrder && x.Status != WorkStatus.Cancelled && x.Deadline != null)
+            .Max(x => x.Deadline) ?? acceptedAt;
+
     public async Task<Result<WorkCardDto>> AssignAsync(Guid id, AssignRequest r, CancellationToken ct)
     {
         if (!access.CanAssign) return Error.Forbidden();
         var w = await db.WorkItems.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
-        if (r.UserId is { } uid && !await db.Users.AnyAsync(u => u.Id == uid && u.Kind == UserKind.Staff && u.IsActive, ct))
-            return Error.Validation("work.assignee", "این همکار پیدا نشد یا غیرفعال است.");
+        if (r.UserId is { } uid)
+        {
+            if (!await db.Users.AnyAsync(u => u.Id == uid && u.Kind == UserKind.Staff && u.IsActive, ct))
+                return Error.Validation("work.assignee", "این همکار پیدا نشد یا غیرفعال است.");
+            // A kiosk tablet, a marketer or a blog writer can't see or run work: the item would be silently stuck.
+            if (!(await notifier.StaffWithAsync(Permissions.WorkRun, PermissionScope.Assigned, ct)).Contains(uid))
+                return Error.Validation("work.assigneeCantRun", "این همکار نمی‌تواند کار انجام دهد.");
+        }
         db.SetOriginalVersion(w, r.Version);
         var previous = w.AssigneeId;
         var res = w.Assign(r.UserId);
@@ -185,7 +200,10 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         if (!access.CanAssign) return Error.Forbidden();
         var w = await db.WorkItems.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
-        var staff = await db.Users.AsNoTracking().Where(u => u.Kind == UserKind.Staff && u.IsActive && !u.IsDemo || u.Kind == UserKind.Staff && u.IsActive && me.IsDemo && u.IsDemo)
+        // Only people who can actually run work (work.run, assigned scope or wider).
+        var runners = await notifier.StaffWithAsync(Permissions.WorkRun, PermissionScope.Assigned, ct);
+        var staff = await db.Users.AsNoTracking().Where(u => runners.Contains(u.Id))
+            .Where(u => u.Kind == UserKind.Staff && u.IsActive && !u.IsDemo || u.Kind == UserKind.Staff && u.IsActive && me.IsDemo && u.IsDemo)
             .Select(u => new { u.Id, u.DisplayName, Roles = u.Roles.Select(r => r.RoleId).ToList() }).ToListAsync(ct);
         var load = await db.WorkItems.AsNoTracking()
             .Where(x => x.AssigneeId != null && x.Status != WorkStatus.Done && x.Status != WorkStatus.Cancelled)

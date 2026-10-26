@@ -76,11 +76,24 @@ public sealed class WorkItem : AuditableEntity
 
     public void SetDeadline(DateTimeOffset? deadline) => Deadline = deadline;
 
-    /// <summary>Previous stage finished: this one is ready to start.</summary>
-    public void Unlock()
+    /// <summary>
+    /// Previous stage finished: this one is ready to start.
+    /// Fairness rule (PROMPT2 §11: work held up by client delay must not count against the worker):
+    /// this stage's deadline was planned at accept time, assuming it could start at <paramref name="plannedStart"/>
+    /// (the end of the earlier stages' planned window). If it unlocks later than that — typically because the client
+    /// sat on an earlier stage's approval — the whole window moves forward by the delay, so the next worker still
+    /// gets the full time the plan gave this stage. Unlocking early never pulls a deadline in.
+    /// </summary>
+    public void Unlock(DateTimeOffset now, DateTimeOffset? plannedStart)
     {
-        if (Status == WorkStatus.Waiting) Status = WorkStatus.Todo;
+        if (Status != WorkStatus.Waiting) return;
+        Status = WorkStatus.Todo;
+        if (Deadline is { } d && plannedStart is { } start && now > start)
+            Deadline = d + (now - start);
     }
+
+    /// <summary>Status only, deadlines untouched (demo seeding builds history with its own dates).</summary>
+    public void Unlock() => Unlock(DateTimeOffset.MinValue, null);
 
     /// <summary>
     /// The one place that decides who may move a card where. Assignees follow the workflow

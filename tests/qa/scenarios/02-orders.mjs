@@ -359,13 +359,24 @@ export async function run(rec, { crowd }) {
 
   // ---------------- cancel & quota ----------------
   await rec.step("2.2.m", "لغو سفارش: مشتری لغو می‌کند؛ کارها لغو و سهمیه آزاد می‌شود", async () => {
+    // The client cancels its own order from the portal while the agency hasn't accepted it yet (QA B1 fix).
+    const p = await cCancel.post("/api/v1/portal/orders", { serviceTypeId: s.svc[SINGLE_POST], title: "سفارشی که مشتری لغو می‌کند", priority: "normal", autoAccept: false, answers: { topic: "لغو" } });
+    eq(await cCancel.refused("POST", `/api/v1/orders/${p.id}/cancel`, {}, [403]), 403, "the staff cancel route still refuses the client");
+    const own = await cCancel.post(`/api/v1/portal/orders/${p.id}/cancel`);
+    eq(own.status, "cancelled", "client cancels its pending order");
+    eq(await cCancel.refused("POST", `/api/v1/portal/orders/${p.id}/cancel`, {}, [409]), 409, "client cancel twice → 409");
+    eq(await cQuota.refused("POST", `/api/v1/portal/orders/${p.id}/cancel`, {}, [404]), 404, "another client can't cancel it (404)");
+    eq(await manager.refused("POST", `/api/v1/orders/${p.id}/accept?version=${(await manager.get(`/api/v1/orders/${p.id}`)).version}`, {}, [409]), 409, "accept a client-cancelled order → 409");
+    eq((await cCancel.get("/api/v1/portal/home")).orders.find((x) => x.id === p.id)?.stepLabel, "cancelled", "client sees its cancelled order");
+    check((await manager.get("/api/v1/notifications")).items.some((n) => n.kind === "order.cancelledByClient"), "managers hear about the client's cancel");
+
+    // After acceptance the portal refuses with a clear reason; the admin cancels at the client's request.
     const o = await cCancel.post("/api/v1/portal/orders", { serviceTypeId: s.svc[SINGLE_POST], title: "سفارشی که لغو می‌شود", priority: "normal", autoAccept: false, answers: { topic: "لغو" } });
     const acc = await manager.post(`/api/v1/orders/${o.id}/accept?version=${o.version}`);
     const usedBefore = (await cCancel.get("/api/v1/portal/home")).package.quotas.find((q) => q.serviceTypeId === s.svc[SINGLE_POST]).used;
-    // PROMPT3 §2.2 "client cancels an order": the portal has no cancel endpoint; the staff route refuses the client.
-    const clientCancel = await cCancel.call("POST", `/api/v1/orders/${o.id}/cancel`, {}, { expect: [200, 403, 404] });
-    s.clientCouldCancel = clientCancel?.status === "cancelled";
-    const cancelled = s.clientCouldCancel ? clientCancel : await manager.post(`/api/v1/orders/${o.id}/cancel`);
+    const late = await cCancel.call("POST", `/api/v1/portal/orders/${o.id}/cancel`, {}, { expect: [409] });
+    check(JSON.stringify(late).includes("به آژانس پیام بدهید"), `accepted order → 409 with a Persian reason: ${JSON.stringify(late)}`);
+    const cancelled = await manager.post(`/api/v1/orders/${o.id}/cancel`);
     eq(cancelled.status, "cancelled", "order cancelled");
     eq(cancelled.stages.length, 0, "its work items are cancelled (hidden from the stage list)");
     eq(await manager.refused("POST", `/api/v1/orders/${o.id}/cancel`, {}, [409]), 409, "cancel twice → 409");
@@ -378,7 +389,6 @@ export async function run(rec, { crowd }) {
     eq(await manager.refused("POST", `/api/v1/orders/${o2.id}/reject`, { reason: " " }, [422]), 422, "reject without a reason → 422");
     const rej = await manager.post(`/api/v1/orders/${o2.id}/reject`, { reason: "این ماه ظرفیت عکاسی پر است." });
     eq((await cCancel.get(`/api/v1/orders/${o2.id}`)).rejectReason, rej.rejectReason, "client sees the reject reason");
-    check(s.clientCouldCancel, "PROMPT3 §2.2: the client can cancel its own order (FAILS: no portal cancel; POST /orders/{id}/cancel needs orders.manage → 403)");
   });
 
   await rec.step("2.2.n", "سهمیه تمام → سفارش «خارج از پکیج» با قیمت پایه؛ خدمت بیرون از پکیج هم خارج از پکیج", async () => {
@@ -405,6 +415,10 @@ export async function run(rec, { crowd }) {
     check(inv?.ok, `invariant quota-never-negative: ${JSON.stringify(inv)}`);
     const list = await manager.get("/api/v1/orders?status=inProgress&limit=100");
     check(list.items.some((o) => o.id === extra.id && o.outsidePackage), "the board/list flags the extra order for the admin");
+    // PROMPT §6.4 «با هشدار برای ادمین» (QA N1 fix): one bell notice per extra order.
+    const warn = (await manager.get("/api/v1/notifications")).items.filter((n) => n.kind === "orders.outsidePackage");
+    check(warn.filter((n) => n.title.includes(String(acc.number))).length === 1, `one outside-package warning for #${acc.number}`);
+    check(warn.some((n) => n.title.includes(String(infAcc.number))), `warning for the influencer order #${infAcc.number}`);
   });
 
   await rec.step("2.2.o", "ثابت‌ها: هیچ تایمر یا شیفت تکراری؛ خروج = توقف تایمر", async () => {

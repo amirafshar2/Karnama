@@ -28,5 +28,10 @@ export const faPortal = {
   "portal.messages": "پیام‌ها",
   "portal.noMessages": "پیامی نیست.",
   "portal.files": "فایل‌ها",
+  "portal.cancelOrder": "لغو سفارش",
+  "portal.cancelHelp": "تا وقتی آژانس سفارش را بررسی نکرده، می‌توانید آن را لغو کنید.",
+  "portal.cancelConfirm": "این سفارش لغو شود؟ این کار برگشت ندارد.",
+  "portal.cancelYes": "بله، لغو شود",
+  "portal.cancelled": "سفارش شما لغو شد.",
   "portal.profileLink": "پروفایل، درخواست تمدید و اطلاعات ورود حساب‌ها",
 } as const;

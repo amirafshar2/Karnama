@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Karnama.IntegrationTests;
 
@@ -73,6 +75,79 @@ public sealed class PortalTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/move", new { status = "clientReview", version = card.GetProperty("version").GetUInt32() }));
         (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{itemId}", new { approve = true })).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await Ok(await client.GetAsync($"/api/v1/orders/{orderId}"))).GetProperty("status").GetString().Should().Be("completed");
+    }
+
+    [Fact]
+    public async Task Late_client_approval_does_not_eat_the_next_stage_and_a_decision_is_final()
+    {
+        var client = await As("client");
+        var admin = await As("admin");
+        var cafe = (await Ok(await admin.GetAsync("/api/v1/clients?q=" + Uri.EscapeDataString("کافه نمونه")))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        var services = await Ok(await admin.GetAsync("/api/v1/services/options"));
+        var campaign = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "کمپین اینفلوئنسر").GetProperty("id").GetGuid();
+        var o = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", new
+        {
+            clientId = cafe, serviceTypeId = campaign, title = "کمپین پاییز", answers = new Dictionary<string, object> { ["topic"] = "پاییز" }, autoAccept = true,
+        }));
+        var orderId = o.GetProperty("id").GetGuid();
+        var ids = o.GetProperty("stages").EnumerateArray().Select(s => s.GetProperty("id").GetGuid()).ToList();
+        async Task<JsonElement> Card(Guid id) => (await Ok(await admin.GetAsync($"/api/v1/work/{id}"))).GetProperty("card");
+        var window = (await Card(ids[1])).GetProperty("deadline").GetDateTimeOffset() - (await Card(ids[0])).GetProperty("deadline").GetDateTimeOffset();
+
+        // Stage 1 goes to the client, who sits on it until both planned deadlines have passed (QA B5).
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{ids[0]}/move", new { status = "clientReview", version = (await Card(ids[0])).GetProperty("version").GetUInt32() }));
+        using (var scope = _f.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
+            await db.WorkItems.Where(w => w.OrderId == orderId).ExecuteUpdateAsync(
+                s => s.SetProperty(w => w.Deadline, w => w.Deadline - TimeSpan.FromHours(101)));
+        }
+        (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{ids[0]}", new { approve = true, stars = 5 })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var next = await Card(ids[1]);
+        next.GetProperty("status").GetString().Should().Be("todo");
+        next.GetProperty("deadline").GetDateTimeOffset().Should().BeCloseTo(_f.Clock.GetUtcNow() + window, TimeSpan.FromMinutes(1));
+
+        // Deciding again is refused and the stars stay (QA B2).
+        var again = await client.PostAsJsonAsync($"/api/v1/portal/approvals/{ids[0]}", new { approve = true, stars = 1 });
+        again.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{ids[0]}", new { approve = false, note = "دوباره" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Ok(await admin.GetAsync($"/api/v1/work/{ids[0]}"))).GetProperty("clientStars").GetInt32().Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Client_cancels_its_own_order_only_before_the_agency_accepts_it()
+    {
+        var client = await As("client");
+        var admin = await As("admin");
+        var services = await Ok(await client.GetAsync("/api/v1/services/options"));
+        var post = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "پست تکی").GetProperty("id").GetGuid();
+        object Body(string title) => new { serviceTypeId = post, title, answers = new Dictionary<string, string> { ["topic"] = "تخفیف" } };
+        var pending = await Ok(await client.PostAsJsonAsync("/api/v1/portal/orders", Body("سفارش برای لغو")));
+        var pendingId = pending.GetProperty("id").GetGuid();
+
+        // Another client's order: not found. Staff route: still forbidden for the client.
+        var other = (await Ok(await admin.GetAsync("/api/v1/orders?limit=100"))).GetProperty("items").EnumerateArray()
+            .First(x => x.GetProperty("clientName").GetString() != "کافه نمونه").GetProperty("id").GetGuid();
+        (await client.PostAsync($"/api/v1/portal/orders/{other}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await client.PostAsync($"/api/v1/orders/{pendingId}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await admin.PostAsync($"/api/v1/portal/orders/{pendingId}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var cancelled = await Ok(await client.PostAsync($"/api/v1/portal/orders/{pendingId}/cancel", null));
+        cancelled.GetProperty("status").GetString().Should().Be("cancelled");
+        (await Ok(await client.GetAsync("/api/v1/portal/home"))).GetProperty("orders").EnumerateArray()
+            .First(x => x.GetProperty("id").GetGuid() == pendingId).GetProperty("stepLabel").GetString().Should().Be("cancelled");
+        (await client.PostAsync($"/api/v1/portal/orders/{pendingId}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await Ok(await admin.GetAsync("/api/v1/notifications"))).GetProperty("items").EnumerateArray()
+            .Should().Contain(i => i.GetProperty("kind").GetString() == "order.cancelledByClient");
+        var cv = (await Ok(await admin.GetAsync($"/api/v1/orders/{pendingId}"))).GetProperty("version").GetUInt32();
+        (await admin.PostAsync($"/api/v1/orders/{pendingId}/accept?version={cv}", null)).StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        // Accepted → the client can't cancel from the panel any more (clear Persian reason).
+        var accepted = await Ok(await client.PostAsJsonAsync("/api/v1/portal/orders", Body("سفارش پذیرفته")));
+        await Ok(await admin.PostAsync($"/api/v1/orders/{accepted.GetProperty("id").GetGuid()}/accept?version={accepted.GetProperty("version").GetUInt32()}", null));
+        var late = await client.PostAsync($"/api/v1/portal/orders/{accepted.GetProperty("id").GetGuid()}/cancel", null);
+        late.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await late.Content.ReadAsStringAsync()).Should().Contain("برای لغو به آژانس پیام بدهید");
     }
 
     [Fact]

@@ -127,6 +127,9 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
         if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
         var w = await db.WorkItems.FirstOrDefaultAsync(x => x.Id == workItemId && x.ClientId == clientId, ct);
         if (w is null) return Error.NotFound("work.notFound", "موردی پیدا نشد.");
+        // Only content waiting for the client can be decided. A finished item stays finished: its stars feed the worker's score.
+        if (!w.IsOpen) return Error.Conflict("work.closed", "این کار بسته شده است.");
+        if (w.Status != WorkStatus.ClientReview) return Error.Forbidden("work.transition", "این مورد منتظر تأیید شما نیست.");
         if (!r.Approve && string.IsNullOrWhiteSpace(r.Note)) return Error.Validation("portal.note", "بنویسید چه چیزی باید تغییر کند.");
         var now = clock.GetUtcNow();
         var moved = w.MoveTo(r.Approve ? WorkStatus.Done : WorkStatus.ChangesRequested, WorkActor.Client, now);
@@ -144,7 +147,12 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
         {
             var siblings = await db.WorkItems.Where(x => x.OrderId == w.OrderId && x.Id != w.Id && x.Status != WorkStatus.Cancelled).ToListAsync(ct);
             var next = siblings.Where(x => x.StageOrder > w.StageOrder && x.Status == WorkStatus.Waiting).OrderBy(x => x.StageOrder).FirstOrDefault();
-            next?.Unlock();
+            if (next is not null)
+            {
+                // Client approved late? Not the next worker's fault: their deadline moves by the delay (WorkItem.Unlock).
+                var acceptedAt = await db.Orders.Where(o => o.Id == w.OrderId).Select(o => o.AcceptedAt).FirstOrDefaultAsync(ct);
+                next.Unlock(now, WorkService.PlannedStart(next, siblings.Append(w), acceptedAt));
+            }
             if (next is not null) changes.Record("work", next.Id, clientId, next.AssigneeId, null, "status");
             if (siblings.All(x => x.Status == WorkStatus.Done))
             {
@@ -161,6 +169,28 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         return Result.Success();
+    }
+
+    /// <summary>
+    /// The client cancels its own order while the agency hasn't accepted it yet (no work planned, no quota used).
+    /// After acceptance → 409: the client writes to the agency instead, and an admin cancels.
+    /// </summary>
+    public async Task<Result<PortalOrderDto>> CancelOrderAsync(Guid orderId, CancellationToken ct)
+    {
+        if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.ClientId == clientId, ct);
+        if (order is null) return Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+        var res = order.CancelByClient();
+        if (res.IsFailure) return res.Error!;
+        db.MarkModified(order);
+        var name = await db.Clients.Where(c => c.Id == clientId).Select(c => c.BusinessName).FirstAsync(ct);
+        audit.Add("orders.cancelledByClient", nameof(Order), order.Id.ToString(), new { order.Number });
+        await notifier.NotifyAsync(await notifier.StaffWithAsync(Domain.Identity.Permissions.OrdersManage, Domain.Identity.PermissionScope.All, ct),
+            "order.cancelledByClient", $"{name} سفارش #{order.Number} را لغو کرد", order.Title, "/orders", false, $"order-cancel:{order.Id:N}", ct);
+        changes.Record("order", order.Id, clientId, null, null, "status");
+        await db.SaveChangesAsync(ct);
+        await changes.PublishAsync(ct);
+        return new PortalOrderDto(order.Id, order.Number, order.Title, order.ServiceName.Get(me.LanguageCode), order.Status, 0, "cancelled", order.CreatedAt);
     }
 
     /// <summary>PROMPT2 §10.3: the client's profile — business, pages, running package with days and quotas, history.</summary>

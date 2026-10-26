@@ -209,4 +209,38 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         (await Ok(await admin2.GetAsync("/api/v1/notifications"))).GetProperty("items").EnumerateArray()
             .Should().Contain(i => i.GetProperty("kind").GetString() == "publish.overdue");
     }
+
+    [Fact]
+    public async Task Only_a_worker_on_the_order_may_mark_an_agency_post_published()
+    {
+        var admin = await As("admin");
+        var editor = await As("editor");
+        var writer = await As("writer");
+        var (clientId, _, _, agencyPlatform, agencyHandle, _) = await CafeAsync();
+        var services = await Ok(await admin.GetAsync("/api/v1/services/options"));
+        var post = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "پست تکی").GetProperty("id").GetGuid();
+        var order = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", new
+        {
+            clientId, serviceTypeId = post, title = "پست انتشار", answers = new Dictionary<string, object> { ["topic"] = "انتشار", ["mood"] = "friendly" }, autoAccept = true,
+        }));
+        var orderId = order.GetProperty("id").GetGuid();
+        var itemId = order.GetProperty("stages")[0].GetProperty("id").GetGuid();
+        var users = await Ok(await admin.GetAsync("/api/v1/users?limit=100"));
+        var editorId = users.GetProperty("items").EnumerateArray().First(u => u.GetProperty("displayName").GetString()!.StartsWith("علی")).GetProperty("id").GetGuid();
+        var v = (await Ok(await admin.GetAsync($"/api/v1/work/{itemId}"))).GetProperty("card").GetProperty("version").GetUInt32();
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/assign", new { userId = editorId, version = v }));
+
+        object Job(Guid? oid) => new
+        {
+            clientId, orderId = oid, platformId = agencyPlatform, handle = agencyHandle, publishAt = _f.Clock.GetUtcNow().AddMinutes(30), caption = "پست", fileIds = Array.Empty<Guid>(),
+        };
+        var withOrder = (await Ok(await admin.PostAsJsonAsync("/api/v1/publishing", Job(orderId)))).GetProperty("id").GetGuid();
+        var noOrder = (await Ok(await admin.PostAsJsonAsync("/api/v1/publishing", Job(null)))).GetProperty("id").GetGuid();
+
+        // Not on the order (the writer) → refused; a job without an order → only managers; the assigned editor → OK.
+        (await writer.PostAsJsonAsync($"/api/v1/publishing/{withOrder}/published", new { postUrl = (string?)null })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await editor.PostAsJsonAsync($"/api/v1/publishing/{noOrder}/published", new { postUrl = (string?)null })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await Ok(await editor.PostAsJsonAsync($"/api/v1/publishing/{withOrder}/published", new { postUrl = "https://instagram.com/p/abc" }))).GetProperty("status").GetString().Should().Be("published");
+        (await Ok(await admin.PostAsJsonAsync($"/api/v1/publishing/{noOrder}/published", new { postUrl = (string?)null }))).GetProperty("status").GetString().Should().Be("published");
+    }
 }
