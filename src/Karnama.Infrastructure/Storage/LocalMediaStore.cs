@@ -13,6 +13,7 @@ namespace Karnama.Infrastructure.Storage;
 internal sealed partial class LocalMediaStore : IMediaStore
 {
     public const long MaxImageBytes = 2 * 1024 * 1024;
+    public const long MaxVideoBytes = 18 * 1024 * 1024;
     private readonly string _root;
 
     public LocalMediaStore(IConfiguration config, IHostEnvironment env)
@@ -22,7 +23,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
         Directory.CreateDirectory(_root);
     }
 
-    [GeneratedRegex("^(brand|packages|blog|cases)/[0-9a-f]{32}\\.(png|jpg|webp)$")]
+    [GeneratedRegex("^(brand|packages|blog|cases|site)/[0-9a-f]{32}\\.(png|jpg|webp|mp4|webm)$")]
     private static partial Regex IdPattern();
 
     public async Task<Result<string>> SaveImageAsync(Stream content, long length, string folder, CancellationToken ct)
@@ -51,6 +52,57 @@ internal sealed partial class LocalMediaStore : IMediaStore
         return id;
     }
 
+    public async Task<Result<string>> SaveVideoAsync(Stream content, long length, string folder, CancellationToken ct)
+    {
+        if (length <= 0 || length > MaxVideoBytes)
+            return Error.Validation("media.videoTooLarge", "حجم ویدیو باید کمتر از ۱۸ مگابایت باشد.");
+        var head = new byte[16];
+        var got = 0;
+        while (got < head.Length)
+        {
+            var n = await content.ReadAsync(head.AsMemory(got), ct);
+            if (n == 0) break;
+            got += n;
+        }
+        var ext = SniffVideo(head.AsSpan(0, got));
+        if (ext is null) return Error.Validation("media.badVideo", "فقط ویدیوی MP4 یا WebM قبول می‌شود.");
+
+        var id = $"{folder}/{Guid.NewGuid():N}.{ext}";
+        var path = Path.Combine(_root, id);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        long total = got;
+        await using (var file = File.Create(path))
+        {
+            await file.WriteAsync(head.AsMemory(0, got), ct);
+            var buffer = new byte[81920];
+            int n;
+            while ((n = await content.ReadAsync(buffer, ct)) > 0)
+            {
+                total += n;
+                if (total > MaxVideoBytes) break;
+                await file.WriteAsync(buffer.AsMemory(0, n), ct);
+            }
+        }
+        if (total != length)
+        {
+            File.Delete(path);
+            return Error.Validation("media.incomplete", "فایل کامل نرسید. دوباره امتحان کنید.");
+        }
+        return id;
+    }
+
+    internal static string? SniffVideo(ReadOnlySpan<byte> b)
+    {
+        if (b.Length >= 12 && b.Slice(4, 4).SequenceEqual("ftyp"u8)) return "mp4";
+        if (b.Length >= 4 && b[0] == 0x1A && b[1] == 0x45 && b[2] == 0xDF && b[3] == 0xA3) return "webm";
+        return null;
+    }
+
+    private static string TypeOf(string path) => Path.GetExtension(path) switch
+    {
+        ".png" => "image/png", ".jpg" => "image/jpeg", ".mp4" => "video/mp4", ".webm" => "video/webm", _ => "image/webp",
+    };
+
     public string PublicUrl(string id) => $"/media/public/{id}";
 
     public (Stream Stream, string ContentType)? OpenPublic(string id)
@@ -58,8 +110,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
         if (!IdPattern().IsMatch(id)) return null;
         var path = Path.GetFullPath(Path.Combine(_root, id));
         if (!path.StartsWith(_root, StringComparison.Ordinal) || !File.Exists(path)) return null;
-        var type = Path.GetExtension(path) switch { ".png" => "image/png", ".jpg" => "image/jpeg", _ => "image/webp" };
-        return (File.OpenRead(path), type);
+        return (File.OpenRead(path), TypeOf(path));
     }
 
     [GeneratedRegex("^(consent|media)/[0-9a-f]{32}\\.(png|jpg|webp)$")]

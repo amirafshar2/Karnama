@@ -20,7 +20,7 @@ const csp = [
   `img-src 'self' data: blob: ${api}`,
   "font-src 'self'",
   // Chat voice messages and private previews play from blob: URLs.
-  "media-src 'self' blob:",
+  `media-src 'self' blob: ${api}`,
   `connect-src 'self' ${api} ${hub} ${ws(hub)}${cctv ? " " + cctv : ""}`,
   "object-src 'none'",
   "base-uri 'self'",

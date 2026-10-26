@@ -67,6 +67,13 @@ export const faCore = {
   "nav.brand": "برند و ظاهر",
   "nav.texts": "متن‌های سایت",
   "nav.main": "منوی اصلی",
+  "nav.group.work": "کار روزانه",
+  "nav.group.team": "تیم و حضور",
+  "nav.group.content": "محتوا و سایت",
+  "nav.group.admin": "مدیریت و تنظیمات",
+  "nav.group.me": "حساب من",
+  "nav.collapse": "جمع کردن منو",
+  "nav.expand": "باز کردن منو",
 
 
 

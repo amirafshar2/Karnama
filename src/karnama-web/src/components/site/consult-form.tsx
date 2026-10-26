@@ -25,32 +25,33 @@ export function ConsultForm({ texts, source }: { texts: Texts; source: string })
   };
   if (state === "sent")
     return (
-      <p role="status" className="rounded-xl border-2 border-foreground bg-primary p-6 text-lg font-bold text-primary-foreground" data-testid="consult-sent">
+      <p role="status" className="rounded-2xl bg-[var(--brand-yellow)] p-6 text-lg font-bold text-[var(--primary-foreground)]" data-testid="consult-sent">
         {texts.sent}
       </p>
     );
-  const field = "h-12 w-full rounded-md border-2 border-border bg-card px-3 text-base outline-none focus:border-foreground";
+  // Styled by the surrounding `.glass` panel (21st: @ham7a311/liquid-glass-cta); plain inputs elsewhere.
+  const field = "field";
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2" data-testid="consult-form">
-      <label className="space-y-1 text-sm font-semibold">
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2" data-testid="consult-form">
+      <label>
         {texts.name}
         <input name="name" required minLength={2} maxLength={60} autoComplete="name" className={field} />
       </label>
-      <label className="space-y-1 text-sm font-semibold">
+      <label>
         {texts.phone}
         <input name="phone" required inputMode="tel" dir="ltr" autoComplete="tel" placeholder="09..." className={`${field} text-end`} />
       </label>
-      <label className="space-y-1 text-sm font-semibold sm:col-span-2">
+      <label className="sm:col-span-2">
         {texts.business}
         <input name="business" maxLength={80} className={field} />
       </label>
-      <label className="space-y-1 text-sm font-semibold sm:col-span-2">
+      <label className="sm:col-span-2">
         {texts.message}
         <textarea name="message" rows={3} maxLength={1000} className={`${field} h-auto py-2`} />
       </label>
       <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -start-[9999px] h-0 w-0 opacity-0" />
-      {state === "error" && <p role="alert" className="text-sm font-semibold text-destructive sm:col-span-2">{texts.error}</p>}
-      <button type="submit" disabled={state === "sending"} className="h-12 rounded-md border-2 border-foreground bg-primary font-extrabold text-primary-foreground hover:bg-foreground hover:text-background sm:col-span-2">
+      {state === "error" && <p role="alert" className="text-sm font-semibold text-[#ff8f8f] sm:col-span-2">{texts.error}</p>}
+      <button type="submit" disabled={state === "sending"} className="sm:col-span-2">
         {state === "sending" ? texts.sending : texts.send}
       </button>
     </form>

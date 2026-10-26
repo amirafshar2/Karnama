@@ -21,9 +21,9 @@ const config: CapacitorConfig = {
     allowNavigation: [],
   },
   plugins: {
-    SplashScreen: { launchShowDuration: 600, backgroundColor: "#0a0a0a", showSpinner: false, androidScaleType: "CENTER_CROP" },
-    StatusBar: { style: "DARK", backgroundColor: "#0a0a0a", overlaysWebView: false },
-    LocalNotifications: { smallIcon: "ic_stat_karnama", iconColor: "#feff00" },
+    SplashScreen: { launchShowDuration: 600, backgroundColor: "#0b1b34", showSpinner: false, androidScaleType: "CENTER_CROP" },
+    StatusBar: { style: "DARK", backgroundColor: "#0b1b34", overlaysWebView: false },
+    LocalNotifications: { smallIcon: "ic_stat_karnama", iconColor: "#3b6cff" },
   },
 };
 

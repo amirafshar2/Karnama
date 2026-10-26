@@ -14,7 +14,7 @@ namespace Karnama.Infrastructure.Seeding;
 /// Idempotent seed. Always: languages and system roles (owner grants are re-synced with the permission catalog).
 /// Demo mode only: sample roles and demo accounts (IsDemo = true). Every text is sample data, editable from the panel.
 /// </summary>
-public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, ILogger<DataSeeder> logger, Karnama.Application.Abstractions.IVault vault)
+public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, ILogger<DataSeeder> logger, Karnama.Application.Abstractions.IVault vault, Karnama.Application.Abstractions.IMediaStore media)
 {
     public const string OwnerDemoPhone = "09000000000";
 
@@ -42,7 +42,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             await DemoWorkSeed.SeedAsync(db, ct);
             await DemoWorkSeed.SeedPublishingAsync(db, ct);
             await DemoBlogSeed.SeedAsync(db, ct);
-            await DemoSiteSeed.SeedAsync(db, ct);
+            await DemoSiteSeed.SeedAsync(db, media, ct);
             await DemoVaultSeed.SeedAsync(db, vault, ct);
             await DemoMediaSeed.SeedAsync(db, ct);
             await EnsureDemoMarketerAsync(ct);

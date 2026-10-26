@@ -9,5 +9,5 @@ public sealed record UpdateBrandRequest(string? Name, string? Tagline, BrandColo
 
 public static class BrandDefaults
 {
-    public static readonly BrandColors Colors = new("#FEFF00", "#0A0A0A", null);
+    public static readonly BrandColors Colors = new("#3B6CFF", "#0B1B34", null);
 }

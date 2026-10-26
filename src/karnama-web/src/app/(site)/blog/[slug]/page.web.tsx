@@ -77,7 +77,7 @@ export default async function PostPage({ params }: Props) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd({ "@context": "https://schema.org", "@graph": graph }) }} />
-      <article className="mx-auto max-w-6xl px-4 py-10" data-testid="post">
+      <article className="mx-auto max-w-6xl px-4 pt-32 pb-16 sm:pt-36" data-testid="post">
         <nav aria-label={t("site.blog.breadcrumb")} className="text-sm text-muted-foreground">
           <ol className="flex flex-wrap items-center gap-2">
             <li><Link href="/" className="hover:underline">{t("site.nav.home")}</Link></li>

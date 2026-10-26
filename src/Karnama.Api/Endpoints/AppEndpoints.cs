@@ -130,7 +130,8 @@ internal static class AppEndpoints
             var opened = media.OpenPublic($"{folder}/{file}");
             if (opened is null) return Results.NotFound();
             http.Response.Headers.CacheControl = "public, max-age=31536000, immutable"; // names are random and never reused
-            return Results.Stream(opened.Value.Stream, opened.Value.ContentType);
+            // Range requests let browsers (Safari above all) seek and start videos without downloading the whole file.
+            return Results.Stream(opened.Value.Stream, opened.Value.ContentType, enableRangeProcessing: true);
         }).WithTags("Public");
 
         app.MapGet("/api/v1/app/version", (IOptions<AppVersionOptions> o) =>

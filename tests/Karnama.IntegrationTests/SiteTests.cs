@@ -41,6 +41,45 @@ public sealed class SiteTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     }
 
     [Fact]
+    public async Task Hero_video_and_photos_are_uploaded_checked_and_served_with_ranges()
+    {
+        var admin = await As("admin");
+        // A minimal MP4 header ("ftyp" at offset 4) is accepted; a renamed text file is not.
+        var mp4 = new byte[4096];
+        new byte[] { 0, 0, 0, 0x18, (byte)'f', (byte)'t', (byte)'y', (byte)'p', (byte)'i', (byte)'s', (byte)'o', (byte)'m' }.CopyTo(mp4, 0);
+        using (var bad = new MultipartFormDataContent { { new ByteArrayContent("not a video at all"u8.ToArray()), "file", "x.mp4" } })
+            (await admin.PostAsync("/api/v1/site/media?video=true", bad)).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        using var vf = new MultipartFormDataContent { { new ByteArrayContent(mp4), "file", "hero.mp4" } };
+        var video = await Ok(await admin.PostAsync("/api/v1/site/media?video=true", vf));
+        var videoId = video.GetProperty("id").GetString()!;
+        videoId.Should().MatchRegex("^site/[0-9a-f]{32}\\.mp4$");
+        using var pf = new MultipartFormDataContent { { new ByteArrayContent(Png()), "file", "p.png" } };
+        var photoId = (await Ok(await admin.PostAsync("/api/v1/site/media", pf))).GetProperty("id").GetString()!;
+        using (var ef = new MultipartFormDataContent { { new ByteArrayContent(Png()), "file", "p.png" } })
+            (await (await As("editor")).PostAsync("/api/v1/site/media", ef)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // Range requests work, so phones can start the clip without downloading all of it.
+        var req = new HttpRequestMessage(HttpMethod.Get, video.GetProperty("url").GetString());
+        req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 99);
+        var part = await _f.CreateClient().SendAsync(req);
+        part.StatusCode.Should().Be(HttpStatusCode.PartialContent);
+        part.Content.Headers.ContentType!.MediaType.Should().Be("video/mp4");
+
+        var content = await Ok(await admin.GetAsync("/api/v1/site/home"));
+        var edited = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(content.GetRawText())!;
+        // Only files stored by us: a free link is refused.
+        edited["heroVideo"] = JsonSerializer.SerializeToElement("https://evil.example/x.mp4");
+        (await admin.PutAsJsonAsync("/api/v1/site/home", edited)).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        edited["heroVideo"] = JsonSerializer.SerializeToElement(videoId);
+        edited["heroImages"] = JsonSerializer.SerializeToElement(new[] { photoId });
+        await Ok(await admin.PutAsJsonAsync("/api/v1/site/home", edited));
+
+        var hero = (await Ok(await _f.CreateClient().GetAsync("/api/v1/public/site/home"))).GetProperty("hero");
+        hero.GetProperty("videoUrl").GetString().Should().Be("/media/public/" + videoId);
+        hero.GetProperty("images").EnumerateArray().Select(x => x.GetString()).Should().Equal("/media/public/" + photoId);
+    }
+
+    [Fact]
     public async Task Case_is_published_only_with_written_consent()
     {
         var admin = await As("admin");

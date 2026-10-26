@@ -20,9 +20,9 @@ public sealed partial class UpdateBrandValidator : AbstractValidator<UpdateBrand
         RuleFor(x => x.Tagline).MaximumLength(160).WithMessage("شعار حداکثر ۱۶۰ کاراکتر است.");
         RuleFor(x => x.Colors).NotNull().WithMessage("رنگ‌ها را انتخاب کنید.");
         RuleFor(x => x.Colors.Primary).Must(c => c is not null && Hex().IsMatch(c)).When(x => x.Colors is not null)
-            .WithMessage("رنگ اصلی باید به شکل #RRGGBB باشد (مثلاً #FEFF00).");
+            .WithMessage("رنگ اصلی باید به شکل #RRGGBB باشد (مثلاً #3B6CFF).");
         RuleFor(x => x.Colors.Dark).Must(c => c is not null && Hex().IsMatch(c)).When(x => x.Colors is not null)
-            .WithMessage("رنگ تیره باید به شکل #RRGGBB باشد (مثلاً #0A0A0A).");
+            .WithMessage("رنگ تیره باید به شکل #RRGGBB باشد (مثلاً #12141A).");
         RuleFor(x => x.Colors.Emphasis).Must(c => c is null || Hex().IsMatch(c)).When(x => x.Colors is not null)
             .WithMessage("رنگ تأکید باید به شکل #RRGGBB باشد.");
     }

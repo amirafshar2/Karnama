@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { api, ApiError, type Session } from "@/lib/api";
+import { mediaUrl } from "@/lib/config";
 import { useAuth } from "@/lib/auth";
 import { toLatinDigits, useI18n } from "@/lib/i18n/provider";
 import type { DemoAccount } from "@/lib/types";
@@ -90,14 +91,9 @@ export function LoginScreen() {
         </footer>
       </main>
 
-      {/* Brand side: the tile lattice is the product's one decorative signature. */}
-      <aside className="tile-on-panel relative order-first h-28 overflow-hidden bg-panel lg:order-none lg:h-auto" aria-hidden="true">
-        <TilePattern className="absolute inset-0" id="login-tile" />
-        <div className="relative hidden h-full flex-col justify-end p-12 lg:flex">
-          <p className="max-w-md text-5xl leading-tight font-extrabold text-panel-foreground">{brand.name ?? t("brand.defaultName")}</p>
-          <p className="mt-4 max-w-sm text-lg text-white/80">{brand.tagline ?? t("brand.tagline")}</p>
-        </div>
-      </aside>
+      {/* Brand side (21st: @diarmuradi/sign-in-3 split layout + @rahil1202/glass-video-hero): the site's own video loop
+          and post photos behind the brand name; just the tile lattice when the site has no media yet. */}
+      <BrandStage name={brand.name ?? t("brand.defaultName")} tagline={brand.tagline ?? t("brand.tagline")} />
     </div>
   );
 }
@@ -403,5 +399,59 @@ function DemoLogin({ onDone }: { onDone: (s: Session) => Promise<void> }) {
         <ErrorText error={error} />
       </div>
     </section>
+  );
+}
+
+type PublicHero = { hero?: { videoUrl: string | null; posterUrl: string | null; images: string[] } };
+
+function BrandStage({ name, tagline }: { name: string; tagline: string }) {
+  // Media is decoration: only on wide screens, and only after the page has finished loading (phones on 3G never pay for it).
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    if (!matchMedia("(min-width: 1024px)").matches) return;
+    const go = () => setTimeout(() => setWide(true), 300);
+    if (document.readyState === "complete") go();
+    else window.addEventListener("load", go, { once: true });
+    return () => window.removeEventListener("load", go);
+  }, []);
+  const { data } = useQuery({
+    queryKey: ["public-hero"],
+    enabled: wide,
+    queryFn: () => api<PublicHero>("/api/v1/public/site/home", { noAuthRetry: true }).catch(() => ({}) as PublicHero),
+    staleTime: 5 * 60_000,
+  });
+  const hero = data?.hero;
+  const photos = (hero?.images ?? []).slice(0, 3);
+  return (
+    <aside className="tile-on-panel relative isolate order-first h-36 overflow-hidden bg-[var(--brand-black)] lg:order-none lg:h-auto" aria-hidden="true">
+      {hero?.videoUrl ? (
+        <video src={mediaUrl(hero.videoUrl)} poster={hero.posterUrl ? mediaUrl(hero.posterUrl) : undefined} autoPlay muted loop playsInline preload="none" className="absolute inset-0 -z-20 size-full object-cover opacity-70 motion-reduce:hidden" />
+      ) : hero?.posterUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- uploaded still
+        <img src={mediaUrl(hero.posterUrl)} alt="" className="absolute inset-0 -z-20 size-full object-cover opacity-70" />
+      ) : null}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[var(--brand-black)] via-[var(--brand-black)]/40 to-[var(--brand-black)]/60" />
+      <TilePattern className="absolute inset-0 -z-10 opacity-60" id="login-tile" />
+      {photos.length > 0 && (
+        <div className="absolute inset-x-0 top-[18%] hidden justify-center lg:flex">
+          {photos.map((src, i) => (
+            // eslint-disable-next-line @next/next/no-img-element -- uploaded post photo
+            <img
+              key={src}
+              src={mediaUrl(src)}
+              alt=""
+              width={208}
+              height={277}
+              className="kn-login-card -mx-6 aspect-[3/4] w-44 rounded-2xl object-cover shadow-2xl ring-1 ring-white/20 xl:w-52"
+              style={{ ["--x" as string]: i - 1, zIndex: i === 1 ? 2 : 1, animationDelay: `${300 + i * 140}ms` }}
+            />
+          ))}
+        </div>
+      )}
+      <div className="relative hidden h-full flex-col justify-end p-12 lg:flex">
+        <p className="max-w-md text-6xl leading-tight font-black text-[var(--brand-on-dark)]">{name}</p>
+        <p className="mt-4 max-w-sm text-lg text-white/80">{tagline}</p>
+      </div>
+    </aside>
   );
 }

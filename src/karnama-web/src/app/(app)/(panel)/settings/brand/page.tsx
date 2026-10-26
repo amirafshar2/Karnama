@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, uploadForm } from "@/lib/api";
-import { brandVars, contrast, DEFAULT_COLORS, isHex, type Brand, type BrandColors } from "@/lib/brand";
+import { brandVars, contrast, DEFAULT_COLORS, isHex, PRESETS, type Brand, type BrandColors } from "@/lib/brand";
 import { faSettings } from "@/lib/i18n/fa-settings";
 import { useI18n } from "@/lib/i18n/provider";
 import { registerTexts } from "@/lib/i18n/registry";
@@ -146,6 +146,32 @@ function BrandForm({ initial }: { initial: ReturnType<typeof useBrand> }) {
             <RotateCcw aria-hidden="true" />
             {t("brandSettings.reset")}
           </Button>
+        </div>
+        {/* Ready-made palettes from 21st.dev themes: one click fills both colours (still editable below). */}
+        <div className="space-y-2">
+          <p className="text-sm font-bold">{t("brandSettings.presets")}</p>
+          <p className="text-xs leading-6 text-muted-foreground">{t("brandSettings.presetsHelp")}</p>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="brand-presets">
+            {PRESETS.map((p) => {
+              const on = colors.primary.toLowerCase() === p.primary && colors.dark.toLowerCase() === p.dark;
+              return (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setColors({ primary: p.primary, dark: p.dark, emphasis: null })}
+                    className="flex w-full flex-col gap-2 rounded-xl border p-2 text-start transition-shadow hover:shadow-md aria-pressed:ring-2 aria-pressed:ring-ring"
+                  >
+                    <span className="flex h-10 overflow-hidden rounded-lg" aria-hidden="true">
+                      <span className="flex-[2]" style={{ background: p.dark }} />
+                      <span className="flex-1" style={{ background: p.primary }} />
+                    </span>
+                    <span className="truncate text-xs font-bold" dir="ltr">{p.theme}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
         <ColorField id="primary" label={t("brandSettings.primary")} help={t("brandSettings.primaryHelp")} value={colors.primary} onChange={(v) => setColors({ ...colors, primary: v })} />
         {isHex(colors.primary) && contrast(colors.primary, "#ffffff") < 3 && <p className="text-sm text-muted-foreground">{t("brandSettings.contrastWarn")}</p>}

@@ -13,6 +13,8 @@ export const faSettings = {
   "brandSettings.logoNone": "هنوز لوگویی بارگذاری نشده؛ به‌جایش حرف اول نام نشان داده می‌شود.",
   "brandSettings.logoSaved": "لوگو عوض شد.",
   "brandSettings.colors": "رنگ‌ها",
+  "brandSettings.presets": "پالت‌های آماده",
+  "brandSettings.presetsHelp": "پالت‌های آماده از تم‌های 21st.dev؛ با یک کلیک هر دو رنگ پر می‌شود و بعد هم می‌توانید دستی عوضشان کنید. ذخیره را فراموش نکنید.",
   "brandSettings.primary": "رنگ اصلی برند",
   "brandSettings.primaryHelp": "رنگ دکمه‌های اصلی. مثلاً زرد لوگو.",
   "brandSettings.dark": "رنگ تیره‌ی برند",

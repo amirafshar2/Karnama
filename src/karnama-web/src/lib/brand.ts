@@ -12,10 +12,27 @@ export type Brand = {
   demo: boolean;
 };
 
-export const DEFAULT_COLORS: BrandColors = { primary: "#FEFF00", dark: "#0A0A0A", emphasis: null };
+/**
+ * Default palette (redesign 1405/08/04): deep navy for trust and weight, an electric royal blue for impact,
+ * a warm camel gold as the quiet second accent. Built from 21st.dev themes "Indigo Harbor", "Azure Mono" and "Camel Linen".
+ */
+export const DEFAULT_COLORS: BrandColors = { primary: "#3b6cff", dark: "#0b1b34", emphasis: null };
+export const BRAND_GOLD = "#d4bc8b";
+
+/** Ready-made palettes from 21st.dev community themes (Settings › Brand → one click). */
+export const PRESETS: { id: string; theme: string; primary: string; dark: string }[] = [
+  { id: "harbor", theme: "Indigo Harbor + Azure Mono", primary: "#3b6cff", dark: "#0b1b34" },
+  { id: "luxury", theme: "Camel Linen", primary: "#c1a875", dark: "#141412" },
+  { id: "ember", theme: "Elegant Luxury", primary: "#b91c1c", dark: "#1c1917" },
+  { id: "teal", theme: "Perpetuity", primary: "#06858e", dark: "#0a1a20" },
+  { id: "violet", theme: "Violet Bloom", primary: "#7033ff", dark: "#1a1b1e" },
+  { id: "sage", theme: "Sage Garden", primary: "#7c9082", dark: "#121212" },
+  { id: "dusk", theme: "Solar Dusk", primary: "#b45309", dark: "#1c1917" },
+  { id: "mono", theme: "Graphite Mono", primary: "#2e2e2e", dark: "#0a0a0a" },
+];
 const WHITE = "#ffffff";
-const INK = "#0a0a0a";
-const DARK_BG = "#0a0a0a";
+const INK = "#0b1220";
+const DARK_BG = "#0b1220";
 
 type Rgb = [number, number, number];
 
@@ -64,9 +81,13 @@ export function brandVars(colors: BrandColors) {
   const E = isHex(colors.emphasis) ? colors.emphasis.toLowerCase() : P;
 
   const onPanel = contrast(P, D) >= 4.5 ? P : textOn(D);
+  // The brand colour lightened until it reads as text on the dark stage (hero, sidebar, footer).
+  const onDark = until(P, D, WHITE, 4.5);
   const light = {
     "--brand-yellow": P,
     "--brand-black": D,
+    "--brand-on-dark": onDark,
+    "--brand-gold": BRAND_GOLD,
     "--primary": P,
     "--primary-foreground": textOn(P),
     "--primary-border": contrast(P, WHITE) < 1.6 ? D : "transparent",
@@ -80,6 +101,8 @@ export function brandVars(colors: BrandColors) {
   const dark = {
     "--brand-yellow": P,
     "--brand-black": D,
+    "--brand-on-dark": onDark,
+    "--brand-gold": BRAND_GOLD,
     "--primary": P,
     "--primary-foreground": textOn(P),
     "--primary-border": contrast(P, DARK_BG) < 1.6 ? "#ffffff33" : "transparent",

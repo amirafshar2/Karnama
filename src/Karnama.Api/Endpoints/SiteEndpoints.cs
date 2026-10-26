@@ -27,6 +27,13 @@ internal static class SiteEndpoints
         var home = app.MapGroup("/api/v1/site").WithTags("Site").RequirePermission(Permissions.ContentManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
         home.MapGet("/home", async (SiteContentStore store, CancellationToken ct) => Results.Ok(await store.GetAsync(ct)));
         home.MapPut("/home", async (HomeContent body, SiteContentStore store, HttpContext http, CancellationToken ct) => (await store.SaveAsync(body, ct)).ToHttp(http));
+        home.MapPost("/media", async (IFormFile file, bool? video, SiteContentStore store, HttpContext http, CancellationToken ct) =>
+        {
+            await using var s = file.OpenReadStream();
+            return (await store.UploadAsync(s, file.Length, video == true, ct)).ToHttp(http);
+        }).DisableAntiforgery().RequireRateLimiting(RateLimits.Heavy)
+          .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(19 * 1024 * 1024))
+          .WithMetadata(new Microsoft.AspNetCore.Mvc.RequestFormLimitsAttribute { MultipartBodyLengthLimit = 19 * 1024 * 1024 });
 
         var cases = app.MapGroup("/api/v1/cases").WithTags("Cases").RequirePermission(Permissions.ContentManage, PermissionScope.All).AddEndpointFilter<ValidationFilter>();
         cases.MapGet("/", async (CaseStudyService svc, HttpContext http, CancellationToken ct) => (await svc.ListAsync(ct)).ToHttp(http));

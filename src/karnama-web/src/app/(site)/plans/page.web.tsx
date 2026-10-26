@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageHero } from "@/components/site/blocks";
 import { PackageCard } from "@/components/site/package-card";
 import { getBrand, getT, siteGet, SITE_URL, type PackageCard as P } from "@/lib/site";
 
@@ -17,14 +18,15 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Packages() {
   const [list, t] = await Promise.all([siteGet<P[]>("/api/v1/public/site/packages"), getT()]);
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <h1 className="text-4xl font-black sm:text-5xl">{t("site.packages.title")}</h1>
-      <p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">{t("site.packages.description")}</p>
-      <div className="mt-12 grid gap-8 md:grid-cols-3" data-testid="packages-list">
-        {(list ?? []).map((p) => (
-          <PackageCard key={p.slug} p={p} t={t} />
-        ))}
-      </div>
-    </div>
+    <>
+      <PageHero id="plans" title={t("site.packages.title")} lede={t("site.packages.description")} />
+      <section className="sec">
+        <div className="wrap tiers" data-testid="packages-list">
+          {(list ?? []).map((p, i) => (
+            <PackageCard key={p.slug} p={p} t={t} delay={(i % 3) * 100} />
+          ))}
+        </div>
+      </section>
+    </>
   );
 }

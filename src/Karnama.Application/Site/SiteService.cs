@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Karnama.Application.Site;
 
 // ---- Public DTOs ----
+public sealed record SiteHero(string? VideoUrl, string? PosterUrl, IReadOnlyList<string> Images);
 public sealed record SiteStats(int Clients, int Deliveries, int? MedianFollowerGrowth);
 public sealed record SiteService(string Name, string? Description, string? Icon);
 public sealed record SitePackageCard(string Name, string Slug, string? Short, long Price, long? CompareAt, long? Special, PackagePeriod Period, int ValidityDays, PackageBadge Badge,
@@ -26,7 +27,7 @@ public sealed record SiteCase(SiteCaseCard Card, string? Handle, DateOnly? From,
 public sealed record SiteShot(string Url, string? Caption, DateOnly? TakenOn, bool IsAfter);
 public sealed record SiteTestimonial(string Quote, string By, string BusinessName, string Slug);
 public sealed record SiteHome(HomeContent Content, SiteStats Stats, IReadOnlyList<SiteService> Services, IReadOnlyList<SiteCaseCard> Cases,
-    IReadOnlyList<SitePackageCard> Packages, IReadOnlyList<SiteTestimonial> Testimonials);
+    IReadOnlyList<SitePackageCard> Packages, IReadOnlyList<SiteTestimonial> Testimonials, SiteHero Hero);
 public sealed record SiteSitemapEntry(string Path, DateTimeOffset Modified);
 
 // ---- Admin DTOs ----
@@ -75,7 +76,16 @@ public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteC
             .Select(x => new SiteTestimonial(x.Quote!, x.QuoteBy!, x.BusinessName, x.Slug)).ToList();
         return new SiteHome(c, new SiteStats(clients, deliveries, median),
             services.Select(s => new SiteService(s.Name.Get("fa"), s.Description, s.Icon)).ToList(),
-            c.ShowCases ? cases.Take(3).Select(Card).ToList() : [], packages, testimonials);
+            c.ShowCases ? cases.Take(6).Select(Card).ToList() : [], packages, testimonials, Hero(c, cases));
+    }
+
+    /// <summary>The first screen: the admin's video and photos; without photos, the published cases' covers stand in.</summary>
+    private SiteHero Hero(HomeContent c, List<CaseStudy> cases)
+    {
+        var images = (c.HeroImages ?? []).Select(media.PublicUrl).ToList();
+        if (images.Count == 0)
+            images = cases.Select(x => x.Shots.FirstOrDefault(s => s.IsAfter)?.Image ?? x.Shots.FirstOrDefault()?.Image).OfType<string>().Take(5).Select(media.PublicUrl).ToList();
+        return new SiteHero(Url(c.HeroVideo), Url(c.HeroPoster), images);
     }
 
     private IQueryable<CaseStudy> LiveCases() => db.CaseStudies.AsNoTracking().Where(x => x.Published);

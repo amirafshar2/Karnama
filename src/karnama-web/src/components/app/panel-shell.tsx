@@ -70,19 +70,22 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-dvh">
-      <SideNav items={items} isActive={isActive} onLogout={() => void logout()} />
+      <SideNav items={items} isActive={isActive} onLogout={() => void logout()} user={{ name: me.displayName, role: me.roles[0] ?? null }} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <DemoBanner />
         <OfflineBar />
         <IosInstallHint />
-        <header className="safe-top sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/90 px-4 backdrop-blur">
+        <header className="kn-top safe-top sticky top-0 z-10 flex h-16 items-center gap-2 px-4 md:px-8">
           <BrandMark className="text-base md:hidden" />
-          <span className="ms-auto truncate text-sm text-muted-foreground">{me.displayName}</span>
+          <span className="ms-auto hidden truncate text-sm text-muted-foreground sm:inline">{me.displayName}</span>
           <PageHelp />
           <BellButton />
+          <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--brand-black)] text-sm font-black text-[var(--brand-on-dark)] ring-2 ring-[var(--brand-yellow)]/60 md:hidden">
+            {me.displayName.trim().charAt(0)}
+          </span>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 md:px-8 md:pb-10">{children}</main>
+        <main className="kn-main mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-32 md:px-8 md:pb-12">{children}</main>
       </div>
 
       {/* Mobile: bottom navigation (thumb reach, 48px+ targets); more than 5 sections → 4 + "More". */}
@@ -92,6 +95,10 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Mobile / Android bottom bar, from 21st: @lyanchouss/dock — a floating dark capsule; the active section grows into a
+ * lit pill with its name, the rest stay icons (48px+ targets). More than 5 sections → 4 + "More" sheet.
+ */
 function BottomNav({ items, isActive }: { items: ReturnType<typeof navFor>; isActive: (href: string) => boolean }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -100,16 +107,14 @@ function BottomNav({ items, isActive }: { items: ReturnType<typeof navFor>; isAc
   const rest = overflow ? items.slice(4) : [];
   const cls = (active: boolean) =>
     cn(
-      "flex min-h-16 w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs leading-tight",
-      active
-        ? "font-bold text-foreground [&>svg]:rounded-md [&>svg]:bg-primary [&>svg]:text-primary-foreground [&>svg]:ring-4 [&>svg]:ring-primary"
-        : "text-muted-foreground",
+      "kn-dock__item flex h-14 min-w-12 items-center justify-center gap-2 rounded-full px-3 text-xs font-bold leading-tight",
+      active && "kn-dock__item--on",
     );
 
   return (
-    <nav aria-label={t("nav.main")} className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t bg-card/95 backdrop-blur md:hidden">
+    <nav aria-label={t("nav.main")} className="safe-bottom fixed inset-x-0 bottom-0 z-20 px-3 pb-3 md:hidden">
       {open && (
-        <ul className="mx-auto max-h-[65dvh] max-w-md overflow-y-auto overscroll-contain border-b p-2" data-testid="bottom-more-panel">
+        <ul className="kn-dock__sheet mx-auto mb-2 max-h-[60dvh] max-w-md overflow-y-auto overscroll-contain rounded-3xl p-2" data-testid="bottom-more-panel">
           {rest.map((item) => (
             <li key={item.href}>
               <Link
@@ -117,7 +122,7 @@ function BottomNav({ items, isActive }: { items: ReturnType<typeof navFor>; isAc
                 onClick={() => setOpen(false)}
                 data-testid={`bottom-${item.href.slice(1)}`}
                 aria-current={isActive(item.href) ? "page" : undefined}
-                className="flex min-h-12 items-center gap-3 rounded-md px-3 text-sm hover:bg-muted aria-[current=page]:font-bold"
+                className="flex min-h-12 items-center gap-3 rounded-2xl px-3 text-sm text-white/85 hover:bg-white/10 aria-[current=page]:bg-[var(--brand-yellow)] aria-[current=page]:font-bold aria-[current=page]:text-[var(--primary-foreground)]"
               >
                 <item.icon className="size-5" aria-hidden="true" />
                 {t(item.label)}
@@ -126,20 +131,23 @@ function BottomNav({ items, isActive }: { items: ReturnType<typeof navFor>; isAc
           ))}
         </ul>
       )}
-      <ul className="mx-auto flex max-w-md">
-        {main.map((item) => (
-          <li key={item.href} className="flex-1">
-            <Link href={item.href} data-testid={`bottom-${item.href.slice(1)}`} aria-current={isActive(item.href) ? "page" : undefined} className={cls(isActive(item.href))}>
-              <item.icon className="size-5" aria-hidden="true" />
-              {t(item.label)}
-            </Link>
-          </li>
-        ))}
+      <ul className="kn-dock mx-auto flex max-w-md items-center justify-between gap-1 rounded-full p-1.5">
+        {main.map((item) => {
+          const on = isActive(item.href);
+          return (
+            <li key={item.href} className={on ? "flex-[1.6]" : "flex-1"}>
+              <Link href={item.href} data-testid={`bottom-${item.href.slice(1)}`} aria-current={on ? "page" : undefined} aria-label={t(item.label)} className={cls(on)}>
+                <item.icon className="size-5 shrink-0" aria-hidden="true" />
+                <span className={on ? "truncate" : "sr-only"}>{t(item.label)}</span>
+              </Link>
+            </li>
+          );
+        })}
         {overflow && (
           <li className="flex-1">
-            <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cls(rest.some((i) => isActive(i.href)))} data-testid="bottom-more">
+            <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cls(open || rest.some((i) => isActive(i.href)))} data-testid="bottom-more" aria-label={t("common.more")}>
               <Ellipsis className="size-5" aria-hidden="true" />
-              {t("common.more")}
+              <span className="sr-only">{t("common.more")}</span>
             </button>
           </li>
         )}

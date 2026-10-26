@@ -24,6 +24,11 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Demo-only photos and the hero loop, written to storage by the demo seed. -->
+    <EmbeddedResource Include="Seeding\DemoMedia\*" LogicalName="DemoMedia.%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

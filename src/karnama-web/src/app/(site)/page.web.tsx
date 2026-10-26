@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { TilePattern } from "@/components/app/tile-pattern";
-import { CaseCard } from "@/components/site/case-card";
+import { Arrow } from "@/components/site/blocks";
 import { ConsultForm } from "@/components/site/consult-form";
+import { HeroTilt } from "@/components/site/motion/hero-tilt";
+import { HoverReel } from "@/components/site/motion/hover-reel";
 import { PackageCard } from "@/components/site/package-card";
 import { PostCard } from "@/components/site/post-card";
 import { ServiceIcon } from "@/components/site/service-icon";
@@ -30,8 +32,8 @@ export default async function Home() {
   const name = brand?.name ?? "کارنما";
   if (!home) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-24">
-        <h1 className="text-4xl font-black">{name}</h1>
+      <div className="wrap pt-40 pb-24">
+        <h1 className="h2">{name}</h1>
       </div>
     );
   }
@@ -73,100 +75,195 @@ export default async function Home() {
     home.stats.medianFollowerGrowth !== null && { n: `${faNum(home.stats.medianFollowerGrowth)}٪`, label: t("site.stats.growth") },
   ].filter(Boolean) as { n: string; label: string }[];
 
+  const hero = home.hero ?? { videoUrl: null, posterUrl: null, images: [] };
+  const fan = hero.images.slice(0, 5);
+  // Centred fan: offsets −2…2 for five cards, fewer cards close up around the middle.
+  const fanPos = fan.map((_, i) => {
+    const x = i - (fan.length - 1) / 2;
+    return { x, r: x * 8, z: 10 - Math.abs(x) * 2, d: 750 + Math.abs(x) * 150 };
+  });
+  const words = c.heroTitle.split(/\s+/).filter(Boolean);
+  const handle = (k.instagram ?? name).replace(/^https?:\/\/(www\.)?instagram\.com\//, "").replace(/^@/, "").replace(/\/$/, "");
+  const bandItems = [...home.services.map((s) => s.name), ...home.cases.map((x) => x.industry).filter(Boolean) as string[]].filter((v, i, a) => a.indexOf(v) === i);
+  const quotes = home.testimonials.length > 0 ? [...home.testimonials, ...home.testimonials, ...home.testimonials].slice(0, Math.max(6, home.testimonials.length)) : [];
+  const servicePhoto = hero.images[5] ?? hero.images[0] ?? null;
+  const tone = ["", "bento__hi", "", "bento__ink", "", "", "bento__hi", ""];
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd({ "@context": "https://schema.org", "@graph": graph }) }} />
 
-      {/* Hero: the agency's promise on its own colours, the Shiraz tile lattice behind it. */}
-      <section className="relative overflow-hidden bg-[var(--brand-black)] text-[#f4f4ef]">
-        <TilePattern className="absolute inset-0 [--tile-line:rgb(254_255_0/0.10)]" id="hero-tile" />
-        <div className="relative mx-auto max-w-6xl px-4 py-20 sm:py-28">
-          <h1 className="max-w-4xl text-4xl leading-[1.45] font-black sm:text-6xl sm:leading-[1.3]" data-testid="home-hero">
-            {c.heroTitle}
+      {/* Hero: a looping montage behind, the promise in front, a fan of real posts rising from the bottom. */}
+      <section className="hero" aria-labelledby="hero-title">
+        <div className="hero__media" aria-hidden="true">
+          {/* Still first (lazy: never holds up the page load); the loop is attached after load by HeroTilt, skipped on slow/data-saver connections. */}
+          {hero.posterUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- uploaded hero still
+            <img src={hero.posterUrl} alt="" loading="lazy" decoding="async" />
+          )}
+          {hero.videoUrl && <video muted loop playsInline preload="none" data-src={hero.videoUrl} className="absolute inset-0 opacity-0 transition-opacity duration-1000" />}
+        </div>
+        <div className="hero__shade" aria-hidden="true" />
+        <TilePattern className="hero__tile [--tile-line:color-mix(in_srgb,var(--brand-gold)_9%,transparent)]" id="hero-tile" />
+        <div className="hero__copy">
+          <p className="hero__pill">
+            <b>{t("site.hero.badge")}</b>
+            {t("site.hero.pill")}
+          </p>
+          <h1 id="hero-title" className="hero__title" data-testid="home-hero">
+            {words.map((w, i) => (
+              <span key={i}>
+                <span className="w" style={{ ["--i" as string]: i }}>{w}</span>
+                {i < words.length - 1 ? " " : ""}
+              </span>
+            ))}
           </h1>
-          {c.heroSubtitle && <p className="mt-6 max-w-2xl text-lg leading-9 opacity-85">{c.heroSubtitle}</p>}
-          <div className="mt-10 flex flex-wrap gap-3">
-            <a href="#consult" className="inline-grid h-14 place-items-center rounded-md bg-[var(--brand-yellow)] px-8 text-lg font-extrabold text-[var(--brand-black)] hover:bg-white">
+          {c.heroSubtitle && <p className="hero__sub">{c.heroSubtitle}</p>}
+          <div className="hero__ctas">
+            <a href="#consult" className="orb orb--hi">
+              <span className="orb__dot"><Arrow /></span>
               {c.ctaLabel}
             </a>
             {home.cases.length > 0 && (
-              <Link href="/cases" className="inline-grid h-14 place-items-center rounded-md border-2 border-white/40 px-6 font-bold hover:border-white">
+              <Link href="/cases" className="orb orb--ghost">
+                <span className="orb__dot"><Arrow /></span>
                 {c.casesTitle}
               </Link>
             )}
           </div>
-          {stats.length > 0 && (
-            <dl className="mt-16 grid max-w-3xl gap-6 border-t border-white/15 pt-8 sm:grid-cols-3">
-              {stats.map((s) => (
-                <div key={s.label}>
-                  <dt className="text-sm opacity-70">{s.label}</dt>
-                  <dd className="mt-1 text-4xl font-black text-[var(--brand-yellow)] tabular-nums">{s.n}</dd>
+        </div>
+        {fan.length > 0 && (
+          <div className="fan" data-fan aria-hidden="true">
+            {fan.map((src, i) => {
+              const p = fanPos[i];
+              return (
+                <figure key={src} className="fan__card" style={{ ["--x" as string]: p.x, ["--r" as string]: p.r, ["--z" as string]: p.z, ["--d" as string]: `${p.d}ms` }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- uploaded post photo */}
+                  <img src={src} alt="" loading="lazy" decoding="async" />
+                  <figcaption><i />{handle}</figcaption>
+                  <span className="fan__like">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 5 6.4 5c2 0 3.5 1.1 4.3 2.6h2.6C14.1 6.1 15.6 5 17.6 5 21 5 23.1 8.4 21.6 11.8 19.5 16.4 12 21 12 21z" /></svg>
+                    {faNum([1240, 3180, 8730, 2410, 960][i] ?? 1200)}
+                  </span>
+                </figure>
+              );
+            })}
+          </div>
+        )}
+        <span className="hero__scroll" aria-hidden="true">{t("site.hero.scroll")}</span>
+        <HeroTilt />
+      </section>
+
+      {bandItems.length > 0 && (
+        <div className="band" aria-hidden="true">
+          <div className="marquee" style={{ ["--speed" as string]: "34s" }}>
+            {[0, 1].map((k2) => (
+              <div className="marquee__track" key={k2}>
+                {bandItems.map((x) => (
+                  <span className="band__item" key={x}>
+                    {x}
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.9L22 12l-7.4 3.1L12 22l-2.6-6.9L2 12l7.4-3.1z" /></svg>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {stats.length > 0 && (
+        <section aria-labelledby="stats" className="sec sec--ink">
+          <div className="wrap">
+            <div className="sec__head">
+              <div>
+                <h2 id="stats" className="h2" data-reveal>{t("site.stats.title")}</h2>
+                <p className="lede" data-reveal>{t("site.stats.lede")}</p>
+              </div>
+            </div>
+            <dl className="rings">
+              {stats.map((s, i) => (
+                <div key={s.label} className="ostat" data-observe style={{ ["--p" as string]: 100 }}>
+                  <svg className="ring__svg" viewBox="0 0 120 120" aria-hidden="true">
+                    <circle className="ring__track" cx="60" cy="60" r="52" pathLength={100} />
+                    <circle className="ring__arc" cx="60" cy="60" r="52" pathLength={100} style={{ transitionDelay: `${200 + i * 180}ms` }} />
+                  </svg>
+                  <span className="ring__orbit" aria-hidden="true" style={{ animationDelay: `${-i * 4}s` }} />
+                  <dd className="ring__value">{s.n}</dd>
+                  <dt className="ring__label">{s.label}</dt>
                 </div>
               ))}
             </dl>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       {home.services.length > 0 && (
-        <section aria-labelledby="services" className="mx-auto max-w-6xl px-4 py-20">
-          <h2 id="services" className="text-3xl font-black">{c.servicesTitle}</h2>
-          <ul className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-            {home.services.map((s) => (
-              <li key={s.name} className="flex gap-4">
-                <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground ring-2 ring-foreground">
-                  <ServiceIcon name={s.icon} className="size-6" />
-                </span>
-                <div>
-                  <h3 className="text-lg font-extrabold">{s.name}</h3>
-                  {s.description && <p className="mt-1 text-sm leading-7 text-muted-foreground">{s.description}</p>}
-                </div>
-              </li>
-            ))}
-          </ul>
+        <section aria-labelledby="services" className="sec">
+          <div className="wrap">
+            <div className="sec__head">
+              <div>
+                <h2 id="services" className="h2" data-reveal>{c.servicesTitle}</h2>
+                <p className="lede" data-reveal>{t("site.services.lede")}</p>
+              </div>
+            </div>
+            <ul className="bento">
+              {servicePhoto && (
+                <li className="bento__cell bento__photo" data-reveal>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- uploaded photo */}
+                  <img src={servicePhoto} alt="" loading="lazy" />
+                  <div className="bento__over"><b>{t("site.services.photo")}</b></div>
+                </li>
+              )}
+              {home.services.map((s, i) => (
+                <li key={s.name} className={`bento__cell ${tone[i % tone.length]}`} data-reveal style={{ ["--d" as string]: `${(i % 3) * 90}ms` }}>
+                  <span className="bento__icon"><ServiceIcon name={s.icon} className="size-6" /></span>
+                  <h3>{s.name}</h3>
+                  {s.description && <p>{s.description}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       )}
 
       {home.cases.length > 0 && (
-        <section aria-labelledby="cases" className="bg-muted/50 py-20">
-          <div className="mx-auto max-w-6xl px-4">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <h2 id="cases" className="text-3xl font-black">{c.casesTitle}</h2>
-              <Link href="/cases" className="font-semibold underline underline-offset-4">{t("site.cases.all")}</Link>
+        <section aria-labelledby="cases" className="sec sec--ink">
+          <div className="wrap">
+            <div className="sec__head">
+              <div>
+                <h2 id="cases" className="h2" data-reveal>{c.casesTitle}</h2>
+                <p className="lede" data-reveal>{t("site.cases.lede")}</p>
+              </div>
+              <Link href="/cases" className="textlink">{t("site.cases.all")}</Link>
             </div>
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
-              {home.cases.map((x) => (
-                <CaseCard key={x.slug} c={x} t={t} />
-              ))}
-            </div>
+            <HoverReel
+              items={home.cases.map((x) => ({
+                href: `/cases/${x.slug}`,
+                title: x.businessName,
+                meta: [x.industry, x.city, x.followerGrowth !== null ? `${t("site.cases.followers")} ${t("site.cases.fromTo", { from: faNum(x.followersBefore ?? 0), to: faNum(x.followersAfter ?? 0) })}` : null].filter(Boolean).join("، "),
+                number: x.followerGrowth !== null ? t("site.cases.growth", { n: faNum(x.followerGrowth) }) : null,
+                tag: x.isSample ? t("site.cases.sample") : null,
+                image: x.coverUrl,
+              }))}
+            />
           </div>
-        </section>
-      )}
-
-      {home.packages.length > 0 && (
-        <section aria-labelledby="packages" className="mx-auto max-w-6xl px-4 py-20" id="packages-list">
-          <h2 id="packages" className="text-3xl font-black">{c.packagesTitle}</h2>
-          <div className="mt-12 grid gap-8 md:grid-cols-3">
-            {home.packages.slice(0, 3).map((p) => (
-              <PackageCard key={p.slug} p={p} t={t} />
-            ))}
-          </div>
-          {home.packages.length > 3 && (
-            <Link href="/plans" className="mt-8 inline-block font-semibold underline underline-offset-4">{t("site.nav.packages")}</Link>
-          )}
         </section>
       )}
 
       {c.process.length > 0 && (
-        <section aria-labelledby="process" className="border-y border-border py-20">
-          <div className="mx-auto max-w-6xl px-4">
-            <h2 id="process" className="text-3xl font-black">{c.processTitle}</h2>
-            <ol className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <section aria-labelledby="process" className="sec sec--sand">
+          <div className="wrap grid gap-12 lg:grid-cols-[1fr_1.2fr]">
+            <div className="lg:sticky lg:top-32 lg:self-start">
+              <h2 id="process" className="h2" data-reveal>{c.processTitle}</h2>
+              <p className="lede" data-reveal>{t("site.process.lede")}</p>
+            </div>
+            <ol className="tl" data-tl>
+              <span className="tl__line" aria-hidden="true" />
               {c.process.map((s, i) => (
-                <li key={s.title} className="relative">
-                  <span className="text-5xl font-black text-foreground/15 tabular-nums" aria-hidden="true">{faNum(i + 1)}</span>
-                  <h3 className="mt-1 text-lg font-extrabold">{s.title}</h3>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground">{s.body}</p>
+                <li key={s.title} className="tl__step" data-observe>
+                  <span className="tl__dot" aria-hidden="true">{faNum(i + 1)}</span>
+                  <h3>{s.title}</h3>
+                  <p>{s.body}</p>
                 </li>
               ))}
             </ol>
@@ -174,30 +271,67 @@ export default async function Home() {
         </section>
       )}
 
-      {home.testimonials.length > 0 && (
-        <section aria-labelledby="quotes" className="mx-auto max-w-6xl px-4 py-20">
-          <h2 id="quotes" className="text-3xl font-black">{c.testimonialsTitle}</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {home.testimonials.slice(0, 3).map((q) => (
-              <figure key={q.slug} className="rounded-2xl border-s-8 border-primary bg-card p-6">
-                <blockquote className="text-lg leading-9 font-semibold">«{q.quote}»</blockquote>
-                <figcaption className="mt-4 text-sm text-muted-foreground">
-                  {q.by} — <Link href={`/cases/${q.slug}`} className="underline">{q.businessName}</Link>
-                </figcaption>
-              </figure>
+      {home.packages.length > 0 && (
+        <section aria-labelledby="packages" className="sec" id="packages-list" data-testid="packages-list">
+          <div className="wrap">
+            <div className="sec__head">
+              <div>
+                <h2 id="packages" className="h2" data-reveal>{c.packagesTitle}</h2>
+                <p className="lede" data-reveal>{t("site.packages.lede")}</p>
+              </div>
+              {home.packages.length > 3 && <Link href="/plans" className="textlink">{t("site.nav.packages")}</Link>}
+            </div>
+            <div className="tiers">
+              {home.packages.slice(0, 3).map((p, i) => (
+                <PackageCard key={p.slug} p={p} t={t} delay={i * 110} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {quotes.length > 0 && (
+        <section aria-labelledby="quotes" className="sec sec--ink overflow-hidden">
+          <div className="wrap">
+            <div className="sec__head">
+              <div>
+                <h2 id="quotes" className="h2" data-reveal>{c.testimonialsTitle}</h2>
+                <p className="lede" data-reveal>{t("site.quotes.lede")}</p>
+              </div>
+            </div>
+          </div>
+          <div className="quotes">
+            {[false, true].map((rev) => (
+              <div key={String(rev)} className={`marquee ${rev ? "marquee--rev" : ""}`} style={{ ["--speed" as string]: rev ? "70s" : "60s", ["--gap" as string]: "18px" }}>
+                {[0, 1].map((k2) => (
+                  <div className="marquee__track" key={k2} aria-hidden={k2 === 1 || rev ? true : undefined}>
+                    {(rev ? [...quotes].reverse() : quotes).map((q, i) => (
+                      <figure key={`${q.slug}-${i}`} className="quote">
+                        <blockquote>«{q.quote}»</blockquote>
+                        <figcaption>
+                          <span aria-hidden="true">{q.businessName.trim().charAt(0)}</span>
+                          <span className="!block !size-auto !bg-transparent !text-inherit !font-normal">
+                            {q.by} — <Link href={`/cases/${q.slug}`} className="underline" tabIndex={k2 === 1 || rev ? -1 : undefined}>{q.businessName}</Link>
+                          </span>
+                        </figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                ))}
+              </div>
             ))}
           </div>
         </section>
       )}
 
       {c.showBlog && (posts?.items.length ?? 0) > 0 && (
-        <section aria-labelledby="latest" className="bg-muted/50 py-20">
-          <div className="mx-auto max-w-6xl px-4">
-            <div className="flex items-end justify-between">
-              <h2 id="latest" className="text-3xl font-black">{c.blogTitle}</h2>
-              <Link href="/blog" className="font-semibold underline underline-offset-4">{t("site.nav.blog")}</Link>
+        <section aria-labelledby="latest" className="sec sec--sand">
+          <div className="wrap">
+            <div className="sec__head">
+              <h2 id="latest" className="h2" data-reveal>{c.blogTitle}</h2>
+              <Link href="/blog" className="textlink">{t("site.nav.blog")}</Link>
             </div>
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {posts!.items.slice(0, 3).map((p) => (
                 <PostCard key={p.slug} post={p} t={t} />
               ))}
@@ -207,47 +341,52 @@ export default async function Home() {
       )}
 
       {c.faq.length > 0 && (
-        <section aria-labelledby="faq" className="mx-auto max-w-3xl px-4 py-20">
-          <h2 id="faq" className="text-3xl font-black">{c.faqTitle}</h2>
-          <div className="mt-8 divide-y rounded-2xl border bg-card">
-            {c.faq.map((f) => (
-              <details key={f.question} className="group p-5">
-                <summary className="cursor-pointer list-none text-lg font-bold marker:hidden">
-                  <span className="me-2 inline-block transition-transform group-open:rotate-45" aria-hidden="true">+</span>
-                  {f.question}
-                </summary>
-                <p className="mt-3 leading-8 text-muted-foreground">{f.answer}</p>
-              </details>
-            ))}
+        <section aria-labelledby="faq" className="sec">
+          <div className="wrap grid gap-10 lg:grid-cols-[1fr_1.4fr]">
+            <div>
+              <h2 id="faq" className="h2" data-reveal>{c.faqTitle}</h2>
+              <p className="lede" data-reveal>{t("site.faq.lede")}</p>
+            </div>
+            <div className="faq">
+              {c.faq.map((f, i) => (
+                <details key={f.question} data-reveal style={{ ["--d" as string]: `${i * 70}ms` }}>
+                  <summary>
+                    {f.question}
+                    <i aria-hidden="true">+</i>
+                  </summary>
+                  <p>{f.answer}</p>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
-      <section id="consult" aria-labelledby="consult-title" className="scroll-mt-4 border-t-4 border-foreground bg-primary/15 py-20">
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 lg:grid-cols-[1.2fr_1fr]">
+      <section id="consult" aria-labelledby="consult-title" className="aurora sec scroll-mt-20">
+        <div className="wrap grid items-start gap-12 lg:grid-cols-[1fr_1.15fr]">
           <div>
-            <h2 id="consult-title" className="text-3xl font-black">{c.consultTitle}</h2>
-            <p className="mt-3 max-w-xl leading-8 text-muted-foreground">{c.consultText}</p>
-            <div className="mt-8">
-              <ConsultForm
-                source="/"
-                texts={{
-                  name: t("site.form.name"), phone: t("site.form.phone"), business: t("site.form.business"), message: t("site.form.message"),
-                  send: t("site.form.send"), sending: t("site.form.sending"), sent: t("site.form.sent"), error: t("site.form.error"),
-                }}
-              />
-            </div>
+            <h2 id="consult-title" className="h2" data-reveal>{c.consultTitle}</h2>
+            <p className="lede" data-reveal>{c.consultText}</p>
+            <address className="mt-10 space-y-3 not-italic">
+              <h3 className="text-sm font-bold opacity-60">{t("site.contact.title")}</h3>
+              {k.phone && <p><a href={`tel:${k.phone}`} dir="ltr" className="text-3xl font-black text-[var(--hi-text)] hover:underline">{k.phone}</a></p>}
+              {(k.address || k.city) && <p className="leading-8 opacity-85">{[k.city, k.address].filter(Boolean).join("، ")}</p>}
+              {k.hours && <p className="text-sm opacity-70">{t("site.contact.hours")}: {k.hours}</p>}
+              <div className="flex flex-wrap gap-2 pt-2">
+                {k.neshanUrl && <a href={k.neshanUrl} target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/25 px-4 py-2 text-sm font-bold hover:bg-white/10">{t("site.contact.neshan")}</a>}
+                {k.baladUrl && <a href={k.baladUrl} target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/25 px-4 py-2 text-sm font-bold hover:bg-white/10">{t("site.contact.balad")}</a>}
+              </div>
+            </address>
           </div>
-          <address className="space-y-3 not-italic">
-            <h3 className="text-xl font-extrabold">{t("site.contact.title")}</h3>
-            {k.phone && <p><a href={`tel:${k.phone}`} dir="ltr" className="text-2xl font-black hover:underline">{k.phone}</a></p>}
-            {(k.address || k.city) && <p className="leading-8">{[k.city, k.address].filter(Boolean).join("، ")}</p>}
-            {k.hours && <p className="text-sm text-muted-foreground">{t("site.contact.hours")}: {k.hours}</p>}
-            <div className="flex flex-wrap gap-2 pt-2">
-              {k.neshanUrl && <a href={k.neshanUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border-2 border-foreground px-3 py-2 text-sm font-bold">{t("site.contact.neshan")}</a>}
-              {k.baladUrl && <a href={k.baladUrl} target="_blank" rel="noopener noreferrer" className="rounded-md border-2 border-foreground px-3 py-2 text-sm font-bold">{t("site.contact.balad")}</a>}
-            </div>
-          </address>
+          <div className="glass" data-reveal>
+            <ConsultForm
+              source="/"
+              texts={{
+                name: t("site.form.name"), phone: t("site.form.phone"), business: t("site.form.business"), message: t("site.form.message"),
+                send: t("site.form.send"), sending: t("site.form.sending"), sent: t("site.form.sent"), error: t("site.form.error"),
+              }}
+            />
+          </div>
         </div>
       </section>
     </>

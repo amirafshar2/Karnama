@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageHero } from "@/components/site/blocks";
 import { CaseCard } from "@/components/site/case-card";
 import { getBrand, getT, siteGet, SITE_URL, type CaseCard as C } from "@/lib/site";
 
@@ -17,16 +18,19 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Cases() {
   const [list, t] = await Promise.all([siteGet<C[]>("/api/v1/public/site/cases"), getT()]);
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <h1 className="text-4xl font-black sm:text-5xl">{t("site.cases.title")}</h1>
-      <p className="mt-4 max-w-2xl text-lg leading-8 text-muted-foreground">{t("site.cases.description")}</p>
-      {(list ?? []).length === 0 ? (
-        <p className="mt-12 rounded-2xl border border-dashed p-10 text-center text-muted-foreground">{t("site.cases.empty")}</p>
-      ) : (
-        <div className="mt-12 grid gap-6 md:grid-cols-3" data-testid="cases-list">
-          {list!.map((c) => <CaseCard key={c.slug} c={c} t={t} />)}
+    <>
+      <PageHero id="cases" title={t("site.cases.title")} lede={t("site.cases.description")} />
+      <section className="sec">
+        <div className="wrap">
+          {(list ?? []).length === 0 ? (
+            <p className="rounded-3xl border border-dashed p-10 text-center opacity-70">{t("site.cases.empty")}</p>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" data-testid="cases-list">
+              {list!.map((c, i) => <CaseCard key={c.slug} c={c} t={t} delay={(i % 3) * 100} />)}
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </section>
+    </>
   );
 }

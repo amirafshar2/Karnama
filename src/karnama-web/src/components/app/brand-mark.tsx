@@ -3,6 +3,7 @@
 import { useI18n } from "@/lib/i18n/provider";
 import { useBrand } from "@/lib/use-brand";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/app/logo-mark";
 
 export { useBrand };
 
@@ -17,12 +18,7 @@ export function BrandMark({ className, compact = false }: { className?: string; 
         // eslint-disable-next-line @next/next/no-img-element -- logo comes from the API at runtime (also in the static app build)
         <img src={brand.logo} alt="" width={28} height={28} className="size-7 shrink-0 rounded-md object-contain" />
       ) : (
-        <span
-          aria-hidden="true"
-          className="grid size-7 shrink-0 place-items-center rounded-md border border-border bg-[var(--brand-black)] text-base leading-none font-black text-[var(--brand-yellow)]"
-        >
-          {name.trim().charAt(0).toUpperCase()}
-        </span>
+        <LogoMark size={28} className="shrink-0" />
       )}
       {!compact && <span className="truncate">{name}</span>}
     </span>

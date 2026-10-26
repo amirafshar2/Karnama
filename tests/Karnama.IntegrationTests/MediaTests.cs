@@ -109,7 +109,7 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
 
         await DispatchAsync();   // archive copy + the "which work?" question
         _f.Bots.Calls.Should().Contain(c => c.Method == "copyMessage" && c.Args["chat_id"]!.GetValue<long>() == KarnamaFactory.ArchiveChat && c.Args["from_chat_id"]!.GetValue<long>() == 610_002);
-        var question = _f.Bots.Calls.Last(c => c.Method == "sendMessage" && c.Args["chat_id"]!.GetValue<long>() == 610_002);
+        var question = _f.Bots.Calls.Last(c => c.Method == "sendMessage" && c.Args["chat_id"]!.GetValue<long>() == 610_002 && c.Args["reply_markup"] is not null);
         question.Args["reply_markup"]!["inline_keyboard"]!.AsArray().Count.Should().BeGreaterThan(1, "the editor's open work items are offered");
         await DispatchAsync();   // admin copies (from the archive) + thumbnail
         var archived = await Db(db => db.MediaAssets.AsNoTracking().FirstAsync(m => m.Id == asset.Id));

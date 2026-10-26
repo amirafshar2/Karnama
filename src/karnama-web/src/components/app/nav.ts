@@ -12,6 +12,16 @@ export type NavItem = {
   clients?: boolean;
 };
 
+export type NavGroup = "work" | "team" | "content" | "admin" | "me";
+/** Sidebar sections (the bottom bar keeps the plain order of NAV). */
+export const GROUP_OF: Record<string, NavGroup> = {
+  "/dashboard": "work", "/work": "work", "/orders": "work", "/publishing": "work", "/crm": "work", "/chat": "work", "/media": "work", "/clients": "work",
+  "/attendance": "team", "/attendance/calendar": "team", "/attendance/live": "team", "/reports": "team", "/attendance/report": "team", "/assets": "team",
+  "/content/blog": "content", "/content/home": "content", "/content/cases": "content", "/settings/texts": "content",
+  "/help": "me", "/profile": "me",
+};
+export const GROUPS: NavGroup[] = ["work", "team", "content", "admin", "me"];
+
 /** Menu is built from the user's permissions; new modules add their entries here as they ship. */
 export const NAV: NavItem[] = [
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },

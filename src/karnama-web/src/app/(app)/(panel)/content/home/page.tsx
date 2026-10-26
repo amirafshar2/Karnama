@@ -14,6 +14,7 @@ import { notify } from "@/lib/notify";
 import { useQuery } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { HomeContent } from "@/components/siteadmin/types";
+import { HeroMedia } from "@/components/siteadmin/hero-media";
 
 registerTexts(faSiteAdmin);
 
@@ -108,6 +109,10 @@ function Editor({ initial }: { initial: HomeContent }) {
         <TextField label={L("home.heroTitle")} help={L("home.heroTitleHelp")} value={c.heroTitle} onChange={(v) => set({ heroTitle: v })} testId="home-hero-title" />
         <TextArea label={L("home.heroSubtitle")} help={L("home.heroSubtitleHelp")} value={c.heroSubtitle} onChange={(v) => set({ heroSubtitle: v })} rows={3} optional />
         <TextField label={L("home.ctaLabel")} help={L("home.ctaLabelHelp")} value={c.ctaLabel} onChange={(v) => set({ ctaLabel: v })} />
+      </Section>
+
+      <Section title={t("home.heroMedia")} help={t("home.heroMediaHelp")}>
+        <HeroMedia value={c} onChange={(v) => set(v)} />
       </Section>
 
       <Section title={t("home.show")}>

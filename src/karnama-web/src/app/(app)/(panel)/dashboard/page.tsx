@@ -1,6 +1,9 @@
 "use client";
 
 import { BarChart3, Globe, Smartphone } from "lucide-react";
+import Link from "next/link";
+import { navFor } from "@/components/app/nav";
+import { TilePattern } from "@/components/app/tile-pattern";
 import { useAuth } from "@/lib/auth";
 import type { TextKey } from "@/lib/i18n/registry";
 import { useI18n } from "@/lib/i18n/provider";
@@ -32,6 +35,7 @@ export default function DashboardPage() {
   // Clients get their own simple panel (docs/PROMPT.md §6.9).
   if (me.kind === "client") return <PortalHome />;
 
+  const shortcuts = navFor(me).filter((i) => i.href !== "/dashboard" && i.href !== "/help" && i.href !== "/profile").slice(0, 6);
   const groups = new Map<string, [string, Scope][]>();
   for (const [code, scope] of Object.entries(me.permissions)) {
     const g = permissionGroup(code);
@@ -40,17 +44,34 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <section>
-        <h1 className="text-2xl font-extrabold sm:text-3xl" data-testid="dashboard-hello">
+      {/* Greeting banner on the brand black with the tile lattice (21st: @scrollxui/hero-with-cards' stage, panel-sized). */}
+      <section className="relative isolate overflow-hidden rounded-3xl bg-[var(--brand-black)] p-6 text-white sm:p-8">
+        <TilePattern className="absolute inset-0 -z-10 opacity-70 [--tile-line:color-mix(in_srgb,var(--brand-gold)_10%,transparent)] [mask-image:linear-gradient(90deg,transparent,#000)]" id="dash-tile" />
+        <div aria-hidden="true" className="absolute -top-24 -end-16 -z-10 size-72 rounded-full bg-[var(--brand-yellow)] opacity-25 blur-3xl" />
+        <p className="text-sm text-white/60">{t("dashboard.today", { date: formatDate(new Date()) })}</p>
+        <h1 className="mt-2 text-2xl font-black sm:text-4xl" data-testid="dashboard-hello">
           {t("dashboard.hello", { name: me.displayName })}
         </h1>
-        <p className="mt-1 text-muted-foreground">{t("dashboard.today", { date: formatDate(new Date()) })}</p>
-        {me.roles.length > 0 && <p className="mt-1 text-muted-foreground">{t("dashboard.rolesLine", { roles: me.roles.join("، ") })}</p>}
+        {me.roles.length > 0 && (
+          <p className="mt-3 inline-flex rounded-full bg-[var(--brand-yellow)] px-3 py-1 text-xs font-bold text-[var(--primary-foreground)]">{t("dashboard.rolesLine", { roles: me.roles.join("، ") })}</p>
+        )}
+        {shortcuts.length > 0 && (
+          <ul className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {shortcuts.map((i) => (
+              <li key={i.href}>
+                <Link href={i.href} className="group flex h-full flex-col gap-3 rounded-2xl bg-white/[0.07] p-4 transition-colors hover:bg-[var(--brand-yellow)] hover:text-[var(--primary-foreground)]">
+                  <i.icon className="size-5 transition-transform group-hover:-rotate-6" aria-hidden="true" />
+                  <span className="text-sm font-bold">{t(i.label)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {hasPermission(me, "settings.manage", "all") && <OnboardingCard />}
 
-      <section className="rounded-xl border bg-card p-5 sm:p-6" aria-labelledby="access-title">
+      <section className="rounded-3xl border bg-card p-5 sm:p-7" aria-labelledby="access-title">
           <h2 id="access-title" className="text-lg font-bold">
             {t("dashboard.accessTitle")}
           </h2>
@@ -80,7 +101,7 @@ export default function DashboardPage() {
         </h2>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {NEXT.map(({ key, icon: Icon }) => (
-            <li key={key} className="flex items-center gap-3 rounded-lg border border-dashed px-4 py-3 text-muted-foreground">
+            <li key={key} className="flex items-center gap-3 rounded-2xl border border-dashed px-4 py-4 text-muted-foreground">
               <Icon className="size-5 shrink-0" aria-hidden="true" />
               {t(key)}
             </li>

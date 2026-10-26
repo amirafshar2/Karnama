@@ -26,7 +26,7 @@ function paint(c: HTMLCanvasElement | null, img: ImageBitmap | null, list: Rect[
   ctx.drawImage(img, 0, 0, c.width, c.height);
   for (const r of list) pixelate(ctx, r);
   if (d) {
-    ctx.strokeStyle = "#feff00";
+    ctx.strokeStyle = "#3b6cff";
     ctx.lineWidth = 3;
     ctx.strokeRect(d.x, d.y, d.w, d.h);
   }

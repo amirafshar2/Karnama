@@ -17,8 +17,13 @@ public sealed record HomeContent(
     string HeroTitle, string HeroSubtitle, string CtaLabel,
     string ServicesTitle, string CasesTitle, string PackagesTitle, string ProcessTitle, IReadOnlyList<StepItem> Process,
     string TestimonialsTitle, string BlogTitle, string FaqTitle, IReadOnlyList<FaqEntry> Faq,
-    string ConsultTitle, string ConsultText, ContactInfo Contact, bool ShowPackages, bool ShowCases, bool ShowBlog)
+    string ConsultTitle, string ConsultText, ContactInfo Contact, bool ShowPackages, bool ShowCases, bool ShowBlog,
+    string? HeroVideo = null, string? HeroPoster = null, IReadOnlyList<string>? HeroImages = null)
 {
+    /// <summary>Uploaded media ids this content may point at (never a free URL: only files we stored and checked).</summary>
+    public static readonly System.Text.RegularExpressions.Regex VideoId = new("^site/[0-9a-f]{32}\\.(mp4|webm)$");
+    public static readonly System.Text.RegularExpressions.Regex ImageId = new("^(site|cases)/[0-9a-f]{32}\\.(png|jpg|webp)$");
+
     public static HomeContent Default { get; } = new(
         "مدیریت پیج اینستاگرام و تولید محتوا در شیراز",
         "مدیریت پیج اینستاگرام، تولید محتوا، ریلز و تبلیغات برای کسب‌وکارهای شیراز؛ با برنامه‌ی انتشار، گزارش ماهانه و پنل پیگیری برای هر مشتری.",
@@ -58,6 +63,10 @@ public sealed class HomeContentValidator : AbstractValidator<HomeContent>
             .WithMessage("هر پرسش و پاسخ باید پر باشد (پرسش تا ۲۰۰ و پاسخ تا ۱۰۰۰ نویسه).");
         RuleFor(x => x.Contact.NeshanUrl).Must(Https).WithMessage("لینک نشان باید با https:// شروع شود.");
         RuleFor(x => x.Contact.BaladUrl).Must(Https).WithMessage("لینک بلد باید با https:// شروع شود.");
+        RuleFor(x => x.HeroVideo).Must(v => v is null || HomeContent.VideoId.IsMatch(v)).WithMessage("ویدیوی سربرگ باید از همین پنل بارگذاری شده باشد.");
+        RuleFor(x => x.HeroPoster).Must(v => v is null || HomeContent.ImageId.IsMatch(v)).WithMessage("عکس پیش‌نمایش ویدیو باید از همین پنل بارگذاری شده باشد.");
+        RuleFor(x => x.HeroImages).Must(v => v is null || (v.Count <= 6 && v.All(HomeContent.ImageId.IsMatch)))
+            .WithMessage("حداکثر ۶ عکس سربرگ، همه بارگذاری‌شده از همین پنل.");
         RuleFor(x => x.Contact.Latitude).InclusiveBetween(-90, 90);
         RuleFor(x => x.Contact.Longitude).InclusiveBetween(-180, 180);
     }
@@ -65,7 +74,7 @@ public sealed class HomeContentValidator : AbstractValidator<HomeContent>
     private static bool Https(string? u) => string.IsNullOrWhiteSpace(u) || (Uri.TryCreate(u, UriKind.Absolute, out var x) && x.Scheme == "https");
 }
 
-public sealed class SiteContentStore(IAppDbContext db, ICurrentUser me, TimeProvider clock, IAuditWriter audit, IPublicCache cache)
+public sealed class SiteContentStore(IAppDbContext db, ICurrentUser me, TimeProvider clock, IAuditWriter audit, IPublicCache cache, IMediaStore media)
 {
     public const string Key = "site.home";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -81,7 +90,7 @@ public sealed class SiteContentStore(IAppDbContext db, ICurrentUser me, TimeProv
     public async Task<Domain.Common.Result<HomeContent>> SaveAsync(HomeContent c, CancellationToken ct)
     {
         if (!me.Has(Domain.Identity.Permissions.ContentManage, Domain.Identity.PermissionScope.All)) return Domain.Common.Error.Forbidden();
-        c = c with { Process = c.Process ?? [], Faq = c.Faq ?? [] };
+        c = c with { Process = c.Process ?? [], Faq = c.Faq ?? [], HeroImages = c.HeroImages ?? [] };
         var json = JsonSerializer.Serialize(c, Json);
         var row = await db.SiteSettings.FirstOrDefaultAsync(x => x.Key == Key, ct);
         if (row is null) db.SiteSettings.Add(new SiteSetting(Key, json));
@@ -90,5 +99,16 @@ public sealed class SiteContentStore(IAppDbContext db, ICurrentUser me, TimeProv
         await db.SaveChangesAsync(ct);
         await cache.EvictAsync(ct);
         return c;
+    }
+
+    /// <summary>Hero media upload: an image (≤2MB) or a short MP4/WebM loop (≤18MB, under the proxy's 20MB cap) for the home page's first screen.</summary>
+    public async Task<Domain.Common.Result<Blog.MediaUploaded>> UploadAsync(Stream s, long length, bool video, CancellationToken ct)
+    {
+        if (!me.Has(Domain.Identity.Permissions.ContentManage, Domain.Identity.PermissionScope.All)) return Domain.Common.Error.Forbidden();
+        var saved = video ? await media.SaveVideoAsync(s, length, "site", ct) : await media.SaveImageAsync(s, length, "site", ct);
+        if (saved.IsFailure) return saved.Error!;
+        audit.Add(video ? "site.videoUploaded" : "site.imageUploaded", "SiteSetting", saved.Value!);
+        await db.SaveChangesAsync(ct);
+        return new Blog.MediaUploaded(saved.Value!, media.PublicUrl(saved.Value!));
     }
 }

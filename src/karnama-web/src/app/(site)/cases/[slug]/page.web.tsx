@@ -35,7 +35,7 @@ export default async function CasePage({ params }: Props) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(graph) }} />
-      <article className="mx-auto max-w-5xl px-4 py-12" data-testid="case">
+      <article className="mx-auto max-w-5xl px-4 pt-32 pb-16 sm:pt-36" data-testid="case">
         <nav aria-label={t("site.blog.breadcrumb")} className="text-sm text-muted-foreground">
           <Link href="/" className="hover:underline">{t("site.nav.home")}</Link> / <Link href="/cases" className="hover:underline">{t("site.cases.title")}</Link>
         </nav>
@@ -52,12 +52,12 @@ export default async function CasePage({ params }: Props) {
           {x.followerGrowth !== null && (
             <div className="rounded-2xl bg-[var(--brand-black)] p-6 text-[#f4f4ef]">
               <p className="text-sm opacity-75">{t("site.cases.followers")}</p>
-              <p className="mt-1 text-5xl font-black text-[var(--brand-yellow)]">{t("site.cases.growth", { n: faNum(x.followerGrowth) })}</p>
+              <p className="mt-1 text-5xl font-black text-[var(--brand-on-dark)]">{t("site.cases.growth", { n: faNum(x.followerGrowth) })}</p>
               <p className="mt-2 text-sm">{t("site.cases.fromTo", { from: faNum(x.followersBefore ?? 0), to: faNum(x.followersAfter ?? 0) })}</p>
             </div>
           )}
           {x.revenueGrowth !== null && (
-            <div className="rounded-2xl border-2 border-foreground p-6">
+            <div className="rounded-2xl border border-black/10 bg-white p-6">
               <p className="text-sm text-muted-foreground">{t("site.cases.revenue")}</p>
               <p className="mt-1 text-5xl font-black">{t("site.cases.growth", { n: faNum(x.revenueGrowth) })}</p>
               {!c.revenueAsPercent && c.revenueBefore !== null && c.revenueAfter !== null && (
@@ -120,7 +120,7 @@ export default async function CasePage({ params }: Props) {
             {c.quoteBy && <figcaption className="mt-4 text-muted-foreground">{c.quoteBy}</figcaption>}
           </figure>
         )}
-        <Link href="/#consult" className="mt-12 inline-grid h-12 place-items-center rounded-md border-2 border-foreground bg-primary px-6 font-extrabold text-primary-foreground">
+        <Link href="/#consult" className="mt-12 inline-grid h-14 place-items-center rounded-full bg-primary px-8 font-extrabold text-primary-foreground">
           {t("site.form.send")}
         </Link>
       </article>

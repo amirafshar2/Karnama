@@ -116,6 +116,9 @@ public sealed partial class BlogPost : AuditableEntity
         return Result.Success();
     }
 
+    /// <summary>Sets the cover without a full edit (demo seed).</summary>
+    public void SetCover(string image, string? alt) { CoverImage = image; CoverAlt = alt; }
+
     public sealed record EditSpec(string Title, string ContentJson, Guid? CategoryId, IReadOnlyList<string> Tags, string? CoverImage, string? CoverAlt,
         string? SeoTitle, string? MetaDescription, string? FocusKeyword, string? Slug);
 

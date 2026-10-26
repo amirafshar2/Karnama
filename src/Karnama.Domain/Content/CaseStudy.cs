@@ -81,6 +81,9 @@ public sealed class CaseStudy : AuditableEntity
     }
 
     /// <summary>Written consent (and its file) is required — sample cases in the demo are marked as samples instead.</summary>
+    /// <summary>Puts a photo first in the gallery (the site uses it as the cover).</summary>
+    public void SetCover(string image) => Shots = [new CaseShot(image, null, null, true), .. Shots.Where(x => x.Image != image)];
+
     public bool CanPublish => IsSample || (ConsentObtained && ConsentFile is not null);
 
     public Result SetPublished(bool on)

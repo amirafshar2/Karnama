@@ -4,6 +4,7 @@ export type HomeContent = {
   servicesTitle: string; casesTitle: string; packagesTitle: string; processTitle: string; process: { title: string; body: string }[];
   testimonialsTitle: string; blogTitle: string; faqTitle: string; faq: { question: string; answer: string }[];
   consultTitle: string; consultText: string; contact: Contact; showPackages: boolean; showCases: boolean; showBlog: boolean;
+  heroVideo?: string | null; heroPoster?: string | null; heroImages?: string[] | null;
 };
 export type CaseMetric = { label: string; before: number | null; after: number | null; unit: string | null };
 export type CaseShot = { image: string; url: string; caption: string | null; takenOn: string | null; isAfter: boolean };

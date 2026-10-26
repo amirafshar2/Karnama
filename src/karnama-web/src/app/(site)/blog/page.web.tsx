@@ -1,3 +1,4 @@
+import { PageHero } from "@/components/site/blocks";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PostCard } from "@/components/site/post-card";
@@ -30,15 +31,13 @@ export default async function BlogIndex({ searchParams }: Props) {
   const link = (p: number) => `/blog?${new URLSearchParams({ ...(category ? { category } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <header className="max-w-2xl">
-        <h1 className="text-4xl font-black tracking-tight sm:text-5xl">{t("site.blog.title")}</h1>
-        <p className="mt-4 text-lg leading-8 text-muted-foreground">{t("site.blog.description")}</p>
-      </header>
+    <>
+    <PageHero id="blog" title={t("site.blog.title")} lede={t("site.blog.description")} />
+    <div className="wrap py-16">
 
       {list.categories.length > 0 && (
         <nav aria-label={t("site.blog.title")} className="mt-8 flex flex-wrap gap-2">
-          <Link href="/blog" aria-current={!category ? "page" : undefined} className={cn("rounded-full border-2 px-4 py-2 text-sm font-semibold", !category ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground")}>
+          <Link href="/blog" aria-current={!category ? "page" : undefined} className={cn("rounded-full border-2 px-4 py-2 text-sm font-semibold", !category ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--hi-text)]" : "border-black/10 hover:border-[var(--ink)]")}>
             {t("site.blog.all")}
           </Link>
           {list.categories.map((c) => (
@@ -46,7 +45,7 @@ export default async function BlogIndex({ searchParams }: Props) {
               key={c.id}
               href={`/blog?category=${encodeURIComponent(c.slug)}`}
               aria-current={category === c.slug ? "page" : undefined}
-              className={cn("rounded-full border-2 px-4 py-2 text-sm font-semibold", category === c.slug ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground")}
+              className={cn("rounded-full border-2 px-4 py-2 text-sm font-semibold", category === c.slug ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--hi-text)]" : "border-black/10 hover:border-[var(--ink)]")}
             >
               {c.name} <span className="opacity-60">{faNum(c.posts)}</span>
             </Link>
@@ -82,5 +81,6 @@ export default async function BlogIndex({ searchParams }: Props) {
         </nav>
       )}
     </div>
+    </>
   );
 }

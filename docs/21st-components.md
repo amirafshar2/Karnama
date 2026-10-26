@@ -21,8 +21,8 @@
 | Sheet (فرم نقش) | `components/ui/sheet.tsx` | shadcn | new-york-v4 | ۱۴۰۵/۰۸/۰۳ | دکمه‌ی بستن end-4؛ موبایل از پایین | ✅ |
 | اسکلت بارگیری | `components/ui/skeleton.tsx` | shadcn | new-york-v4 | ۱۴۰۵/۰۸/۰۳ | — | ✅ |
 | Toast | `components/ui/sonner.tsx` + `components/app/app-toaster.tsx` | shadcn / sonner | new-york-v4 | ۱۴۰۵/۰۸/۰۳ | lazy، موبایل بالا، دسکتاپ پایین‌چپ در RTL | ✅ |
-| سایدبار دسکتاپ | `components/app/side-nav.tsx` | (داخلی) | الگوی shadcn sidebar، سبک‌شده برای بودجه‌ی ۱۸۰KB | ۱۴۰۵/۰۸/۰۳ | جمع‌شونده، RTL | ✅ |
-| ناوبری پایین موبایل | داخل `components/app/panel-shell.tsx` | (داخلی) | — | ۱۴۰۵/۰۸/۰۳ | ۶۴px، safe-area | ✅ |
+| سایدبار دسکتاپ | `components/app/side-nav.tsx` | wensity | [21st Sidebar](https://21st.dev/@wensity/components/sidebar) | ۱۴۰۵/۰۸/۰۴ | بخش‌بندی، کارت کاربر، بدون وابستگی | — |
+| ناوبری پایین موبایل | داخل `components/app/panel-shell.tsx` | lyanchouss | [21st Dock](https://21st.dev/@lyanchouss/components/dock) | ۱۴۰۵/۰۸/۰۴ | کپسول شناور، safe-area | — |
 | الگوی کاشی (امضای بصری) | `components/app/tile-pattern.tsx` | (داخلی) | SVG ستاره‌ی هشت‌پر | ۱۴۰۵/۰۸/۰۳ | — | گرافیک است نه کامپوننت UI |
 
 > shadcn sidebar، table، badge، switch، radio-group و … اول نصب و بعد **حذف** شدند چون بودجه‌ی JS پنل‌ها (۱۸۰KB) را رد می‌کردند؛ جایشان عنصر HTML ساده با Tailwind است.
@@ -40,6 +40,55 @@
 | ۴۰۴ | `404`, `not found` | [Not found](https://21st.dev/@nevsky118/components/not-found) | [not found 2](https://21st.dev/@efferd/components/not-found-2) | [404 Did You Mean](https://21st.dev/@ziegfiroyt/components/error9) |
 
 **قبل از نصب هر کدام:** اندازه‌ی bundle را با `npm run size` چک کن (بودجه‌ی پنل‌ها ۱۸۰KB است و الان ~۱۸۰KB مصرف شده).
+
+
+## بازطراحی کامل (۴ آبان ۱۴۰۵) — با کلید 21st
+
+پژوهش: جستجو در API رسمی `21st.dev/api/v1/components/search` (بیش از ۳۰ جستجو)، دیدن پیش‌نمایش‌ها، و گرفتن کد با `components/install`.
+کد هر کامپوننت خوانده شد و **بازنویسی** شد: راست‌به‌چپ، رنگ‌های برند پویا (`--brand-black` / `--brand-yellow`)، داده‌ی واقعی پنل،
+و بدون وابستگی سنگین (`motion`/`framer-motion`) — حرکت‌ها با CSS ساخته شدند تا صفحه‌ی اصلی تقریباً بدون جاوااسکریپت بماند
+و پنل‌ها از بودجه‌ی ۱۸۰KB بیرون نزنند. کلید 21st فقط در محیط محلی است و در ریپو نیست.
+
+### سایت عمومی
+
+| بخش | فایل | کامپوننت 21st | نویسنده | تغییرات |
+|---|---|---|---|---|
+| ناوبری بالا (جمع‌شونده به کپسول شناور) | `components/site/motion/site-nav.tsx` | [Morphing Scroll Navbar](https://21st.dev/@laziekiki/components/morphing-scroll-navbar) | laziekiki | RTL، منوی تمام‌صفحه‌ی موبایل، صفحه‌های داخلی از اول کپسول |
+| سربرگ ویدیویی | `app/(site)/page.web.tsx` + `site.css` (`.hero`) | [Glass Video Hero](https://21st.dev/@rahil1202/components/glass-video-hero) | rahil1202 | ویدیو و پوستر از پنل، سایه‌ی خوانایی، الگوی کاشی |
+| بادبزن پست‌ها + دکمه‌ی Orb | همان (`.fan`, `.orb`) + `motion/hero-tilt.tsx` | [Hero Section with Cards](https://21st.dev/@scrollxui/components/hero-with-cards) | scrollxui | عکس‌ها از پنل یا نمونه‌کارها، قاب پست اینستاگرام، کج‌شدن با موس |
+| تیتر کلمه‌به‌کلمه | `.hero__title .w` | [Text Reveal](https://21st.dev/@kuratlielia/components/text-reveal) | kuratlielia | فقط CSS |
+| نوار متحرک خدمات | `.band` / `.marquee` | [Marquee](https://21st.dev/@diceui/components/marquee) | diceui | فقط CSS، جهت RTL |
+| آمار حلقه‌ای | `.ostat` | [Orbit Ring Stats](https://21st.dev/@ham7a311/components/orbit-ring-stats) | ham7a311 | عدد واقعی؛ حلقه کامل است تا درصد ساختگی القا نشود |
+| خدمات بنتو | `.bento` | [Agency Bento Grid](https://21st.dev/@abushaidislam7/components/agency-bento-grid) | abushaidislam7 | آیکن خدمت از پنل، خانه‌ی عکس |
+| نمونه‌کارها (عکس دنبال موس) | `motion/hover-reel.tsx` | [Hover Reel](https://21st.dev/@ham7a311/components/hover-reel) | ham7a311 | لمسی: عکس داخل ردیف |
+| روند همکاری | `.tl` + `motion/site-motion.tsx` | [Scroll animated timeline](https://21st.dev/@ibrandify/components/scroll-timeline) | ibrandify | خط پیشرفت با اسکرول |
+| پکیج‌ها | `components/site/package-card.tsx` | [Glowing Pricing Tiers](https://21st.dev/@ibrandify/components/glowing-pricing-tiers) | ibrandify | قاب چرخان برای «پرفروش»، قیمت از پنل |
+| نظر مشتری‌ها | `.quotes` | [Testimonials Marquee](https://21st.dev/@scrollxui/components/testimonials-with-marquee) | scrollxui | دو ردیف رفت‌وبرگشت |
+| پرسش‌ها | `.faq` | [Unlumen Motion FAQs Accordion](https://21st.dev/@unlumen/components/unlumen-motion-faqs-accordion) | unlumen | `<details>` بومی + انیمیشن ارتفاع CSS |
+| فرم مشاوره | `.aurora` / `.glass` | [Liquid Glass CTA](https://21st.dev/@ham7a311/components/liquid-glass-cta) | ham7a311 | فرم کامل به‌جای خبرنامه |
+| فوتر | `components/site/site-chrome.tsx` | [Sticker Footer](https://21st.dev/@kedhareswer/components/sticker-slap-footer) | kedhareswer | نام برند بزرگ + برچسب‌ها (متن‌ها قابل ویرایش) |
+| کارت نمونه‌کار | `components/site/case-card.tsx` | [Gallery with image cards](https://21st.dev/@shadcnblockscom/components/gallery4) | shadcnblockscom | عدد رشد روی عکس |
+
+### رنگ و لوگو (۴ آبان ۱۴۰۵، خواسته‌ی امیر: «اعتماد، قدرت، تأثیرگذاری، مدرن»)
+
+| بخش | منبع 21st | مقدار |
+|---|---|---|
+| زمینه‌ی تیره (اعتماد، قدرت) | تم [Indigo Harbor](https://21st.dev/community/themes/indigo-harbor) | سرمه‌ای `#0B1B34` |
+| رنگ اصلی (تأثیرگذاری) | تم [Azure Mono](https://21st.dev/community/themes/azure-mono) | آبی سلطنتی `#3B6CFF` (متن روی آن سفید؛ روی زمینه‌ی تیره روشن‌تر می‌شود تا خوانا بماند) |
+| رنگ دوم آرام | تم [Camel Linen](https://21st.dev/community/themes/camel-linen) | طلایی شتری `#D4BC8B` (الگوی کاشی، ستاره‌ی لوگو، جزئیات) |
+| پالت‌های آماده در «برند و ظاهر» | Indigo Harbor، Camel Linen، Elegant Luxury، Perpetuity، Violet Bloom، Sage Garden، Solar Dusk، Graphite Mono | یک کلیک؛ بعد هم دستی قابل تغییر |
+| لوگو | (طراحی اختصاصی) | ستاره‌ی هشت‌پر کاشی شیراز به طلایی + «پخش» آبی روی سرمه‌ای؛ `components/app/logo-mark.tsx`، `public/brand/logo.svg`، آیکن‌های اندروید با `tools/android_assets.py` |
+
+### پنل و اپ اندروید
+
+| بخش | فایل | کامپوننت 21st | تغییرات |
+|---|---|---|---|
+| سایدبار | `components/app/side-nav.tsx` | [Sidebar](https://21st.dev/@wensity/components/sidebar) (wensity) | بخش‌بندی، کارت کاربر، جمع‌شدن؛ بدون framer-motion/base-ui/tabler |
+| نوار پایین موبایل و اپ | `components/app/panel-shell.tsx` (`BottomNav`) | [Dock](https://21st.dev/@lyanchouss/components/dock) (lyanchouss) | کپسول شناور تیره، قرص فعال با نام |
+| صفحه‌ی ورود دوتکه | `app/(app)/login/login-screen.tsx` (`BrandStage`) | [Split Sign In Form](https://21st.dev/@diarmuradi/components/sign-in-3) + Glass Video Hero | ویدیو و عکس‌های سایت پشت نام برند |
+| بنر خوش‌آمد داشبورد | `app/(app)/(panel)/dashboard/page.tsx` | Hero with Cards (صحنه) | میان‌برهای منو بر اساس دسترسی |
+
+**دیگر جایگزین موقت نیستند:** سایدبار و نوار پایین (ردیف‌های ✅ بالا). دکمه، ورودی، Sheet و Toast هنوز shadcn هستند (همان نسخه‌ی منتشرشده روی 21st با نام `@shadcn`).
 
 ## بخش‌هایی که باید پر شوند (از `docs/PROMPT.md` بخش ۹.۵)
 

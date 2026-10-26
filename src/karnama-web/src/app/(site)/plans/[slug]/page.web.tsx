@@ -45,7 +45,7 @@ export default async function PackagePage({ params }: Props) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd({ "@context": "https://schema.org", "@graph": graph }) }} />
-      <article className="mx-auto grid max-w-6xl gap-12 px-4 py-12 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <article className="mx-auto grid max-w-6xl gap-12 px-4 pt-32 pb-16 sm:pt-36 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0">
           <nav aria-label={t("site.blog.breadcrumb")} className="text-sm text-muted-foreground">
             <Link href="/" className="hover:underline">{t("site.nav.home")}</Link> / <Link href="/plans" className="hover:underline">{t("site.packages.title")}</Link>
@@ -88,12 +88,12 @@ export default async function PackagePage({ params }: Props) {
           )}
         </div>
         <aside>
-          <div className="sticky top-6 rounded-2xl border-2 border-foreground bg-card p-6 shadow-[6px_6px_0_var(--primary)]">
+          <div className="sticky top-28 rounded-[28px] bg-[var(--brand-black)] p-7 text-white shadow-[0_30px_60px_-30px_rgb(0_0_0/0.5)]">
             <p className="text-3xl font-black tabular-nums">{t("site.packages.toman", { n: toman(price) })}</p>
-            {p.special && <s className="text-sm text-muted-foreground">{toman(p.price)}</s>}
-            <p className="text-sm text-muted-foreground">{p.period === "monthly" ? t("site.packages.perMonth") : t("site.packages.perPeriod", { n: faNum(p.validityDays) })}</p>
+            {p.special && <s className="text-sm text-white/50">{toman(p.price)}</s>}
+            <p className="text-sm text-white/60">{p.period === "monthly" ? t("site.packages.perMonth") : t("site.packages.perPeriod", { n: faNum(p.validityDays) })}</p>
             <ul className="mt-5 space-y-2 text-sm">{facts.map((f) => <li key={f}>• {f}</li>)}</ul>
-            <Link href="/#consult" className="mt-6 grid h-12 place-items-center rounded-md border-2 border-foreground bg-primary font-extrabold text-primary-foreground hover:bg-foreground hover:text-background">
+            <Link href="/#consult" className="mt-6 grid h-12 place-items-center rounded-2xl bg-primary font-extrabold text-primary-foreground hover:opacity-90">
               {t("site.packages.consult")}
             </Link>
           </div>
