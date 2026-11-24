@@ -32,7 +32,7 @@ public sealed class ReportTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
     [Fact]
     public async Task Workers_see_only_themselves_managers_see_the_team()
     {
-        var editorId = await Db(db => db.Users.Where(u => u.Phone == "09000000002").Select(u => u.Id).FirstAsync());
+        var editorId = await Db(db => db.Users.Where(u => u.Phone == "015100000002").Select(u => u.Id).FirstAsync());
         var adminTeam = await Ok(await (await As("admin")).GetAsync($"/api/v1/reports/work?{Range}"));
         adminTeam.GetProperty("rows").GetArrayLength().Should().BeGreaterThan(3);
         var ali = adminTeam.GetProperty("rows").EnumerateArray().First(r => r.GetProperty("userId").GetGuid() == editorId);
@@ -54,7 +54,7 @@ public sealed class ReportTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
     [Fact]
     public async Task On_time_counts_the_workers_first_delivery_not_the_clients_wait()
     {
-        var editorId = await Db(db => db.Users.Where(u => u.Phone == "09000000002").Select(u => u.Id).FirstAsync());
+        var editorId = await Db(db => db.Users.Where(u => u.Phone == "015100000002").Select(u => u.Id).FirstAsync());
         // A finished item: delivered at 10:00, the client approved at 14:00, the deadline was 12:00 → on time for the worker.
         var item = await Db(db => db.WorkItems.Where(w => w.AssigneeId == editorId && w.Status == WorkStatus.Done && w.FirstSubmittedAt != null).OrderBy(w => w.DoneAt).FirstAsync());
         var deadline = item.FirstSubmittedAt!.Value.AddMinutes(30);
@@ -89,11 +89,11 @@ public sealed class ReportTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         var ranking = await Ok(await editor.GetAsync($"/api/v1/reports/scores?{Range}"));
         var rows = ranking.GetProperty("people").EnumerateArray().ToList();
         rows.Count.Should().BeGreaterThan(1);
-        var editorId = await Db(db => db.Users.Where(u => u.Phone == "09000000002").Select(u => u.Id).FirstAsync());
+        var editorId = await Db(db => db.Users.Where(u => u.Phone == "015100000002").Select(u => u.Id).FirstAsync());
         rows.Where(r => r.GetProperty("userId").GetGuid() != editorId).Should().OnlyContain(r => r.GetProperty("indicators").GetArrayLength() == 0);
 
         (await Ok(await editor.GetAsync($"/api/v1/reports/scores/{editorId}/trend"))).GetArrayLength().Should().Be(6);
-        var adminId = await Db(db => db.Users.Where(u => u.Phone == "09000000001").Select(u => u.Id).FirstAsync());
+        var adminId = await Db(db => db.Users.Where(u => u.Phone == "015100000001").Select(u => u.Id).FirstAsync());
         (await editor.GetAsync($"/api/v1/reports/scores/{adminId}/trend")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -108,7 +108,7 @@ public sealed class ReportTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         (await admin.PostAsJsonAsync($"/api/v1/work/{done}/rating", new { stars = 9 })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{done}/rating", new { stars = 4 }));
         // Nobody rates their own work (the stars feed their score).
-        var adminId = await Db(db => db.Users.Where(u => u.Phone == "09000000001").Select(u => u.Id).FirstAsync());
+        var adminId = await Db(db => db.Users.Where(u => u.Phone == "015100000001").Select(u => u.Id).FirstAsync());
         await Db(db => db.WorkItems.Where(w => w.Id == done).ExecuteUpdateAsync(x => x.SetProperty(w => w.AssigneeId, adminId)));
         (await admin.PostAsJsonAsync($"/api/v1/work/{done}/rating", new { stars = 5 })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await Db(db => db.WorkItems.Where(w => w.Id == done).Select(w => w.ManagerStars).FirstAsync())).Should().Be(4);

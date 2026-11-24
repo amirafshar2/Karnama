@@ -126,7 +126,7 @@ function MediaCard({ m, focused, canAssign, onAssign }: { m: Media; focused: boo
         <div className="flex flex-wrap items-start justify-between gap-2">
           <p className="font-semibold">
             {t(`media.kind.${m.kind}` as TextKey)}
-            {[size, duration].filter(Boolean).length > 0 && <span className="font-normal text-muted-foreground"> — {[size, duration].filter(Boolean).join("، ")}</span>}
+            {[size, duration].filter(Boolean).length > 0 && <span className="font-normal text-muted-foreground"> — {[size, duration].filter(Boolean).join(", ")}</span>}
           </p>
           <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", STATUS_TONE[m.status])} data-testid="media-status">{t(`media.status.${m.status}` as TextKey)}</span>
         </div>

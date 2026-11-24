@@ -46,7 +46,7 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     private static readonly HashSet<string> ImageKinds = ["png", "jpg", "webp", "gif"];
     private static readonly HashSet<string> VoiceKinds = ["webm", "ogg", "m4a", "mp4"];
     private static readonly HashSet<string> FileKinds = ["png", "jpg", "webp", "gif", "heic", "pdf", "zip", "mp4", "mov", "m4a", "mp3", "wav", "webm", "ogg", "psd"];
-    private static Error NotFound => Error.NotFound("chat.notFound", "گفتگو پیدا نشد.");
+    private static Error NotFound => Error.NotFound("chat.notFound", "Chat nicht gefunden.");
 
     private Guid Me => me.UserId ?? Guid.Empty;
     private bool IsClient => me.Kind == UserKind.Client;
@@ -169,7 +169,7 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     {
         if (!CanUse || IsClient) return Error.Forbidden();
         var order = await (await access.VisibleOrdersAsync(ct)).AsNoTracking().Where(o => o.Id == orderId).Select(o => new { o.Id, o.Number, o.Title }).FirstOrDefaultAsync(ct);
-        if (order is null) return Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+        if (order is null) return Error.NotFound("orders.notFound", "Auftrag nicht gefunden.");
         var conv = await db.Conversations.Include(c => c.Members).FirstOrDefaultAsync(c => c.OrderId == orderId, ct);
         var now = clock.GetUtcNow();
         if (conv is null)
@@ -306,7 +306,7 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         if (await ClientChatBlockedAsync(conv, ct)) return ClientChatOff;
         if (await ExistingAsync(conversationId, clientKey, ct) is { } again) return again;
         if (length <= 0 || length > MaxFileBytes)
-            return Error.Validation("chat.fileTooLarge", "فایل تا ۲۰ مگابایت؛ فایل بزرگ‌تر را از ربات تلگرام بفرستید.");
+            return Error.Validation("chat.fileTooLarge", "Dateien bis 20 MB; größere Dateien über den Telegram-Bot schicken.");
 
         var at = clock.GetUtcNow();
         var key = $"{at:yyyy}/{at:MM}/{Guid.NewGuid():N}";   // same private store as order files (never under the web root)
@@ -317,18 +317,18 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         if (voice)
         {
             messageKind = MessageKind.Voice;
-            if (kind is null || !VoiceKinds.Contains(kind)) error = "فقط پیام صوتی ضبط‌شده در اپ قبول می‌شود.";
-            else if (length > MaxVoiceBytes || duration is null or <= 0 or > MaxVoiceSeconds) error = "پیام صوتی حداکثر ۲ دقیقه است.";
+            if (kind is null || !VoiceKinds.Contains(kind)) error = "Es werden nur in der App aufgenommene Sprachnachrichten akzeptiert.";
+            else if (length > MaxVoiceBytes || duration is null or <= 0 or > MaxVoiceSeconds) error = "Sprachnachrichten dürfen höchstens 2 Minuten lang sein.";
         }
         else if (kind is not null && ImageKinds.Contains(kind))
         {
             messageKind = MessageKind.Image;
-            if (length > MaxImageBytes) error = "عکس حداکثر ۳ مگابایت است (اپ خودش عکس را کوچک می‌کند).";
+            if (length > MaxImageBytes) error = "Das Foto darf höchstens 3 MB haben (die App verkleinert es selbst).";
         }
         else
         {
             messageKind = MessageKind.File;
-            if (kind is null || !FileKinds.Contains(kind)) error = "این نوع فایل قبول نمی‌شود (عکس، ویدیو، صدا، PDF، فایل‌های آفیس و ZIP).";
+            if (kind is null || !FileKinds.Contains(kind)) error = "Dieser Dateityp wird nicht akzeptiert (Bilder, Videos, Audio, PDF, Office-Dateien und ZIP).";
         }
         if (error is not null)
         {
@@ -402,7 +402,7 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
 
     // ---------------- helpers ----------------
 
-    private static Error ClientChatOff => Error.Forbidden("chat.clientChatOff", "گفت‌وگو با مشتری‌ها در تنظیمات خاموش است.");
+    private static Error ClientChatOff => Error.Forbidden("chat.clientChatOff", "Der Chat mit Kunden ist in den Einstellungen ausgeschaltet.");
 
     /// <summary>With "clients chat with managers" off, nobody writes in a conversation that has a client in it (old chats stay readable).</summary>
     private async Task<bool> ClientChatBlockedAsync(Conversation conv, CancellationToken ct)
@@ -437,7 +437,7 @@ public sealed class ChatService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         var bucket = m.CreatedAt.ToUnixTimeSeconds() / 3600;
         // One bell/bot notice per chat per hour per person at most; muted chats stay quiet.
         foreach (var member in conv.Members.Where(x => x.UserId != Me && !x.Muted))
-            await notifier.NotifyAsync([member.UserId], "chat.message", conv.Kind == ConversationKind.Direct ? $"پیام از {author}" : $"{author} در «{TitleOf(conv, names)}»",
+            await notifier.NotifyAsync([member.UserId], "chat.message", conv.Kind == ConversationKind.Direct ? $"Nachricht von {author}" : $"{author} in „{TitleOf(conv, names)}“",
                 m.Preview(), $"/chat?c={conv.Id}", false, $"chat:{conv.Id:N}:{member.UserId:N}:{bucket}", ct);
         await db.SaveChangesAsync(ct);
         await PingAsync(conv, "message", ct);

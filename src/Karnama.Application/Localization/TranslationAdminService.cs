@@ -15,7 +15,7 @@ public sealed partial class SetTranslationValidator : AbstractValidator<SetTrans
 {
     public SetTranslationValidator()
     {
-        RuleFor(x => x.Value).NotNull().MaximumLength(Translation.MaxValueLength).WithMessage("متن حداکثر ۲۰۰۰ کاراکتر است.");
+        RuleFor(x => x.Value).NotNull().MaximumLength(Translation.MaxValueLength).WithMessage("Der Text darf höchstens 2000 Zeichen haben.");
     }
 }
 
@@ -27,15 +27,15 @@ public sealed partial class TranslationAdminService(IAppDbContext db, IAuditWrit
 
     public async Task<Result<IReadOnlyList<TranslationOverrideDto>>> ListAsync(string lang, CancellationToken ct)
     {
-        if (!await db.Languages.AnyAsync(l => l.Code == lang, ct)) return Error.NotFound("languages.notFound", "زبان پیدا نشد.");
+        if (!await db.Languages.AnyAsync(l => l.Code == lang, ct)) return Error.NotFound("languages.notFound", "Sprache nicht gefunden.");
         return await db.Translations.AsNoTracking().Where(t => t.LanguageCode == lang)
             .OrderBy(t => t.Key).Select(t => new TranslationOverrideDto(t.Key, t.Value)).ToListAsync(ct);
     }
 
     public async Task<Result> SetAsync(string lang, string key, string value, CancellationToken ct)
     {
-        if (!KeyPattern().IsMatch(key)) return Error.Validation("translations.invalidKey", "کلید متن معتبر نیست.");
-        if (!await db.Languages.AnyAsync(l => l.Code == lang, ct)) return Error.NotFound("languages.notFound", "زبان پیدا نشد.");
+        if (!KeyPattern().IsMatch(key)) return Error.Validation("translations.invalidKey", "Der Textschlüssel ist ungültig.");
+        if (!await db.Languages.AnyAsync(l => l.Code == lang, ct)) return Error.NotFound("languages.notFound", "Sprache nicht gefunden.");
 
         var row = await db.Translations.FirstOrDefaultAsync(t => t.LanguageCode == lang && t.Key == key, ct);
         var before = row?.Value;
@@ -83,7 +83,7 @@ public sealed class LanguageAdminService(IAppDbContext db, IAuditWriter audit, H
     public async Task<Result<LanguageAdminDto>> CreateAsync(UpsertLanguageRequest r, CancellationToken ct)
     {
         var code = (r.Code ?? string.Empty).Trim().ToLowerInvariant();
-        if (await db.Languages.AnyAsync(l => l.Code == code, ct)) return Error.Conflict("languages.exists", "این زبان از قبل هست.");
+        if (await db.Languages.AnyAsync(l => l.Code == code, ct)) return Error.Conflict("languages.exists", "Diese Sprache gibt es bereits.");
         var created = Karnama.Domain.Localization.Language.Create(code, r.Name, r.Direction, r.Calendar, r.Digits, false, r.SortOrder);
         if (created.IsFailure) return created.Error!;
         var lang = created.Value!;
@@ -98,7 +98,7 @@ public sealed class LanguageAdminService(IAppDbContext db, IAuditWriter audit, H
     public async Task<Result<LanguageAdminDto>> UpdateAsync(string code, UpsertLanguageRequest r, CancellationToken ct)
     {
         var lang = await db.Languages.FirstOrDefaultAsync(l => l.Code == code, ct);
-        if (lang is null) return Error.NotFound("languages.notFound", "زبان پیدا نشد.");
+        if (lang is null) return Error.NotFound("languages.notFound", "Sprache nicht gefunden.");
         var updated = lang.Update(r.Name, r.Direction, r.Calendar, r.Digits, r.IsActive, r.SortOrder);
         if (updated.IsFailure) return updated.Error!;
         audit.Add("languages.updated", "Language", code, new { r.Direction, r.IsActive });

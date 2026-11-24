@@ -14,7 +14,7 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const [home, brand] = await Promise.all([getHome(), getBrand()]);
-  const name = brand?.name ?? "کارنما";
+  const name = brand?.name ?? "Karnama";
   const title = home?.content.seoTitle ?? name;
   const description = home?.content.seoDescription ?? brand?.tagline ?? undefined;
   return {
@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
   const [home, brand, t, posts] = await Promise.all([getHome(), getBrand(), getT(), siteGet<BlogList>("/api/v1/public/blog?page=1")]);
-  const name = brand?.name ?? "کارنما";
+  const name = brand?.name ?? "Karnama";
   if (!home) {
     return (
       <div className="wrap pt-40 pb-24">
@@ -48,7 +48,7 @@ export default async function Home() {
     description: c.seoDescription,
     ...(k.phone ? { telephone: k.phone } : {}),
     ...(k.email ? { email: k.email } : {}),
-    areaServed: k.city ?? "شیراز",
+    areaServed: k.city ?? "Stuttgart",
     ...(k.address || k.city ? { address: { "@type": "PostalAddress", streetAddress: k.address ?? undefined, addressLocality: k.city ?? undefined, addressCountry: "IR" } } : {}),
     ...(k.latitude && k.longitude ? { geo: { "@type": "GeoCoordinates", latitude: k.latitude, longitude: k.longitude } } : {}),
     sameAs: [k.instagram, k.telegram].filter(Boolean).map((h) => (h!.startsWith("http") ? h : `https://instagram.com/${h!.replace(/^@/, "")}`)),
@@ -66,13 +66,13 @@ export default async function Home() {
   };
   const graph = [
     org,
-    { "@type": "WebSite", "@id": `${SITE_URL}/#site`, url: `${SITE_URL}/`, name, inLanguage: "fa-IR", publisher: { "@id": `${SITE_URL}/#org` } },
+    { "@type": "WebSite", "@id": `${SITE_URL}/#site`, url: `${SITE_URL}/`, name, inLanguage: "de-DE", publisher: { "@id": `${SITE_URL}/#org` } },
     ...(c.faq.length > 0 ? [{ "@type": "FAQPage", mainEntity: c.faq.map((f) => ({ "@type": "Question", name: f.question, acceptedAnswer: { "@type": "Answer", text: f.answer } })) }] : []),
   ];
   const stats = [
     home.stats.clients > 0 && { n: faNum(home.stats.clients), label: t("site.stats.clients") },
     home.stats.deliveries > 0 && { n: faNum(home.stats.deliveries), label: t("site.stats.deliveries") },
-    home.stats.medianFollowerGrowth !== null && { n: `${faNum(home.stats.medianFollowerGrowth)}٪`, label: t("site.stats.growth") },
+    home.stats.medianFollowerGrowth !== null && { n: `${faNum(home.stats.medianFollowerGrowth)} %`, label: t("site.stats.growth") },
   ].filter(Boolean) as { n: string; label: string }[];
 
   const hero = home.hero ?? { videoUrl: null, posterUrl: null, images: [] };
@@ -240,7 +240,7 @@ export default async function Home() {
               items={home.cases.map((x) => ({
                 href: `/cases/${x.slug}`,
                 title: x.businessName,
-                meta: [x.industry, x.city, x.followerGrowth !== null ? `${t("site.cases.followers")} ${t("site.cases.fromTo", { from: faNum(x.followersBefore ?? 0), to: faNum(x.followersAfter ?? 0) })}` : null].filter(Boolean).join("، "),
+                meta: [x.industry, x.city, x.followerGrowth !== null ? `${t("site.cases.followers")} ${t("site.cases.fromTo", { from: faNum(x.followersBefore ?? 0), to: faNum(x.followersAfter ?? 0) })}` : null].filter(Boolean).join(", "),
                 number: x.followerGrowth !== null ? t("site.cases.growth", { n: faNum(x.followerGrowth) }) : null,
                 tag: x.isSample ? t("site.cases.sample") : null,
                 image: x.coverUrl,
@@ -370,7 +370,7 @@ export default async function Home() {
             <address className="mt-10 space-y-3 not-italic">
               <h3 className="text-sm font-bold opacity-60">{t("site.contact.title")}</h3>
               {k.phone && <p><a href={`tel:${k.phone}`} dir="ltr" className="text-3xl font-black text-[var(--hi-text)] hover:underline">{k.phone}</a></p>}
-              {(k.address || k.city) && <p className="leading-8 opacity-85">{[k.city, k.address].filter(Boolean).join("، ")}</p>}
+              {(k.address || k.city) && <p className="leading-8 opacity-85">{[k.city, k.address].filter(Boolean).join(", ")}</p>}
               {k.hours && <p className="text-sm opacity-70">{t("site.contact.hours")}: {k.hours}</p>}
               <div className="flex flex-wrap gap-2 pt-2">
                 {k.neshanUrl && <a href={k.neshanUrl} target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/25 px-4 py-2 text-sm font-bold hover:bg-white/10">{t("site.contact.neshan")}</a>}

@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Karnama.Infrastructure.Seeding;
 
 /// <summary>
-/// Demo portfolio, photos and the home page's video loop. Every sample case is flagged «نمونه» on the site — never shown as real results.
+/// Demo portfolio, photos and the home page's video loop. Every sample case is flagged «Beispiel» on the site — never shown as real results.
 /// The photos and the loop are demo-only files embedded in this assembly; an empty install never gets them.
 /// </summary>
 internal static class DemoSiteSeed
@@ -30,20 +30,20 @@ internal static class DemoSiteSeed
 
         (string Name, string Industry, long Fb, long Fa, string[] Services, string Summary, string Quote, string By, int Sort, string Photo)[] rows =
         [
-            ("کافه نمونه", "کافه و رستوران", 1_200, 18_000, ["مدیریت پیج", "ریلز", "عکاسی"], "برنامه‌ی انتشار ثابت، ریلز هفتگی از پشت صحنه و کمپین منوی فصلی.", "پیج ما بالاخره زنده شد؛ هر هفته مشتری تازه می‌گوید از اینستاگرام ما را پیدا کرده.", "مدیر کافه (نمونه)", 1, "cafe.jpg"),
-            ("پوشاک نمونه", "پوشاک", 4_500, 31_000, ["مدیریت پیج", "تبلیغات", "عکاسی محصول"], "عکاسی محصول یکدست، کاروسل کالکشن‌ها و تبلیغات هدفمند در شیراز.", "فروش آنلاین‌مان از فروش مغازه جلو زد.", "مدیر فروشگاه (نمونه)", 2, "boutique.jpg"),
-            ("کلینیک زیبایی نمونه", "زیبایی", 2_100, 9_800, ["تولید محتوا", "ریلز"], "محتوای آموزشی کوتاه و پاسخ به پرسش‌های پرتکرار در ریلز.", "نوبت‌های اینترنتی دو برابر شد.", "مدیر کلینیک (نمونه)", 3, "beauty.jpg"),
-            ("بستنی سنتی نمونه", "شیرینی و بستنی", 800, 12_400, ["ریلز", "عکاسی غذا"], "ریلزهای کوتاه از تهیه‌ی بستنی و کمپین تابستانه با اینفلوئنسرهای شهر.", "تابستان امسال صف جلوی مغازه از اینستاگرام آمد.", "مدیر بستنی‌فروشی (نمونه)", 4, "icecream.jpg"),
-            ("رستوران نمونه", "کافه و رستوران", 3_000, 22_500, ["مدیریت پیج", "عکاسی غذا", "تبلیغات"], "عکاسی منو، استوری روزانه‌ی غذای روز و تبلیغ رزرو آخر هفته.", "رزرو آخر هفته‌ها پر می‌شود.", "مدیر رستوران (نمونه)", 5, "restaurant.jpg"),
+            ("Café Beispiel", "Café und Restaurant", 1_200, 18_000, ["Seitenbetreuung", "Reels", "Fotografie"], "Fester Veröffentlichungsplan, wöchentliches Reel hinter den Kulissen und eine Kampagne zur Saisonkarte.", "Unsere Seite lebt endlich; jede Woche sagt ein neuer Kunde, dass er uns über Instagram gefunden hat.", "Leitung Café (Beispiel)", 1, "cafe.jpg"),
+            ("Mode Beispiel", "Mode", 4_500, 31_000, ["Seitenbetreuung", "Werbung", "Produktfotografie"], "Einheitliche Produktfotos, Kollektions-Karussells und gezielte Werbung in Stuttgart.", "Unser Onlineumsatz hat den Ladenumsatz überholt.", "Leitung Shop (Beispiel)", 2, "boutique.jpg"),
+            ("Kosmetikstudio Beispiel", "Beauty", 2_100, 9_800, ["Content-Produktion", "Reels"], "Kurze Lerninhalte und Antworten auf häufige Fragen in Reels.", "Die Online-Buchungen haben sich verdoppelt.", "Leitung Klinik (Beispiel)", 3, "beauty.jpg"),
+            ("Eiscafé Beispiel", "Konditorei und Eis", 800, 12_400, ["Reels", "Food-Fotografie"], "Kurze Reels über die Eisherstellung und eine Sommerkampagne mit Influencern aus der Stadt.", "Diesen Sommer kam die Schlange vor dem Laden über Instagram.", "Leitung Eiscafé (Beispiel)", 4, "icecream.jpg"),
+            ("Restaurant Beispiel", "Café und Restaurant", 3_000, 22_500, ["Seitenbetreuung", "Food-Fotografie", "Werbung"], "Fotos der Speisekarte, tägliche Story zum Tagesgericht und Werbung für die Wochenend-Reservierung.", "Am Wochenende sind die Reservierungen ausgebucht.", "Leitung Restaurant (Beispiel)", 5, "restaurant.jpg"),
         ];
 
         if (!await db.CaseStudies.IgnoreQueryFilters().AnyAsync(ct))
         {
             foreach (var r in rows)
             {
-                var c = CaseStudy.Create(new CaseStudy.Spec(r.Name + " (نمونه)", null, r.Industry, "شیراز", null, null, DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-8)), null,
-                    r.Services, r.Summary, r.Fb, r.Fa, null, null, true, [new CaseMetric("بازدید ماهانه‌ی ریلز", 3_000, 120_000, null)], [], r.Quote, r.By, null,
-                    "داده‌ی نمونه برای نمایش", false, null, r.Sort == 1, r.Sort), isSample: true).Value!;
+                var c = CaseStudy.Create(new CaseStudy.Spec(r.Name + " (Beispiel)", null, r.Industry, "Stuttgart", null, null, DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-8)), null,
+                    r.Services, r.Summary, r.Fb, r.Fa, null, null, true, [new CaseMetric("Monatliche Reel-Aufrufe", 3_000, 120_000, null)], [], r.Quote, r.By, null,
+                    "Beispieldaten zur Demonstration", false, null, r.Sort == 1, r.Sort), isSample: true).Value!;
                 c.SetPublished(true);
                 db.CaseStudies.Add(c);
             }
@@ -63,8 +63,8 @@ internal static class DemoSiteSeed
         await db.SaveChangesAsync(ct);
 
         // Sample blog posts without a cover get a photo, so the blog cards aren't blank.
-        var posts = await db.BlogPosts.Where(p => p.CoverImage == null && p.Title.Contains("(نمونه)")).OrderBy(p => p.Id).ToListAsync(ct);
-        var photos = new[] { ("creator.jpg", "فیلم‌برداری ریلز با گوشی در باغ"), ("cafe.jpg", "باریستا در حال ریختن لاته‌آرت"), ("boutique.jpg", "عکاسی محصول در بوتیک") };
+        var posts = await db.BlogPosts.Where(p => p.CoverImage == null && p.Title.Contains("(Beispiel)")).OrderBy(p => p.Id).ToListAsync(ct);
+        var photos = new[] { ("creator.jpg", "Reel-Dreh mit dem Handy im Garten"), ("cafe.jpg", "Barista gießt Latte Art"), ("boutique.jpg", "Produktfotografie in der Boutique") };
         for (var i = 0; i < posts.Count; i++)
             if (await Image(photos[i % photos.Length].Item1, "blog") is { } id) posts[i].SetCover(id, photos[i % photos.Length].Item2);
         await db.SaveChangesAsync(ct);

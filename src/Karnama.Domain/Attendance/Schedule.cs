@@ -32,11 +32,11 @@ public sealed class WorkSchedule : Entity
     public Result Update(IReadOnlyList<ScheduleDay> days, int breakMinutes, int graceMinutes, bool flexible, int weeklyHours)
     {
         if (days.Any(d => d.Day is < 0 or > 6) || days.Select(d => d.Day).Distinct().Count() != days.Count)
-            return Error.Validation("schedule.days", "روزهای هفته معتبر نیستند.");
-        if (days.Any(d => d.End <= d.Start)) return Error.Validation("schedule.hours", "ساعت پایان باید بعد از ساعت شروع باشد.");
-        if (breakMinutes is < 0 or > 240) return Error.Validation("schedule.break", "استراحت باید بین ۰ تا ۲۴۰ دقیقه باشد.");
-        if (graceMinutes is < 0 or > 120) return Error.Validation("schedule.grace", "مهلت تأخیر باید بین ۰ تا ۱۲۰ دقیقه باشد.");
-        if (weeklyHours is < 0 or > 80) return Error.Validation("schedule.weekly", "سقف ساعت هفتگی معتبر نیست.");
+            return Error.Validation("schedule.days", "Die Wochentage sind ungültig.");
+        if (days.Any(d => d.End <= d.Start)) return Error.Validation("schedule.hours", "Die Endzeit muss nach der Startzeit liegen.");
+        if (breakMinutes is < 0 or > 240) return Error.Validation("schedule.break", "Die Pause muss zwischen 0 und 240 Minuten liegen.");
+        if (graceMinutes is < 0 or > 120) return Error.Validation("schedule.grace", "Die Toleranz für Verspätung muss zwischen 0 und 120 Minuten liegen.");
+        if (weeklyHours is < 0 or > 80) return Error.Validation("schedule.weekly", "Die Wochenstunden-Obergrenze ist ungültig.");
         Days = days.OrderBy(d => d.Day).ToList();
         BreakMinutes = breakMinutes;
         GraceMinutes = graceMinutes;

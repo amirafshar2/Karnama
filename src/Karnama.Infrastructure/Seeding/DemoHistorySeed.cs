@@ -26,10 +26,10 @@ internal static class DemoHistorySeed
         // (name prefix, late every Nth day, items per week, speed factor, revision every Nth item, on-time every Nth miss)
         (string Who, int LateEvery, int PerWeek, double Speed, int ReviseEvery, int MissEvery)[] people =
         [
-            ("علی", 9, 3, 0.95, 5, 8),
-            ("مریم", 6, 4, 1.15, 3, 4),
-            ("نگار", 0, 3, 0.85, 0, 0),
-            ("رضا", 4, 2, 1.4, 2, 3),
+            ("Lukas", 9, 3, 0.95, 5, 8),
+            ("Marie", 6, 4, 1.15, 3, 4),
+            ("Lena", 0, 3, 0.85, 0, 0),
+            ("Jonas", 4, 2, 1.4, 2, 3),
         ];
         var rnd = new Random(1405);
         var serviceList = services.Where(s => s.Stages.Count > 0).ToList();
@@ -41,7 +41,7 @@ internal static class DemoHistorySeed
             for (var back = 35; back >= 1; back--)
             {
                 var day = today.AddDays(-back);
-                if (day.DayOfWeek == DayOfWeek.Friday) continue;
+                if (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) continue;
                 var late = p.LateEvery > 0 && back % p.LateEvery == 0 ? 10 + rnd.Next(25) : 0;
                 var inAt = Iran.At(day, new TimeOnly(9, 0)).AddMinutes(late);
                 var shift = Shift.Open(user.Id, day, inAt, [], Trust.Green, false, null, false, late);
@@ -59,9 +59,9 @@ internal static class DemoHistorySeed
                 var stage = svc.Stages.OrderBy(s => s.Order).First();
                 var client = clients[rnd.Next(clients.Count)];
                 var number = await db.NextOrderNumberAsync(ct);
-                var data = JsonSerializer.Serialize(new Dictionary<string, string> { ["topic"] = "نمونه" });
+                var data = JsonSerializer.Serialize(new Dictionary<string, string> { ["topic"] = "Beispiel" });
                 var start = inAt.AddMinutes(30 + rnd.Next(60));
-                var order = Order.Create(number, client.Id, svc.Id, svc.Name, svc.FormVersion, data, $"{svc.Name.Get("fa")} — نمونه‌ی ماه قبل", null, OrderSource.Admin,
+                var order = Order.Create(number, client.Id, svc.Id, svc.Name, svc.FormVersion, data, $"{svc.Name.Get("de")} – Beispiel vom Vormonat", null, OrderSource.Admin,
                     OrderPriority.Normal, start.AddHours(8), start.AddMinutes(-60)).Value!;
                 order.Accept(null, true, svc.BasePrice, start.AddMinutes(-50));
                 db.Orders.Add(order);

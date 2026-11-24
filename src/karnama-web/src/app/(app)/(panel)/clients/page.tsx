@@ -57,7 +57,7 @@ export default function ClientsPage() {
       cell: (c) => (
         <div>
           <div className="font-semibold">{c.businessName}</div>
-          <div className="text-xs text-muted-foreground">{[c.industry, c.city].filter(Boolean).join("، ")}</div>
+          <div className="text-xs text-muted-foreground">{[c.industry, c.city].filter(Boolean).join(", ")}</div>
         </div>
       ),
     },
@@ -89,7 +89,7 @@ export default function ClientsPage() {
               <div className="font-semibold">{c.businessName}</div>
               {status(c)}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">{[c.industry, c.city, c.contactName].filter(Boolean).join("، ")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{[c.industry, c.city, c.contactName].filter(Boolean).join(", ")}</p>
             <p className="mt-1 text-sm">{pkg(c)}</p>
           </>
         )}

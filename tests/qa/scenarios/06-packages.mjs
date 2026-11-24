@@ -34,10 +34,10 @@ export async function run(rec) {
 
   service = await rec.step("2.6.a", "admin creates a quota-consuming service for the package", async () => {
     const s = await admin.post("/api/v1/services", {
-      name: { fa: `کپشن QA-D ${sfx}`, en: `Caption QA-D ${sfx}` }, description: "QA S06", icon: "pen-line", basePrice: 3_000_000,
+      name: { fa: `Caption QA-D ${sfx}`, en: `Caption QA-D ${sfx}` }, description: "QA S06", icon: "pen-line", basePrice: 3_000_000,
       consumesQuota: true, weight: 1, sortOrder: 90, isActive: true,
-      form: [{ key: "topic", type: "text", label: { fa: "موضوع" }, required: true, help: { fa: "مثلاً معرفی محصول" }, min: null, max: null, options: null }],
-      stages: [{ id: null, name: { fa: "نوشتن" }, roleId: null, estimatedMinutes: 30, slaHours: 24, needsAdminReview: false, needsClientApproval: false }],
+      form: [{ key: "topic", type: "text", label: { fa: "Thema" }, required: true, help: { fa: "Z. B. Produktvorstellung" }, min: null, max: null, options: null }],
+      stages: [{ id: null, name: { fa: "Schreiben" }, roleId: null, estimatedMinutes: 30, slaHours: 24, needsAdminReview: false, needsClientApproval: false }],
       version: null,
     });
     eq(s.consumesQuota, true, "service consumes quota");
@@ -45,14 +45,14 @@ export async function run(rec) {
   });
 
   const pkgBody = (over = {}) => ({
-    name: { fa: `پکیج QA-D ${sfx}`, en: `QA-D package ${sfx}` }, slug: "", sku: `QAD-${sfx}`, category: "مدیریت پیج", tags: ["qa", "تخفیف"],
-    shortDescription: { fa: "پکیج آزمایشی با تخفیف زمان‌دار" },
-    descriptionMarkdown: "## چه چیزی می‌گیرید\n\n- **دو** کپشن حرفه‌ای\n- مشاوره‌ی ماهانه\n\n[سایت ما](https://example.com)\n\n<script>alert(1)</script>",
+    name: { fa: `Paket QA-D ${sfx}`, en: `QA-D package ${sfx}` }, slug: "", sku: `QAD-${sfx}`, category: "Seitenbetreuung", tags: ["qa", "Rabatt"],
+    shortDescription: { fa: "Testpaket mit befristetem Rabatt" },
+    descriptionMarkdown: "## Das bekommen Sie\n\n- **zwei** professionelle Captions\n- monatliche Beratung\n\n[Unsere Website](https://example.com)\n\n<script>alert(1)</script>",
     price: 100_000_000, compareAtPrice: 120_000_000, specialPrice: 80_000_000, specialFrom: plus(-1), specialTo: plus(48),
     period: "monthly", validityDays: 8, saleFrom: null, saleTo: null, capacity: null, platformIds: [instagram.id],
     defaultManagement: "agencyManaged", access: "fullAccess", consultSessions: 1, revisionsPerItem: 2, deliveryHours: 48,
-    features: [{ fa: "دو کپشن", en: "Two captions" }], faq: [{ question: "تخفیف تا کی است؟", answer: "تا دو روز." }],
-    status: "active", showOnSite: true, sortOrder: 99, badge: "new", seoTitle: `پکیج QA-D ${sfx}`, seoDescription: "پکیج آزمایشی",
+    features: [{ fa: "Zwei Captions", en: "Two captions" }], faq: [{ question: "Bis wann gilt der Rabatt?", answer: "Bis zu zwei Tage." }],
+    status: "active", showOnSite: true, sortOrder: 99, badge: "new", seoTitle: `Paket QA-D ${sfx}`, seoDescription: "Testpaket",
     quotas: [{ serviceTypeId: need(service, "service").id, count: 2 }], version: null, ...over,
   });
 
@@ -93,7 +93,7 @@ export async function run(rec) {
 
   client = await rec.step("2.6.f", "admin creates a client with a portal login", async () => {
     const c = await admin.post("/api/v1/clients", {
-      businessName: `مشتری QA-D ${sfx}`, industry: "کافه", contactName: `آقای QA ${sfx}`, mobile: mobile(), city: "شیراز", internalNote: null,
+      businessName: `Kunde QA-D ${sfx}`, industry: "Café", contactName: `Herr QA ${sfx}`, mobile: mobile(), city: "Stuttgart", internalNote: null,
       status: "active", accounts: [{ platformId: instagram.id, handle: `qa_d_${sfx.toLowerCase()}`, management: "agencyManaged" }], version: null,
     });
     const withPortal = await admin.post(`/api/v1/clients/${c.id}/portal`);
@@ -156,7 +156,7 @@ export async function run(rec) {
   await rec.step("2.6.k", "quota runs out: third order is marked extra (outside the package)", async () => {
     need(portal, "portal");
     for (let i = 0; i < 3; i++) {
-      const o = await portal.post("/api/v1/portal/orders", { clientId: "00000000-0000-0000-0000-000000000000", serviceTypeId: service.id, title: `کپشن ${i + 1}`, note: null, answers: { topic: `موضوع ${i + 1}` }, priority: "normal", deadline: null, autoAccept: false });
+      const o = await portal.post("/api/v1/portal/orders", { clientId: "00000000-0000-0000-0000-000000000000", serviceTypeId: service.id, title: `Caption ${i + 1}`, note: null, answers: { topic: `Thema ${i + 1}` }, priority: "normal", deadline: null, autoAccept: false });
       const acc = await admin.post(`/api/v1/orders/${o.id}/accept?version=${o.version}`);
       orders.push(acc);
     }
@@ -170,7 +170,7 @@ export async function run(rec) {
   await rec.step("2.6.l", "cancel an in-quota order → its slot is free again for the next order", async () => {
     need(orders.length === 3, "three orders");
     await admin.post(`/api/v1/orders/${orders[1].id}/cancel`);
-    const o = await portal.post("/api/v1/portal/orders", { clientId: "00000000-0000-0000-0000-000000000000", serviceTypeId: service.id, title: "کپشن ۴", note: null, answers: { topic: "چهارم" }, priority: "normal", deadline: null, autoAccept: false });
+    const o = await portal.post("/api/v1/portal/orders", { clientId: "00000000-0000-0000-0000-000000000000", serviceTypeId: service.id, title: "Caption 4", note: null, answers: { topic: "Vierter" }, priority: "normal", deadline: null, autoAccept: false });
     const acc = await admin.post(`/api/v1/orders/${o.id}/accept?version=${o.version}`);
     eq(acc.outsidePackage, false, "freed quota slot reused");
     // Bad form data is refused (required field).
@@ -180,9 +180,9 @@ export async function run(rec) {
   await rec.step("2.6.m", "renewal request from the portal: managers told once per day; repeat says 'already asked'; staff can't use it", async () => {
     need(portal, "portal");
     await portal.refused("POST", "/api/v1/portal/renew", { note: "x".repeat(501) }, [422]);
-    const r1 = await portal.post("/api/v1/portal/renew", { note: "لطفاً تمدید کنید" });
+    const r1 = await portal.post("/api/v1/portal/renew", { note: "Bitte verlängern" });
     eq(r1.alreadyRequested, false, "first request");
-    const r2 = await portal.post("/api/v1/portal/renew", { note: "دوباره" });
+    const r2 = await portal.post("/api/v1/portal/renew", { note: "Erneut" });
     eq(r2.alreadyRequested, true, "second request the same day");
     const inbox = await admin.get("/api/v1/notifications");
     const mine = inbox.items.filter((n) => n.kind === "package.renewRequested" && n.title.includes(client.businessName));
@@ -206,10 +206,10 @@ export async function run(rec) {
     const all = await notices();
     const count = (pred) => all.filter(pred).length;
     const titleHas = (s) => (n) => n.kind === "package.expiring" && n.title.includes(s);
-    eq(count(titleHas("7 روز")), 1, "7-day notice once");
-    eq(count(titleHas("3 روز")), 1, "3-day notice once");
-    eq(count(titleHas("1 روز")), 1, "1-day notice once");
-    eq(count(titleHas("آخرین روز")), 1, "last-day notice once");
+    eq(count(titleHas("7 Tage")), 1, "7-day notice once");
+    eq(count(titleHas("3 Tage")), 1, "3-day notice once");
+    eq(count(titleHas("1 Tag")), 1, "1-day notice once");
+    eq(count(titleHas("Letzter Tag")), 1, "last-day notice once");
     eq(count((n) => n.kind === "package.ended"), 1, "ended notice once");
     eq(count((n) => n.kind === "package.expiring"), 4, "no other expiring notices");
     eq(count((n) => n.kind === "package.quotaUsedUp"), 1, "quota-used-up notice once");
@@ -228,7 +228,7 @@ export async function run(rec) {
     check(!c.activePackage || c.activePackage.status !== "active", `no active package: ${JSON.stringify(c.activePackage)}`);
     check(c.packageHistory.some((p) => p.status === "ended"), "history shows the ended package");
     // An order after the end is extra (no active package).
-    const o = await portal.post("/api/v1/portal/orders", { clientId: "00000000-0000-0000-0000-000000000000", serviceTypeId: service.id, title: "بعد از پایان", note: null, answers: { topic: "x" }, priority: "normal", deadline: null, autoAccept: false });
+    const o = await portal.post("/api/v1/portal/orders", { clientId: "00000000-0000-0000-0000-000000000000", serviceTypeId: service.id, title: "Nach Ende", note: null, answers: { topic: "x" }, priority: "normal", deadline: null, autoAccept: false });
     const acc = await admin.post(`/api/v1/orders/${o.id}/accept?version=${o.version}`);
     eq(acc.outsidePackage, true, "order after the end is extra");
   });

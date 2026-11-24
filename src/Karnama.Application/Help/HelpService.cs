@@ -26,12 +26,12 @@ public sealed class SaveHelpValidator : AbstractValidator<SaveHelpRequest>
 }
 
 /// <summary>
-/// Help center (PROMPT2 §13): searchable articles by category, the article behind each page's "؟" button, and editing
+/// Help center (PROMPT2 §13): searchable articles by category, the article behind each page's "?" button, and editing
 /// for content managers. Staff read staff + everyone articles; clients read client + everyone articles; drafts only editors.
 /// </summary>
 public sealed class HelpService(IAppDbContext db, ICurrentUser me, IAuditWriter audit, TimeProvider clock)
 {
-    private static Error NotFound => Error.NotFound("help.notFound", "مقاله پیدا نشد.");
+    private static Error NotFound => Error.NotFound("help.notFound", "Artikel nicht gefunden.");
     private bool CanEdit => me.Kind == UserKind.Staff && me.Has(Permissions.ContentManage, PermissionScope.All);
 
     private IQueryable<HelpArticle> Readable()
@@ -64,7 +64,7 @@ public sealed class HelpService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         return a is null ? NotFound : Dto(a);
     }
 
-    /// <summary>The article for a page's "؟" panel: the longest page key that matches the path.</summary>
+    /// <summary>The article for a page's "?" panel: the longest page key that matches the path.</summary>
     public async Task<HelpItemDto?> ForPageAsync(string page, CancellationToken ct)
     {
         var key = (page ?? "").Trim().Trim('/');
@@ -85,7 +85,7 @@ public sealed class HelpService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         }
         catch (JsonException)
         {
-            return Error.Validation("help.content", "متن مقاله خراب است؛ صفحه را دوباره باز کنید.");
+            return Error.Validation("help.content", "Der Artikeltext ist beschädigt; öffnen Sie die Seite erneut.");
         }
         var spec = new HelpSpec(r.Title, r.Slug, r.Category, r.Audience, r.PageKey, r.ContentJson, r.SortOrder, r.IsPublished);
         HelpArticle a;
@@ -104,7 +104,7 @@ public sealed class HelpService(IAppDbContext db, ICurrentUser me, IAuditWriter 
             a = c.Value!;
             db.HelpArticles.Add(a);
         }
-        if (await db.HelpArticles.AnyAsync(x => x.Slug == a.Slug && x.Id != a.Id, ct)) return Error.Conflict("help.slugExists", "مقاله‌ای با همین نشانی هست؛ عنوان یا نشانی را عوض کنید.");
+        if (await db.HelpArticles.AnyAsync(x => x.Slug == a.Slug && x.Id != a.Id, ct)) return Error.Conflict("help.slugExists", "Es gibt bereits einen Artikel mit dieser Adresse; ändern Sie Titel oder Adresse.");
         audit.Add(id is null ? "help.created" : "help.updated", nameof(HelpArticle), a.Id.ToString(), new { a.Title, a.Slug, a.IsPublished });
         await db.SaveChangesAsync(ct);
         return Dto(a);

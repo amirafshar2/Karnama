@@ -21,7 +21,7 @@ export function Report({ seesAll }: { seesAll: boolean }) {
     queryFn: () => api<CrmReport>(`/api/v1/crm/report?from=${from!.slice(0, 10)}&to=${to!.slice(0, 10)}`),
   });
   const r = report.data;
-  const toman = (rial: number) => formatNumber(Math.round(rial / 10));
+  const toman = (euro: number) => formatNumber(Math.round(euro));
   const hasCommission = r?.marketers.some((m) => m.commission !== null) ?? false;
   return (
     <section className="space-y-6" data-testid="crm-report">
@@ -73,7 +73,7 @@ export function Report({ seesAll }: { seesAll: boolean }) {
               <ul className="space-y-2">
                 {r.stages.map((s) => (
                   <li key={s.stageId}>
-                    <div className="flex justify-between text-sm"><span>{s.name}</span><span className="text-muted-foreground">{formatNumber(s.reached)} — {formatNumber(s.percent)}٪</span></div>
+                    <div className="flex justify-between text-sm"><span>{s.name}</span><span className="text-muted-foreground">{formatNumber(s.reached)} — {formatNumber(s.percent)}%</span></div>
                     <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${Math.min(100, s.percent)}%` }} /></div>
                   </li>
                 ))}
@@ -85,7 +85,7 @@ export function Report({ seesAll }: { seesAll: boolean }) {
                 {r.sources.map((s) => (
                   <li key={s.sourceId ?? "none"} className="flex items-center justify-between gap-2 p-2 text-sm">
                     <span className="font-medium">{s.name}</span>
-                    <span className="text-muted-foreground">{formatNumber(s.leads)} {t("crm.report.leads")} — {t("crm.report.rate")} {formatNumber(s.rate)}٪</span>
+                    <span className="text-muted-foreground">{formatNumber(s.leads)} {t("crm.report.leads")} — {t("crm.report.rate")} {formatNumber(s.rate)}%</span>
                   </li>
                 ))}
               </ul>

@@ -32,7 +32,7 @@ export function BrandTheme() {
 
   useEffect(() => {
     if (!brand.name) return;
-    const base = "کارنما";
+    const base = "Karnama";
     const update = () => {
       if (document.title.includes(base)) document.title = document.title.replace(base, brand.name!);
     };

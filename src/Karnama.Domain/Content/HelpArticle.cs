@@ -18,7 +18,7 @@ public sealed class HelpArticle : AuditableEntity
     public string Slug { get; private set; }
     public string Category { get; private set; }
     public HelpAudience Audience { get; private set; }
-    /// <summary>The panel page whose "؟" button links here (e.g. "work", "attendance/calendar").</summary>
+    /// <summary>The panel page whose "?" button links here (e.g. "work", "attendance/calendar").</summary>
     public string? PageKey { get; private set; }
     public string ContentJson { get; private set; }
     /// <summary>Server-rendered, safe HTML (only known editor nodes).</summary>
@@ -38,14 +38,14 @@ public sealed class HelpArticle : AuditableEntity
     public Result Update(HelpSpec s, string html, string plain)
     {
         var title = (s.Title ?? "").Trim();
-        if (title.Length is 0 or > 120) return Error.Validation("help.title", "عنوان الزامی است (حداکثر ۱۲۰ کاراکتر).");
+        if (title.Length is 0 or > 120) return Error.Validation("help.title", "Der Titel ist Pflicht (höchstens 120 Zeichen).");
         var cat = (s.Category ?? "").Trim();
-        if (cat.Length is 0 or > 40) return Error.Validation("help.category", "دسته الزامی است (حداکثر ۴۰ کاراکتر).");
-        if (string.IsNullOrWhiteSpace(s.ContentJson) || s.ContentJson.Length > MaxJson) return Error.Validation("help.content", "متن مقاله خالی است یا خیلی بزرگ است.");
+        if (cat.Length is 0 or > 40) return Error.Validation("help.category", "Die Kategorie ist Pflicht (höchstens 40 Zeichen).");
+        if (string.IsNullOrWhiteSpace(s.ContentJson) || s.ContentJson.Length > MaxJson) return Error.Validation("help.content", "Der Artikeltext ist leer oder zu groß.");
         var slug = Common.Slug.From(string.IsNullOrWhiteSpace(s.Slug) ? title : s.Slug, 80);
-        if (slug.Length == 0) return Error.Validation("help.slug", "نشانی مقاله درست نیست.");
+        if (slug.Length == 0) return Error.Validation("help.slug", "Die Artikeladresse ist ungültig.");
         var page = s.PageKey?.Trim().Trim('/');
-        if (page is { Length: > 60 }) return Error.Validation("help.page", "نام صفحه خیلی بلند است.");
+        if (page is { Length: > 60 }) return Error.Validation("help.page", "Der Seitenname ist zu lang.");
         Title = title;
         Slug = slug;
         Category = cat;

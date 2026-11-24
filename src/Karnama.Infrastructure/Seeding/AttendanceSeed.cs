@@ -19,15 +19,15 @@ internal static class AttendanceSeed
         {
             var nine = new TimeOnly(9, 0);
             // Saturday–Wednesday 9–17, Thursday 9–13, Friday off.
-            List<ScheduleDay> days = [.. Enumerable.Range(0, 5).Select(d => new ScheduleDay(d, nine, new TimeOnly(17, 0))), new ScheduleDay(5, nine, new TimeOnly(13, 0))];
+            List<ScheduleDay> days = [.. Enumerable.Range(2, 5).Select(d => new ScheduleDay(d, nine, new TimeOnly(17, 0)))]; // Monday–Friday (index 0 = Saturday)
             db.WorkSchedules.Add(WorkSchedule.Create(null, days, 60, 10, false, 44).Value!);
         }
 
         if (!await db.AttendancePolicies.AnyAsync(ct))
         {
-            db.AttendancePolicies.Add(AttendancePolicy.Create("کارمند دفتر",
+            db.AttendancePolicies.Add(AttendancePolicy.Create("Büromitarbeiter",
                 demo ? "OfficeNetwork | RotatingQr | Geofence" : "OfficeNetwork & (RotatingQr | BiometricDevice)", [], [], true).Value!);
-            db.AttendancePolicies.Add(AttendancePolicy.Create("فیلمبردار و عکاس بیرون", "Geofence & Selfie", [], [], false).Value!);
+            db.AttendancePolicies.Add(AttendancePolicy.Create("Kameramann und Fotograf außer Haus", "Geofence & Selfie", [], [], false).Value!);
         }
 
         if (!await db.LeaveTypes.AnyAsync(ct))
@@ -35,11 +35,11 @@ internal static class AttendanceSeed
             // Defaults from the Iranian labour law (26 paid days a year); every one editable in the panel.
             (string Name, LeaveKind Kind, bool Paid, bool Doc, decimal? Days, string Color)[] types =
             [
-                ("مرخصی استحقاقی", LeaveKind.Annual, true, false, 26, "#1E88E5"),
-                ("مرخصی استعلاجی", LeaveKind.Sick, true, true, null, "#C62828"),
-                ("ماموریت (کار بیرون)", LeaveKind.Mission, true, false, null, "#8E24AA"),
-                ("غیبت موجه", LeaveKind.ExcusedAbsence, false, false, null, "#F9A825"),
-                ("مرخصی بدون حقوق", LeaveKind.Other, false, false, null, "#6D4C41"),
+                ("Erholungsurlaub", LeaveKind.Annual, true, false, 26, "#1E88E5"),
+                ("Krankheit", LeaveKind.Sick, true, true, null, "#C62828"),
+                ("Außentermin (Arbeit außer Haus)", LeaveKind.Mission, true, false, null, "#8E24AA"),
+                ("Entschuldigte Abwesenheit", LeaveKind.ExcusedAbsence, false, false, null, "#F9A825"),
+                ("Unbezahlter Urlaub", LeaveKind.Other, false, false, null, "#6D4C41"),
             ];
             var order = 0;
             foreach (var t in types) db.LeaveTypes.Add(LeaveType.Create(t.Name, t.Kind, t.Paid, t.Doc, t.Days, t.Color, order++).Value!);
@@ -48,7 +48,7 @@ internal static class AttendanceSeed
         if (demo)
         {
             if (!await db.AttendancePlaces.AnyAsync(ct))
-                db.AttendancePlaces.Add(AttendancePlace.Create("دفتر شیراز (نمونه)", 29.6100, 52.5300, 150).Value!);
+                db.AttendancePlaces.Add(AttendancePlace.Create("Büro Stuttgart (Beispiel)", 29.6100, 52.5300, 150).Value!);
             if (!await db.SiteSettings.AnyAsync(s => s.Key == AttendanceSettingsStore.Key, ct))
                 db.SiteSettings.Add(new SiteSetting(AttendanceSettingsStore.Key,
                     JsonSerializer.Serialize(AttendanceSettingsDto.Default with { OfficeNetworks = ["127.0.0.1", "::1"] }, new JsonSerializerOptions(JsonSerializerDefaults.Web))));

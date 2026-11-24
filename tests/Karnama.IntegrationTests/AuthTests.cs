@@ -26,7 +26,7 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Unknown_phone_gets_the_same_response_but_no_sms()
     {
         var before = _f.Sms.Sent;
-        var r = await Https().PostAsJsonAsync("/api/v1/auth/otp/request", new { phone = "09359998877" });
+        var r = await Https().PostAsJsonAsync("/api/v1/auth/otp/request", new { phone = "015159998877" });
         r.StatusCode.Should().Be(HttpStatusCode.Accepted);
         await Task.Delay(300);
         _f.Sms.Sent.Should().Be(before);
@@ -36,7 +36,7 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Resend_needs_60_seconds_and_max_3_per_10_minutes()
     {
         var c = Https();
-        const string phone = "09125550001";
+        const string phone = "015125550001";
         (await c.PostAsJsonAsync("/api/v1/auth/otp/request", new { phone })).StatusCode.Should().Be(HttpStatusCode.Accepted);
         (await c.PostAsJsonAsync("/api/v1/auth/otp/request", new { phone })).StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
 
@@ -85,11 +85,11 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Parallel_guesses_cannot_exceed_five_attempts_and_do_not_lock_the_account()
     {
         // Uses a separate staff user so the owner flow in other tests is untouched.
-        const string phone = "09127770000";
+        const string phone = "015127770000";
         using (var scope = _f.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
-            db.Users.Add(Karnama.Domain.Identity.User.Create(phone, "کارگر تست", Karnama.Domain.Identity.UserKind.Staff).Value);
+            db.Users.Add(Karnama.Domain.Identity.User.Create(phone, "Test-Mitarbeiter", Karnama.Domain.Identity.UserKind.Staff).Value);
             await db.SaveChangesAsync();
         }
 
@@ -121,11 +121,11 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     [Fact]
     public async Task One_code_gives_one_session_even_when_raced()
     {
-        const string phone = "09127770001";
+        const string phone = "015127770001";
         using (var scope = _f.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
-            db.Users.Add(Karnama.Domain.Identity.User.Create(phone, "کارگر دوم", Karnama.Domain.Identity.UserKind.Staff).Value);
+            db.Users.Add(Karnama.Domain.Identity.User.Create(phone, "Zweiter Mitarbeiter", Karnama.Domain.Identity.UserKind.Staff).Value);
             await db.SaveChangesAsync();
         }
         var (id, code) = await RequestOtpAsync(Https(), phone);
@@ -138,7 +138,7 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Setup_is_refused_in_a_demo_install()
     {
         var r = await _f.CreateClient().PostAsJsonAsync("/api/v1/setup",
-            new { token = KarnamaFactory.SetupToken, phone = "09121234500", displayName = "x" });
+            new { token = KarnamaFactory.SetupToken, phone = "015121234500", displayName = "x" });
         r.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await (await _f.CreateClient().GetAsync("/api/v1/setup/status")).JsonAsync()).GetProperty("needsSetup").GetBoolean().Should().BeFalse();
     }
@@ -148,7 +148,7 @@ public sealed class AuthTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     {
         var c = Https();
         var before = _f.Sms.Sent;
-        var r = await c.PostAsJsonAsync("/api/v1/auth/otp/request", new { phone = "09000000001" });
+        var r = await c.PostAsJsonAsync("/api/v1/auth/otp/request", new { phone = "015100000001" });
         r.StatusCode.Should().Be(HttpStatusCode.Accepted);
         await Task.Delay(300);
         _f.Sms.Sent.Should().Be(before, "demo users never receive an SMS");
@@ -274,8 +274,8 @@ public sealed class SessionStampTests(DemoAppFixture app) : IClassFixture<DemoAp
     public async Task Role_grant_change_stops_the_old_token_at_once_and_refresh_brings_the_new_rights()
     {
         var admin = _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
-        var leads = await admin.CreateRoleAsync("سرنخ تست", ("crm.leads", "own"));
-        var (_, access, refresh) = await _f.StaffLoginAsync("09127772001", leads);
+        var leads = await admin.CreateRoleAsync("Test-Lead", ("crm.leads", "own"));
+        var (_, access, refresh) = await _f.StaffLoginAsync("015127772001", leads);
         var old = _f.CreateClient().WithToken(access);
         (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.OK, "a valid token keeps working (cached check)");
@@ -283,7 +283,7 @@ public sealed class SessionStampTests(DemoAppFixture app) : IClassFixture<DemoAp
         var role = await (await admin.GetAsync($"/api/v1/roles/{leads}")).JsonAsync();
         (await admin.PutAsJsonAsync($"/api/v1/roles/{leads}", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "سرنخ تست" },
+            name = new Dictionary<string, string> { ["de"] = "Test-Lead" },
             permissions = new[] { new { code = "chat.use", scope = "own" } },
             version = role.GetProperty("version").GetUInt32(),
         }, Http.Json)).StatusCode.Should().Be(HttpStatusCode.OK);
@@ -303,7 +303,7 @@ public sealed class SessionStampTests(DemoAppFixture app) : IClassFixture<DemoAp
         role = await (await admin.GetAsync($"/api/v1/roles/{leads}")).JsonAsync();
         (await admin.PutAsJsonAsync($"/api/v1/roles/{leads}", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "سرنخ تست ۲" },
+            name = new Dictionary<string, string> { ["de"] = "Test-Lead 2" },
             permissions = new[] { new { code = "chat.use", scope = "own" } },
             version = role.GetProperty("version").GetUInt32(),
         }, Http.Json)).StatusCode.Should().Be(HttpStatusCode.OK);
@@ -314,16 +314,16 @@ public sealed class SessionStampTests(DemoAppFixture app) : IClassFixture<DemoAp
     public async Task Removing_a_role_or_deactivating_a_user_stops_their_tokens_at_once()
     {
         var admin = _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
-        var leads = await admin.CreateRoleAsync("سرنخ تست دو", ("crm.leads", "own"));
-        var managers = await admin.CreateRoleAsync("مدیر کاربران تست", ("users.manage", "all"), ("crm.leads", "all"));
-        var (_, managerToken, _) = await _f.StaffLoginAsync("09127772002", managers);
+        var leads = await admin.CreateRoleAsync("Test-Lead zwei", ("crm.leads", "own"));
+        var managers = await admin.CreateRoleAsync("Test-Benutzerverwalter", ("users.manage", "all"), ("crm.leads", "all"));
+        var (_, managerToken, _) = await _f.StaffLoginAsync("015127772002", managers);
         var manager = _f.CreateClient().WithToken(managerToken);
-        var (userId, access, refresh) = await _f.StaffLoginAsync("09127772003", leads);
+        var (userId, access, refresh) = await _f.StaffLoginAsync("015127772003", leads);
         var old = _f.CreateClient().WithToken(access);
         (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Role taken away.
-        (await manager.PutAsJsonAsync($"/api/v1/users/{userId}", new { displayName = "کاربر ۲۰۰۳", phone = "09127772003", roleIds = Array.Empty<Guid>(), isActive = true }, Http.Json))
+        (await manager.PutAsJsonAsync($"/api/v1/users/{userId}", new { displayName = "Benutzer 2003", phone = "015127772003", roleIds = Array.Empty<Guid>(), isActive = true }, Http.Json))
             .StatusCode.Should().Be(HttpStatusCode.OK);
         (await old.GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         var next = await _f.RefreshAsync(refresh);
@@ -333,7 +333,7 @@ public sealed class SessionStampTests(DemoAppFixture app) : IClassFixture<DemoAp
         // Deactivated: the current token dies and so does the refresh.
         var current = _f.CreateClient().WithToken(next.Value.Access);
         (await current.GetAsync("/api/v1/me")).StatusCode.Should().Be(HttpStatusCode.OK);
-        (await manager.PutAsJsonAsync($"/api/v1/users/{userId}", new { displayName = "کاربر ۲۰۰۳", phone = "09127772003", roleIds = Array.Empty<Guid>(), isActive = false }, Http.Json))
+        (await manager.PutAsJsonAsync($"/api/v1/users/{userId}", new { displayName = "Benutzer 2003", phone = "015127772003", roleIds = Array.Empty<Guid>(), isActive = false }, Http.Json))
             .StatusCode.Should().Be(HttpStatusCode.OK);
         (await current.GetAsync("/api/v1/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await _f.RefreshAsync(next.Value.Refresh)).Should().BeNull();

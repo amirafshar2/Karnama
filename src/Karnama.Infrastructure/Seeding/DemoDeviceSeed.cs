@@ -12,10 +12,10 @@ internal static class DemoDeviceSeed
     public static async Task SeedAsync(AppDbContext db, CancellationToken ct)
     {
         if (await db.BiometricDevices.AnyAsync(ct)) return;
-        db.BiometricDevices.Add(BiometricDevice.Create("دستگاه اثر انگشت دفتر (نمونه)", DemoSerial, DeviceKind.Adms, PunchMode.Toggle, "کنار در ورودی", []).Value!);
-        db.BiometricDevices.Add(BiometricDevice.Create("فایل نرم‌افزار حضور و غیاب (نمونه)", "", DeviceKind.FileImport, PunchMode.Toggle, null, []).Value!);
+        db.BiometricDevices.Add(BiometricDevice.Create("Fingerabdruckgerät im Büro (Beispiel)", DemoSerial, DeviceKind.Adms, PunchMode.Toggle, "Neben dem Eingang", []).Value!);
+        db.BiometricDevices.Add(BiometricDevice.Create("Datei der Zeiterfassungssoftware (Beispiel)", "", DeviceKind.FileImport, PunchMode.Toggle, null, []).Value!);
         var users = await db.Users.AsNoTracking().Where(u => u.IsDemo && u.Kind == Karnama.Domain.Identity.UserKind.Staff).ToListAsync(ct);
-        string[] order = ["علی", "مریم", "رضا", "نگار", "نیما"];
+        string[] order = ["Lukas", "Marie", "Jonas", "Lena", "Tim"];
         var pin = 0;
         foreach (var prefix in order)
             if (users.FirstOrDefault(u => u.DisplayName.StartsWith(prefix, StringComparison.Ordinal)) is { } u)

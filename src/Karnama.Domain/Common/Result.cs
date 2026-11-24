@@ -13,9 +13,9 @@ public enum ErrorKind
 /// <summary>A business error. <see cref="Code"/> is a stable translation key; <see cref="Message"/> is the Persian default.</summary>
 public sealed record Error(string Code, string Message, ErrorKind Kind = ErrorKind.Validation)
 {
-    public static Error NotFound(string code = "errors.notFound", string message = "موردی پیدا نشد.") => new(code, message, ErrorKind.NotFound);
+    public static Error NotFound(string code = "errors.notFound", string message = "Nichts gefunden.") => new(code, message, ErrorKind.NotFound);
     public static Error Conflict(string code, string message) => new(code, message, ErrorKind.Conflict);
-    public static Error Forbidden(string code = "errors.forbidden", string message = "به این بخش دسترسی ندارید.") => new(code, message, ErrorKind.Forbidden);
+    public static Error Forbidden(string code = "errors.forbidden", string message = "Sie haben keinen Zugriff auf diesen Bereich.") => new(code, message, ErrorKind.Forbidden);
     public static Error Unauthorized(string code, string message) => new(code, message, ErrorKind.Unauthorized);
     public static Error Validation(string code, string message) => new(code, message, ErrorKind.Validation);
     public static Error TooMany(string code, string message) => new(code, message, ErrorKind.TooManyRequests);

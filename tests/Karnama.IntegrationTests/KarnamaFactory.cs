@@ -250,7 +250,7 @@ public static class Http
         using (var scope = f.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
-            var user = Karnama.Domain.Identity.User.Create(phone, "کاربر " + phone[^4..], Karnama.Domain.Identity.UserKind.Staff).Value;
+            var user = Karnama.Domain.Identity.User.Create(phone, "Benutzer " + phone[^4..], Karnama.Domain.Identity.UserKind.Staff).Value;
             foreach (var id in roleIds) user.AssignRole(id);
             db.Users.Add(user);
             await db.SaveChangesAsync();
@@ -286,7 +286,7 @@ public static class Http
     {
         var r = await admin.PostAsJsonAsync("/api/v1/roles", new
         {
-            name = new Dictionary<string, string> { ["fa"] = name },
+            name = new Dictionary<string, string> { ["de"] = name },
             permissions = grants.Select(g => new { code = g.Code, scope = g.Scope }).ToArray(),
         }, Json);
         r.StatusCode.Should().Be(System.Net.HttpStatusCode.Created, await r.Content.ReadAsStringAsync());
@@ -297,7 +297,7 @@ public static class Http
 /// <summary>One database + one running app per test class (xUnit creates a new class instance per test).</summary>
 public class AppFixture(bool demoLogin = true, string seedMode = "Demo", bool tokensOnFakeClock = false) : IAsyncLifetime
 {
-    public const string OwnerPhone = "09121112233";
+    public const string OwnerPhone = "015121112233";
     public PostgresFixture Pg { get; } = new();
     public KarnamaFactory Factory { get; private set; } = null!;
 
@@ -328,7 +328,7 @@ public class DemoAppFixture : AppFixture
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
         var ownerRole = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstAsync(db.Roles, r => r.SystemKey == "owner");
-        var user = Karnama.Domain.Identity.User.Create(OwnerPhone, "مالک تست", Karnama.Domain.Identity.UserKind.Staff).Value;
+        var user = Karnama.Domain.Identity.User.Create(OwnerPhone, "Test-Inhaber", Karnama.Domain.Identity.UserKind.Staff).Value;
         user.AssignRole(ownerRole.Id);
         db.Users.Add(user);
         await db.SaveChangesAsync();

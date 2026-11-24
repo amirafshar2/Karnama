@@ -41,9 +41,9 @@ public sealed class ServiceType : AuditableEntity
 
     public Result Update(LocalizedText name, string? description, string? icon, long? basePrice, bool consumesQuota, int weight, int sortOrder, bool isActive)
     {
-        if (name.IsEmpty) return Error.Validation("services.nameRequired", "نام خدمت الزامی است.");
-        if (basePrice is < 0) return Error.Validation("services.invalidPrice", "قیمت نمی‌تواند منفی باشد.");
-        if (weight is < 1 or > 100) return Error.Validation("services.invalidWeight", "وزن باید بین ۱ تا ۱۰۰ باشد.");
+        if (name.IsEmpty) return Error.Validation("services.nameRequired", "Der Name der Leistung ist Pflicht.");
+        if (basePrice is < 0) return Error.Validation("services.invalidPrice", "Der Preis darf nicht negativ sein.");
+        if (weight is < 1 or > 100) return Error.Validation("services.invalidWeight", "Das Gewicht muss zwischen 1 und 100 liegen.");
         Name = name;
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         Icon = string.IsNullOrWhiteSpace(icon) ? null : icon.Trim();
@@ -66,13 +66,13 @@ public sealed class ServiceType : AuditableEntity
 
     public Result SetStages(IReadOnlyList<StageSpec> specs)
     {
-        if (specs.Count == 0) return Error.Validation("services.stagesRequired", "حداقل یک مرحله‌ی کار لازم است.");
-        if (specs.Count > MaxStages) return Error.Validation("services.tooManyStages", "حداکثر ۲۰ مرحله.");
+        if (specs.Count == 0) return Error.Validation("services.stagesRequired", "Mindestens ein Arbeitsschritt ist nötig.");
+        if (specs.Count > MaxStages) return Error.Validation("services.tooManyStages", "Höchstens 20 Schritte.");
         foreach (var s in specs)
         {
-            if (s.Name.IsEmpty) return Error.Validation("services.stageName", "نام هر مرحله الزامی است.");
-            if (s.EstimatedMinutes is < 0 or > 100_000) return Error.Validation("services.stageEstimate", "زمان تخمینی معتبر نیست.");
-            if (s.SlaHours is < 0 or > 10_000) return Error.Validation("services.stageSla", "مهلت (SLA) معتبر نیست.");
+            if (s.Name.IsEmpty) return Error.Validation("services.stageName", "Der Name jedes Schritts ist Pflicht.");
+            if (s.EstimatedMinutes is < 0 or > 100_000) return Error.Validation("services.stageEstimate", "Die geschätzte Zeit ist ungültig.");
+            if (s.SlaHours is < 0 or > 10_000) return Error.Validation("services.stageSla", "Die Frist (SLA) ist ungültig.");
         }
 
         // Keep ids of stages that still exist (by id) so history stays linked; add new ones; remove the rest.

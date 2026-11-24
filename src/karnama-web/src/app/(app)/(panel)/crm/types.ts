@@ -1,3 +1,4 @@
+import { atBerlin } from "@/lib/berlin";
 export type StageKind = "open" | "won" | "lost";
 export type Stage = { id: string; name: string; kind: StageKind; sortOrder: number; isActive: boolean };
 export type Source = { id: string; name: string; sortOrder: number; isActive: boolean };
@@ -46,5 +47,5 @@ export type CrmReport = {
   sources: { sourceId: string | null; name: string; leads: number; won: number; rate: number }[];
 };
 
-/** Iran has no DST since 1401: +03:30 all year. */
-export const tehran = (dayIso: string, time: string) => `${dayIso.slice(0, 10)}T${time}:00+03:30`;
+/** Agency local time (Europe/Berlin). */
+export const tehran = (dayIso: string, time: string) => atBerlin(dayIso, time);

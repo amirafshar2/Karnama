@@ -7,7 +7,7 @@ import { SiteNav } from "@/components/site/motion/site-nav";
 
 /** Logo + name from Settings › Brand (server-rendered). */
 export function SiteMark({ brand, size = 32 }: { brand: Brand | null; size?: number }) {
-  const name = brand?.name ?? "کارنما";
+  const name = brand?.name ?? "Karnama";
   return (
     <span className="inline-flex items-center gap-2 text-lg font-extrabold">
       {brand?.logoUrl ? (
@@ -40,7 +40,7 @@ export function SiteHeader({ brand, t }: { brand: Brand | null; t: T }) {
 
 /** Giant wordmark footer with a few tilted stickers (21st: @kedhareswer/sticker-slap-footer). */
 export function SiteFooter({ brand, t }: { brand: Brand | null; t: T }) {
-  const name = brand?.name ?? "کارنما";
+  const name = brand?.name ?? "Karnama";
   return (
     <footer className="foot">
       <TilePattern className="absolute inset-0 opacity-40 [--tile-line:color-mix(in_srgb,var(--brand-gold)_8%,transparent)]" id="footer-tile" />

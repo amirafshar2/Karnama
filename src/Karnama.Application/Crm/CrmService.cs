@@ -56,7 +56,7 @@ public sealed class SaveLeadValidator : AbstractValidator<SaveLeadRequest>
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(80);
         RuleFor(x => x.Note).MaximumLength(2000);
-        RuleFor(x => x.Tags).Must(t => t is null || t.Count <= 10).WithMessage("حداکثر ۱۰ برچسب.");
+        RuleFor(x => x.Tags).Must(t => t is null || t.Count <= 10).WithMessage("Höchstens 10 Etiketten.");
         RuleFor(x => x.Budget).GreaterThanOrEqualTo(0).When(x => x.Budget is not null);
     }
 }
@@ -70,7 +70,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
 {
     public const string SettingsKey = "crm";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private static Error NotFound => Error.NotFound("crm.notFound", "سرنخ پیدا نشد.");
+    private static Error NotFound => Error.NotFound("crm.notFound", "Lead nicht gefunden.");
 
     private Guid Me => me.UserId ?? Guid.Empty;
     private bool IsStaff => me.Kind == UserKind.Staff;
@@ -96,9 +96,9 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         if (id is { } sid)
         {
             var found = await db.LeadStages.FirstOrDefaultAsync(x => x.Id == sid, ct);
-            if (found is null) return Error.NotFound("crm.stageNotFound", "مرحله پیدا نشد.");
+            if (found is null) return Error.NotFound("crm.stageNotFound", "Schritt nicht gefunden.");
             if (!r.IsActive && found.Kind != StageKind.Open && !await db.LeadStages.AnyAsync(x => x.Id != sid && x.Kind == found.Kind && x.IsActive, ct))
-                return Error.Conflict("crm.lastEnding", "حداقل یک مرحله‌ی «برد» و یک «از دست رفت» باید فعال بماند.");
+                return Error.Conflict("crm.lastEnding", "Mindestens eine Stufe „Gewonnen“ und eine „Verloren“ müssen aktiv bleiben.");
             var u = found.Update(r.Name, r.SortOrder, r.IsActive);
             if (u.IsFailure) return u.Error!;
             s = found;
@@ -122,7 +122,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         if (id is { } sid)
         {
             var found = await db.LeadSources.FirstOrDefaultAsync(x => x.Id == sid, ct);
-            if (found is null) return Error.NotFound("crm.sourceNotFound", "منبع پیدا نشد.");
+            if (found is null) return Error.NotFound("crm.sourceNotFound", "Quelle nicht gefunden.");
             var u = found.Update(r.Name, r.SortOrder, r.IsActive);
             if (u.IsFailure) return u.Error!;
             s = found;
@@ -153,7 +153,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
     public async Task<Result<CrmSettingsDto>> SaveSettingsAsync(CrmSettingsDto s, CancellationToken ct)
     {
         if (!CanPipeline) return Error.Forbidden();
-        if (s.CommissionPercent is < 0 or > 50) return Error.Validation("crm.commission", "درصد پورسانت باید بین ۰ تا ۵۰ باشد.");
+        if (s.CommissionPercent is < 0 or > 50) return Error.Validation("crm.commission", "Die Provision muss zwischen 0 und 50 Prozent liegen.");
         var current = await SettingsAsync(ct);
         await WriteSettingsAsync(s with { LastAssignedId = current.LastAssignedId }, ct);
         audit.Add("crm.settingsUpdated", nameof(SiteSetting), SettingsKey, s);
@@ -217,7 +217,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
     public async Task<Result<IReadOnlyList<LeadItemDto>>> CalendarAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
     {
         if (!CanUse) return Error.Forbidden();
-        if (to <= from || to - from > TimeSpan.FromDays(62)) return Error.Validation("crm.range", "بازه حداکثر دو ماه است.");
+        if (to <= from || to - from > TimeSpan.FromDays(62)) return Error.Validation("crm.range", "Der Zeitraum beträgt höchstens zwei Monate.");
         var rows = await Visible().AsNoTracking().Where(l => l.NextFollowUpAt >= from && l.NextFollowUpAt < to).OrderBy(l => l.NextFollowUpAt).Take(500).ToListAsync(ct);
         return await ItemsAsync(rows, ct);
     }
@@ -253,14 +253,14 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         var spec = Spec(r);
         if (await DuplicateAsync(spec.Phone, null, ct) is { } dup && !(r.Force && SeesAll)) return dup;
         var stage = await StageForAsync(r.StageId, ct);
-        if (stage is null) return Error.Validation("crm.stage", "مرحله را انتخاب کنید.");
+        if (stage is null) return Error.Validation("crm.stage", "Wählen Sie einen Schritt.");
         if (await CheckSourceAsync(r.SourceId, ct) is { } badSource) return badSource;
         var created = Lead.Create(spec, stage.Id, now);
         if (created.IsFailure) return created.Error!;
         var l = created.Value!;
         // A marketer's own lead is theirs; managers choose (or leave it for the round-robin).
         var owner = CanAssign ? r.OwnerId : Me;
-        if (owner is { } o && !await IsMarketerAsync(o, ct)) return Error.Validation("crm.owner", "این شخص بازاریاب نیست.");
+        if (owner is { } o && !await IsMarketerAsync(o, ct)) return Error.Validation("crm.owner", "Diese Person ist nicht im Vertrieb.");
         l.Assign(owner, now);
         if (r.NextFollowUpAt is { } f) l.FollowUp(f, now);
         db.Leads.Add(l);
@@ -294,7 +294,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         var l = await Visible().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (l is null) return NotFound;
         var stage = await db.LeadStages.AsNoTracking().FirstOrDefaultAsync(s => s.Id == r.StageId && s.IsActive, ct);
-        if (stage is null) return Error.Validation("crm.stage", "مرحله را انتخاب کنید.");
+        if (stage is null) return Error.Validation("crm.stage", "Wählen Sie einen Schritt.");
         if (stage.Id == l.StageId) return await DetailAsync(l, ct);
         var from = l.StageId;
         var now = clock.GetUtcNow();
@@ -311,7 +311,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         if (!CanAssign) return Error.Forbidden();
         var l = await db.Leads.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (l is null) return NotFound;
-        if (r.OwnerId is { } o && !await IsMarketerAsync(o, ct)) return Error.Validation("crm.owner", "این شخص بازاریاب نیست.");
+        if (r.OwnerId is { } o && !await IsMarketerAsync(o, ct)) return Error.Validation("crm.owner", "Diese Person ist nicht im Vertrieb.");
         await AssignCoreAsync(l, r.OwnerId, ct);
         await SaveAndPingAsync(l, ct);
         return await DetailAsync(l, ct);
@@ -331,7 +331,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         var n = 0;
         foreach (var l in leads)
         {
-            if (await NextInTurnAsync(ct) is not { } owner) return Error.Validation("crm.noMarketers", "هیچ بازاریابی تعریف نشده است.");
+            if (await NextInTurnAsync(ct) is not { } owner) return Error.Validation("crm.noMarketers", "Es ist kein Vertriebsmitarbeiter angelegt.");
             await AssignCoreAsync(l, owner, ct);
             n++;
         }
@@ -367,8 +367,8 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
     {
         if (!CanUse) return Error.Forbidden();
         if (r.Kind is not (ActivityKind.Message or ActivityKind.Meeting or ActivityKind.Email or ActivityKind.Note))
-            return Error.Validation("crm.kind", "نوع فعالیت درست نیست.");
-        if (r.Kind == ActivityKind.Message && r.Channel is null) return Error.Validation("crm.channel", "راه ارتباط را انتخاب کنید.");
+            return Error.Validation("crm.kind", "Die Aktivitätsart ist ungültig.");
+        if (r.Kind == ActivityKind.Message && r.Channel is null) return Error.Validation("crm.channel", "Wählen Sie einen Kontaktweg.");
         var l = await Visible().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (l is null) return NotFound;
         var now = clock.GetUtcNow();
@@ -396,7 +396,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         var l = await Visible().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (l is null) return NotFound;
         if (l.ClientId is { } done) return new ConvertedDto(done, SeesAll || CanAssign);
-        if (l.Phone is null) return Error.Validation("crm.noPhone", "برای تبدیل به مشتری، شماره‌ی موبایل لازم است.");
+        if (l.Phone is null) return Error.Validation("crm.noPhone", "Zum Umwandeln in einen Kunden ist eine Handynummer nötig.");
         var now = clock.GetUtcNow();
         var existing = await db.Clients.FirstOrDefaultAsync(c => c.Mobile == l.Phone, ct);
         Guid clientId;
@@ -406,7 +406,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
             var accounts = new List<ClientAccountSpec>();
             if (l.Instagram is { } ig && await db.Platforms.Where(p => p.Key == "instagram").Select(p => (Guid?)p.Id).FirstOrDefaultAsync(ct) is { } instagram)
                 accounts.Add(new ClientAccountSpec(instagram, ig, Domain.Catalog.PageManagement.ClientManaged));
-            var created = Client.Create(new ClientSpec(l.Business ?? l.Name, l.Industry, l.Name, l.Phone, l.City, $"از CRM (سرنخ {l.CreatedAt:yyyy-MM-dd})", ClientStatus.Active, accounts));
+            var created = Client.Create(new ClientSpec(l.Business ?? l.Name, l.Industry, l.Name, l.Phone, l.City, $"Aus dem CRM (Lead vom {l.CreatedAt:dd.MM.yyyy})", ClientStatus.Active, accounts));
             if (created.IsFailure) return created.Error!;
             db.Clients.Add(created.Value!);
             clientId = created.Value!.Id;
@@ -421,7 +421,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         db.LeadActivities.Add(LeadActivity.Log(l.Id, Me, ActivityKind.Converted, now, null, null, clientId));
         audit.Add("crm.converted", nameof(Lead), l.Id.ToString(), new { clientId, existing = existing is not null });
         var managers = await notifier.StaffWithAsync(Permissions.PackagesAssign, PermissionScope.All, ct);
-        await notifier.NotifyAsync(managers.Where(m => m != Me), "crm.won", $"مشتری تازه: {l.Business ?? l.Name}", "پکیج مناسب را در صفحه‌ی مشتری تخصیص دهید.", "/clients", false,
+        await notifier.NotifyAsync(managers.Where(m => m != Me), "crm.won", $"Neuer Kunde: {l.Business ?? l.Name}", "Weisen Sie das passende Paket auf der Kundenseite zu.", "/clients", false,
             $"crm-won:{l.Id:N}", ct);
         await SaveAndPingAsync(l, ct);
         // Marketers don't learn whether a number already belongs to a client.
@@ -448,7 +448,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
             if (normalized is not null && existing.Phone is null) existing.SetPhone(normalized, now);
             db.LeadActivities.Add(LeadActivity.Log(existing.Id, null, ActivityKind.Inbound, now, message));
             var to = existing.OwnerId is { } o ? [o] : await notifier.StaffWithAsync(Permissions.CrmAssign, PermissionScope.All, ct);
-            await notifier.NotifyAsync(to, "crm.inbound", $"پیام تازه از {existing.Name}", message, "/crm", false, $"crm-in:{existing.Id:N}:{now.ToUnixTimeSeconds() / 600}", ct);
+            await notifier.NotifyAsync(to, "crm.inbound", $"Neue Nachricht von {existing.Name}", message, "/crm", false, $"crm-in:{existing.Id:N}:{now.ToUnixTimeSeconds() / 600}", ct);
             await SaveAndPingAsync(existing, ct);
             return existing;
         }
@@ -469,7 +469,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         var settings = await SettingsAsync(ct);
         if (settings.AutoAssign && await NextInTurnAsync(ct) is { } owner) await AssignCoreAsync(lead, owner, ct, actor: null);
         var who = lead.OwnerId is { } assigned ? [assigned] : await notifier.StaffWithAsync(Permissions.CrmAssign, PermissionScope.All, ct);
-        await notifier.NotifyAsync(who, "crm.newLead", $"سرنخ تازه ({sourceName}): {lead.Name}", lead.Business, "/crm", true, $"crm-lead:{lead.Id:N}", ct);
+        await notifier.NotifyAsync(who, "crm.newLead", $"Neuer Lead ({sourceName}): {lead.Name}", lead.Business, "/crm", true, $"crm-lead:{lead.Id:N}", ct);
         await SaveAndPingAsync(lead, ct);
         return lead;
     }
@@ -485,7 +485,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         {
             if (!l.NeedsFollowUpReminder(now)) continue;
             var to = l.OwnerId is { } o ? [o] : assigners;
-            await notifier.NotifyAsync(to, "crm.followUp", $"وقت پیگیری: {l.Name}{(l.Business is null ? "" : $" ({l.Business})")}", l.Phone, "/crm", true,
+            await notifier.NotifyAsync(to, "crm.followUp", $"Wiedervorlage: {l.Name}{(l.Business is null ? "" : $" ({l.Business})")}", l.Phone, "/crm", true,
                 $"crm-follow:{l.Id:N}:{l.NextFollowUpAt!.Value.ToUnixTimeSeconds()}", ct);
         }
         await db.SaveChangesAsync(ct);
@@ -497,7 +497,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
     public async Task<Result<CrmReportDto>> ReportAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
         if (!CanUse) return Error.Forbidden();
-        if (to < from || to.DayNumber - from.DayNumber > 366) return Error.Validation("crm.range", "بازه درست نیست (حداکثر یک سال).");
+        if (to < from || to.DayNumber - from.DayNumber > 366) return Error.Validation("crm.range", "Der Zeitraum ist ungültig (höchstens ein Jahr).");
         var start = Iran.At(from, TimeOnly.MinValue);
         var end = Iran.At(to.AddDays(1), TimeOnly.MinValue);
         var stages = await db.LeadStages.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
@@ -558,7 +558,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         var sources = leads.GroupBy(l => l.SourceId).Select(g =>
         {
             var w = g.Count(l => won.Contains(l.StageId));
-            return new SourceReportDto(g.Key, g.Key is { } k ? sourceNames.GetValueOrDefault(k, "—") : "نامشخص", g.Count(), w, Math.Round(100.0 * w / g.Count(), 1));
+            return new SourceReportDto(g.Key, g.Key is { } k ? sourceNames.GetValueOrDefault(k, "—") : "Unbekannt", g.Count(), w, Math.Round(100.0 * w / g.Count(), 1));
         }).OrderByDescending(s => s.Rate).ThenByDescending(s => s.Leads).ToList();
 
         return new CrmReportDto(from, to, leads.Count, marketers, stageRows, sources);
@@ -575,8 +575,8 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         var other = await db.Leads.AsNoTracking().Where(l => l.Phone == normalized && l.Id != self).Select(l => new { l.Id, l.Name, l.OwnerId }).FirstOrDefaultAsync(ct);
         if (other is null) return null;
         return SeesAll || other.OwnerId == Me
-            ? Error.Conflict("crm.duplicate", $"این شماره قبلاً ثبت شده است: «{other.Name}». همان را باز کنید.")
-            : Error.Conflict("crm.duplicate", "این شماره قبلاً برای همکار دیگری ثبت شده است.");
+            ? Error.Conflict("crm.duplicate", $"Diese Nummer ist bereits erfasst: „{other.Name}“. Öffnen Sie genau diesen Eintrag.")
+            : Error.Conflict("crm.duplicate", "Diese Nummer ist bereits für einen anderen Mitarbeiter erfasst.");
     }
 
     private async Task<LeadStage?> StageForAsync(Guid? stageId, CancellationToken ct) => stageId is { } id
@@ -584,7 +584,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
         : await db.LeadStages.AsNoTracking().Where(s => s.Kind == StageKind.Open && s.IsActive).OrderBy(s => s.SortOrder).FirstOrDefaultAsync(ct);
 
     private async Task<Error?> CheckSourceAsync(Guid? sourceId, CancellationToken ct) =>
-        sourceId is { } s && !await db.LeadSources.AnyAsync(x => x.Id == s, ct) ? Error.Validation("crm.source", "منبع پیدا نشد.") : null;
+        sourceId is { } s && !await db.LeadSources.AnyAsync(x => x.Id == s, ct) ? Error.Validation("crm.source", "Quelle nicht gefunden.") : null;
 
     private async Task<bool> IsMarketerAsync(Guid userId, CancellationToken ct) =>
         (await notifier.StaffWithAsync(Permissions.CrmLeads, PermissionScope.Own, ct)).Contains(userId);
@@ -627,7 +627,7 @@ public sealed class CrmService(IAppDbContext db, ICurrentUser me, TimeProvider c
     }
 
     private async Task TellOwnerAsync(Lead l, Guid owner, CancellationToken ct) =>
-        await notifier.NotifyAsync([owner], "crm.assigned", $"سرنخ به شما سپرده شد: {l.Name}", l.Business, "/crm", false, $"crm-assign:{l.Id:N}:{owner:N}", ct);
+        await notifier.NotifyAsync([owner], "crm.assigned", $"Ihnen wurde ein Lead zugewiesen: {l.Name}", l.Business, "/crm", false, $"crm-assign:{l.Id:N}:{owner:N}", ct);
 
     private async Task SaveAndPingAsync(Lead l, CancellationToken ct)
     {

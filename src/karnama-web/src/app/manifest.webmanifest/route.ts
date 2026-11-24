@@ -14,7 +14,7 @@ export async function GET() {
   } catch {
     /* API not reachable (e.g. at build time): use defaults */
   }
-  const name = brand?.name ?? "کارنما";
+  const name = brand?.name ?? "Karnama";
   const dark = brand?.colors.dark ?? "#0A0A0A";
   const icons = [
     { src: "/brand/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -27,7 +27,7 @@ export async function GET() {
     id: "/",
     name,
     short_name: name.length > 12 ? name.slice(0, 12) : name,
-    description: "مدیریت کار، ساعت کار و سفارش‌های آژانس",
+    description: "Aufgaben, Arbeitszeit und Aufträge der Agentur verwalten",
     lang: "fa",
     dir: "rtl",
     start_url: "/dashboard",

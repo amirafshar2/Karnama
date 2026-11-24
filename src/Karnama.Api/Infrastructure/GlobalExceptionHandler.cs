@@ -27,24 +27,24 @@ internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> log
             case DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } pg }:
                 logger.LogInformation("Unique index {Constraint} refused a duplicate (trace {TraceId})", pg.ConstraintName, traceId);
                 status = StatusCodes.Status409Conflict;
-                title = "این مورد هم‌زمان ثبت شده یا تکراری است. صفحه را تازه کنید و دوباره امتحان کنید.";
+                title = "Dieser Eintrag wurde gleichzeitig angelegt oder ist doppelt. Laden Sie die Seite neu und versuchen Sie es erneut.";
                 code = "errors.duplicate";
                 break;
             case BadHttpRequestException bad:
                 status = bad.StatusCode;
-                title = "درخواست نامعتبر است.";
+                title = "Die Anfrage ist ungültig.";
                 code = "errors.badRequest";
                 break;
             // The caller went away (page closed or navigated): nobody reads the answer, so this is not a server error.
             case OperationCanceledException when ct.IsCancellationRequested || http.RequestAborted.IsCancellationRequested:
                 status = 499;
-                title = "درخواست لغو شد.";
+                title = "Antrag zurückgezogen.";
                 code = "errors.cancelled";
                 break;
             default:
                 logger.LogError(exception, "Unhandled exception (trace {TraceId})", traceId);
                 status = StatusCodes.Status500InternalServerError;
-                title = "خطای غیرمنتظره‌ای رخ داد. دوباره تلاش کنید؛ اگر تکرار شد کد پیگیری را به پشتیبانی بدهید.";
+                title = "Ein unerwarteter Fehler ist aufgetreten. Versuchen Sie es erneut; falls er wieder auftritt, geben Sie dem Support die Vorgangsnummer.";
                 code = "errors.unexpected";
                 break;
         }

@@ -31,9 +31,9 @@ public sealed class LeaveType : Entity
     public Result Update(string name, LeaveKind kind, bool paid, bool needsDocument, decimal? annualDays, string color, int sortOrder, bool isActive)
     {
         name = name.Trim();
-        if (name.Length is 0 or > 60) return Error.Validation("leaveTypes.name", "نام نوع مرخصی الزامی است.");
-        if (annualDays is < 0 or > 365) return Error.Validation("leaveTypes.days", "سقف سالانه باید بین ۰ تا ۳۶۵ روز باشد.");
-        if (!System.Text.RegularExpressions.Regex.IsMatch(color ?? "", "^#[0-9a-fA-F]{6}$")) return Error.Validation("leaveTypes.color", "رنگ معتبر نیست.");
+        if (name.Length is 0 or > 60) return Error.Validation("leaveTypes.name", "Der Name der Urlaubsart ist Pflicht.");
+        if (annualDays is < 0 or > 365) return Error.Validation("leaveTypes.days", "Die Jahresgrenze muss zwischen 0 und 365 Tagen liegen.");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(color ?? "", "^#[0-9a-fA-F]{6}$")) return Error.Validation("leaveTypes.color", "Die Farbe ist ungültig.");
         Name = name; Kind = kind; Paid = paid; NeedsDocument = needsDocument; AnnualDays = annualDays; Color = color!; SortOrder = sortOrder; IsActive = isActive;
         return Result.Success();
     }
@@ -66,11 +66,11 @@ public sealed class LeaveRequest : Entity
         Guid createdBy, bool byManager, DateTimeOffset now)
     {
         reason = reason?.Trim() ?? "";
-        if (reason.Length is < 3 or > MaxReason) return Error.Validation("leaves.reason", "دلیل را بنویسید (حداقل ۳ حرف).");
-        if (to <= from) return Error.Validation("leaves.range", "پایان باید بعد از شروع باشد.");
-        if (hourly && (to - from).TotalHours > 12) return Error.Validation("leaves.hourly", "مرخصی ساعتی حداکثر ۱۲ ساعت است؛ برای بیشتر، روزانه بگیرید.");
-        if ((to - from).TotalDays > 90) return Error.Validation("leaves.long", "حداکثر ۹۰ روز در یک درخواست.");
-        if (!type.IsActive) return Error.Validation("leaves.type", "این نوع مرخصی فعال نیست.");
+        if (reason.Length is < 3 or > MaxReason) return Error.Validation("leaves.reason", "Geben Sie den Grund an (mindestens 3 Zeichen).");
+        if (to <= from) return Error.Validation("leaves.range", "Das Ende muss nach dem Beginn liegen.");
+        if (hourly && (to - from).TotalHours > 12) return Error.Validation("leaves.hourly", "Stundenweiser Urlaub ist höchstens 12 Stunden; für mehr nehmen Sie ganze Tage.");
+        if ((to - from).TotalDays > 90) return Error.Validation("leaves.long", "Höchstens 90 Tage pro Antrag.");
+        if (!type.IsActive) return Error.Validation("leaves.type", "Diese Urlaubsart ist nicht aktiv.");
         // A missing document (e.g. a doctor's note) doesn't block the request: the manager sees it is missing and decides.
         return new LeaveRequest
         {
@@ -82,8 +82,8 @@ public sealed class LeaveRequest : Entity
 
     public Result Decide(Guid by, bool approve, string? note, DateTimeOffset now)
     {
-        if (Status != LeaveStatus.Pending) return Error.Conflict("leaves.decided", "این درخواست قبلاً بررسی شده است.");
-        if (by == UserId) return Error.Forbidden("leaves.self", "درخواست خودتان را مدیر دیگری باید تأیید کند.");
+        if (Status != LeaveStatus.Pending) return Error.Conflict("leaves.decided", "Diese Anfrage wurde bereits geprüft.");
+        if (by == UserId) return Error.Forbidden("leaves.self", "Ihren eigenen Antrag muss ein anderer Manager genehmigen.");
         Status = approve ? LeaveStatus.Approved : LeaveStatus.Rejected;
         DecidedBy = by; DecidedAt = now;
         DecisionNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim()[..Math.Min(note.Trim().Length, 1000)];
@@ -93,8 +93,8 @@ public sealed class LeaveRequest : Entity
     public Result Cancel(Guid by, DateTimeOffset now)
     {
         if (by != UserId) return Error.Forbidden();
-        if (Status is LeaveStatus.Rejected or LeaveStatus.Cancelled) return Error.Conflict("leaves.closed", "این درخواست بسته شده است.");
-        if (Status == LeaveStatus.Approved && From <= now) return Error.Conflict("leaves.started", "مرخصی شروع شده؛ برای لغو با مدیر هماهنگ کنید.");
+        if (Status is LeaveStatus.Rejected or LeaveStatus.Cancelled) return Error.Conflict("leaves.closed", "Diese Anfrage ist geschlossen.");
+        if (Status == LeaveStatus.Approved && From <= now) return Error.Conflict("leaves.started", "Der Urlaub hat begonnen; zum Stornieren sprechen Sie mit dem Manager.");
         Status = LeaveStatus.Cancelled;
         return Result.Success();
     }
@@ -143,10 +143,10 @@ public sealed class Absence : Entity
 
     public Result SubmitReason(string reason, DateTimeOffset? from, DateTimeOffset? to, Guid? documentId)
     {
-        if (Status is not (AbsenceStatus.Detected or AbsenceStatus.ReasonSubmitted)) return Error.Conflict("absences.closed", "این مورد بسته شده است.");
+        if (Status is not (AbsenceStatus.Detected or AbsenceStatus.ReasonSubmitted)) return Error.Conflict("absences.closed", "Dieser Eintrag ist geschlossen.");
         reason = reason?.Trim() ?? "";
-        if (reason.Length is < 3 or > 1000) return Error.Validation("absences.reason", "دلیل را بنویسید (حداقل ۳ حرف).");
-        if (from is { } f && to is { } t && t <= f) return Error.Validation("absences.range", "پایان باید بعد از شروع باشد.");
+        if (reason.Length is < 3 or > 1000) return Error.Validation("absences.reason", "Geben Sie den Grund an (mindestens 3 Zeichen).");
+        if (from is { } f && to is { } t && t <= f) return Error.Validation("absences.range", "Das Ende muss nach dem Beginn liegen.");
         Reason = reason; ActualFrom = from; ActualTo = to; DocumentFileId = documentId ?? DocumentFileId;
         Status = AbsenceStatus.ReasonSubmitted;
         return Result.Success();
@@ -154,8 +154,8 @@ public sealed class Absence : Entity
 
     public Result Decide(Guid by, bool excused, string? note)
     {
-        if (Status == AbsenceStatus.BecameLate) return Error.Conflict("absences.late", "این مورد به تأخیر تبدیل شده است.");
-        if (by == UserId) return Error.Forbidden("absences.self", "غیبت خودتان را مدیر دیگری باید بررسی کند.");
+        if (Status == AbsenceStatus.BecameLate) return Error.Conflict("absences.late", "Dieser Eintrag wurde zur Verspätung umgewandelt.");
+        if (by == UserId) return Error.Forbidden("absences.self", "Ihre eigene Abwesenheit muss ein anderer Manager prüfen.");
         Status = excused ? AbsenceStatus.Excused : AbsenceStatus.Unexcused;
         DecidedBy = by; DecisionNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim(); AutoDecided = false;
         return Result.Success();

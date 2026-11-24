@@ -4,14 +4,14 @@ import { demoLogin, navTo, shot } from "./helpers";
 test.describe("N6: chat", () => {
   test("a worker writes to the manager, the manager answers live, read marks show", async ({ browser }, info) => {
     const mobile = info.project.name !== "desktop";
-    const text = `راش‌های کافه آپلود شد (${info.project.name})`;
-    const reply = `عالی، ممنون (${info.project.name})`;
+    const text = `Café-Rohmaterial hochgeladen (${info.project.name})`;
+    const reply = `Super, danke (${info.project.name})`;
 
     const editor = await (await browser.newContext(info.project.use)).newPage();
     await demoLogin(editor, "editor");
     await navTo(editor, mobile, "chat");
     await editor.getByTestId("chat-new").click();
-    await editor.getByTestId("chat-contact-سارا (مدیر نمونه)").click();
+    await editor.getByTestId("chat-contact-Sarah (Beispiel-Managerin)").click();
     await editor.getByTestId("chat-input").fill(text);
     await editor.getByTestId("chat-send").click();
     await expect(editor.getByTestId("chat-messages")).toContainText(text);
@@ -19,7 +19,7 @@ test.describe("N6: chat", () => {
     const admin = await (await browser.newContext(info.project.use)).newPage();
     await demoLogin(admin, "admin");
     await navTo(admin, mobile, "chat");
-    const item = admin.getByTestId("chat-item-علی (تدوینگر نمونه)");
+    const item = admin.getByTestId("chat-item-Lukas (Beispiel-Cutter)");
     await expect(item).toBeVisible();
     await shot(admin, info, "n6-chat-list");
     await item.click();
@@ -40,18 +40,18 @@ test.describe("N6: chat", () => {
     await demoLogin(page, "admin");
     await navTo(page, mobile, "chat");
     await page.getByTestId("chat-new-group").click();
-    await page.getByTestId("chat-group-title").fill(`تیم تدوین ${info.project.name}`);
-    await page.getByTestId("chat-member-علی (تدوینگر نمونه)").check();
+    await page.getByTestId("chat-group-title").fill(`Schnitt-Team ${info.project.name}`);
+    await page.getByTestId("chat-member-Lukas (Beispiel-Cutter)").check();
     await shot(page, info, "n6-chat-group");
     await page.getByTestId("chat-group-save").click();
-    await expect(page.getByTestId("chat-thread")).toContainText(`تیم تدوین ${info.project.name}`);
+    await expect(page.getByTestId("chat-thread")).toContainText(`Schnitt-Team ${info.project.name}`);
 
     const client = await (await page.context().browser()!.newContext(info.project.use)).newPage();
     await demoLogin(client, "client");
     await navTo(client, mobile, "chat");
     await client.getByTestId("chat-new").click();
     const contacts = client.getByTestId("chat-contacts");
-    await expect(contacts).toContainText("سارا (مدیر نمونه)");
-    await expect(contacts).not.toContainText("علی (تدوینگر نمونه)");
+    await expect(contacts).toContainText("Sarah (Beispiel-Managerin)");
+    await expect(contacts).not.toContainText("Lukas (Beispiel-Cutter)");
   });
 });

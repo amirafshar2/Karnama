@@ -39,7 +39,7 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
     public async Task<Result<UploadStatusDto>> StartAsync(StartUploadRequest r, CancellationToken ct)
     {
         var order = await (await access.VisibleOrdersAsync(ct)).AsNoTracking().FirstOrDefaultAsync(o => o.Id == r.OrderId, ct);
-        if (order is null) return Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+        if (order is null) return Error.NotFound("orders.notFound", "Auftrag nicht gefunden.");
         var portal = await access.PortalClientIdAsync(ct) is not null;
         if (portal)
         {
@@ -48,15 +48,15 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
         else if (r.WorkItemId is { } wid)
         {
             var w = await access.VisibleItems().AsNoTracking().FirstOrDefaultAsync(x => x.Id == wid && x.OrderId == order.Id, ct);
-            if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
-            if (!access.IsManager && !(access.CanRun && w.AssigneeId == access.Me)) return Error.Forbidden("work.notYours", "این کار به شما سپرده نشده است.");
+            if (w is null) return Error.NotFound("work.notFound", "Aufgabe nicht gefunden.");
+            if (!access.IsManager && !(access.CanRun && w.AssigneeId == access.Me)) return Error.Forbidden("work.notYours", "Diese Aufgabe ist Ihnen nicht zugewiesen.");
         }
         else if (!access.IsManager && !me.Has(Domain.Identity.Permissions.OrdersManage, Domain.Identity.PermissionScope.All)) return Error.Forbidden();
-        if (order.Status is OrderStatus.Cancelled or OrderStatus.Rejected) return Error.Conflict("orders.closed", "این سفارش بسته شده است.");
+        if (order.Status is OrderStatus.Cancelled or OrderStatus.Rejected) return Error.Conflict("orders.closed", "Dieser Auftrag ist geschlossen.");
 
         var uid = access.Me;
         if (await db.Files.CountAsync(x => x.UploadedBy == uid && x.Status == FileStatus.Uploading, ct) >= _o.MaxOpenUploadsPerUser)
-            return Error.TooMany("files.tooManyOpen", "چند آپلود نیمه‌کاره دارید؛ اول آن‌ها را تمام کنید.");
+            return Error.TooMany("files.tooManyOpen", "Sie haben einige unvollständige Uploads; schließen Sie diese zuerst ab.");
         var f = FileAsset.Start(order.Id, order.ClientId, r.WorkItemId, r.Purpose, r.FileName, r.ContentType ?? "", r.Size, _o.MaxBytes, me.UserId, portal, clock.GetUtcNow());
         if (f.IsFailure) return f.Error!;
         db.Files.Add(f.Value!);
@@ -74,13 +74,13 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
     }
 
     public async Task<Result<UploadStatusDto>> StatusAsync(Guid id, CancellationToken ct) =>
-        await OwnUploadAsync(id, ct) is { } f ? Status(f) : Error.NotFound("files.notFound", "فایل پیدا نشد.");
+        await OwnUploadAsync(id, ct) is { } f ? Status(f) : Error.NotFound("files.notFound", "Datei nicht gefunden.");
 
     public async Task<Result<UploadStatusDto>> AppendAsync(Guid id, long offset, long? length, Stream body, CancellationToken ct)
     {
         var f = await OwnUploadAsync(id, ct);
-        if (f is null) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
-        if (length is null or <= 0 || length > _o.MaxChunkBytes) return Error.Validation("files.chunk", "اندازه‌ی تکه معتبر نیست.");
+        if (f is null) return Error.NotFound("files.notFound", "Datei nicht gefunden.");
+        if (length is null or <= 0 || length > _o.MaxChunkBytes) return Error.Validation("files.chunk", "Die Teilgröße ist ungültig.");
         var adv = f.Advance(offset, length.Value);
         if (adv.IsFailure) return adv.Error!;
         await store.AppendAsync(f.StorageKey, offset, body, length.Value, ct);
@@ -93,7 +93,7 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
                 await store.DeleteAsync(f.StorageKey, ct);
                 f.Delete();
                 await db.SaveChangesAsync(ct);
-                return Error.Validation("files.type", "این نوع فایل پذیرفته نمی‌شود (عکس، ویدیو، PDF، ZIP، PSD یا صدا).");
+                return Error.Validation("files.type", "Dieser Dateityp wird nicht akzeptiert (Bilder, Videos, PDF, ZIP, PSD oder Audio).");
             }
             f.Complete(kind, clock.GetUtcNow());
             audit.Add("files.uploaded", nameof(FileAsset), f.Id.ToString(), new { f.OrderId, f.WorkItemId, f.Size, kind });
@@ -108,8 +108,8 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
     public async Task<Result<(FileAsset File, Stream Content)>> OpenAsync(Guid id, CancellationToken ct)
     {
         var f = await db.Files.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.Status == FileStatus.Ready, ct);
-        if (f is null) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
-        if (!await CanReadAsync(f, ct)) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
+        if (f is null) return Error.NotFound("files.notFound", "Datei nicht gefunden.");
+        if (!await CanReadAsync(f, ct)) return Error.NotFound("files.notFound", "Datei nicht gefunden.");
         return (f, store.OpenRead(f.StorageKey));
     }
 
@@ -122,7 +122,7 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
     public async Task<Result<FileLinkDto>> LinkAsync(Guid id, CancellationToken ct)
     {
         var f = await db.Files.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.Status == FileStatus.Ready, ct);
-        if (f is null || !await CanReadAsync(f, ct)) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
+        if (f is null || !await CanReadAsync(f, ct)) return Error.NotFound("files.notFound", "Datei nicht gefunden.");
         var token = links.Sign($"{f.Id:N}|{access.Me:N}", LinkLifetime);
         return new FileLinkDto($"/api/v1/files/dl/{token}", clock.GetUtcNow().Add(LinkLifetime));
     }
@@ -133,10 +133,10 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
         var payload = links.Verify(token);
         var parts = payload?.Split('|');
         if (parts is not { Length: 2 } || !Guid.TryParseExact(parts[0], "N", out var fileId) || !Guid.TryParseExact(parts[1], "N", out var userId))
-            return Error.NotFound("files.linkExpired", "این لینک منقضی شده است؛ دوباره از برنامه دانلود کنید.");
-        if (!await db.Users.AnyAsync(u => u.Id == userId && u.IsActive, ct)) return Error.NotFound("files.linkExpired", "این لینک منقضی شده است.");
+            return Error.NotFound("files.linkExpired", "Dieser Link ist abgelaufen; laden Sie die Datei erneut aus der App herunter.");
+        if (!await db.Users.AnyAsync(u => u.Id == userId && u.IsActive, ct)) return Error.NotFound("files.linkExpired", "Dieser Link ist abgelaufen.");
         var f = await db.Files.AsNoTracking().FirstOrDefaultAsync(x => x.Id == fileId && x.Status == FileStatus.Ready, ct);
-        if (f is null) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
+        if (f is null) return Error.NotFound("files.notFound", "Datei nicht gefunden.");
         return (f, store.OpenRead(f.StorageKey));
     }
 
@@ -151,9 +151,9 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
 
     public async Task<Result<FileDto>> ShareAsync(Guid id, bool visible, CancellationToken ct)
     {
-        if (!access.CanTalkToClient) return Error.Forbidden("comments.clientOnlyAdmins", "فقط ادمین فایل را برای مشتری می‌فرستد.");
+        if (!access.CanTalkToClient) return Error.Forbidden("comments.clientOnlyAdmins", "Nur der Admin schickt die Datei an den Kunden.");
         var f = await db.Files.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (f is null) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
+        if (f is null) return Error.NotFound("files.notFound", "Datei nicht gefunden.");
         f.ShareWithClient(visible);
         audit.Add(visible ? "files.shared" : "files.unshared", nameof(FileAsset), id.ToString());
         changes.Record("order", f.OrderId, f.ClientId, null, null, "files");
@@ -165,7 +165,7 @@ public sealed class FileService(IAppDbContext db, WorkAccess access, IFileStore 
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
     {
         var f = await db.Files.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (f is null) return Error.NotFound("files.notFound", "فایل پیدا نشد.");
+        if (f is null) return Error.NotFound("files.notFound", "Datei nicht gefunden.");
         if (!access.IsManager && f.UploadedBy != access.Me) return Error.Forbidden();
         f.Delete();
         audit.Add("files.deleted", nameof(FileAsset), id.ToString(), new { f.FileName });

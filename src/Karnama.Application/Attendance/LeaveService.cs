@@ -66,14 +66,14 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
     {
         var forUser = r.ForUserId ?? Me;
         var byManager = forUser != Me;
-        if (byManager && !CanApprove) return Error.Forbidden("leaves.forOthers", "ثبت مرخصی برای دیگران فقط با مجوز تأیید مرخصی.");
-        if (byManager && !await db.Users.AnyAsync(u => u.Id == forUser && u.Kind == UserKind.Staff, ct)) return Error.NotFound("users.notFound", "همکار پیدا نشد.");
+        if (byManager && !CanApprove) return Error.Forbidden("leaves.forOthers", "Urlaub für andere erfassen nur mit der Berechtigung zur Urlaubsfreigabe.");
+        if (byManager && !await db.Users.AnyAsync(u => u.Id == forUser && u.Kind == UserKind.Staff, ct)) return Error.NotFound("users.notFound", "Mitarbeiter nicht gefunden.");
         var type = await db.LeaveTypes.FirstOrDefaultAsync(t => t.Id == r.LeaveTypeId, ct);
-        if (type is null) return Error.Validation("leaves.type", "نوع مرخصی را انتخاب کنید.");
-        if (r.DocumentFileId is { } doc && !await db.Files.AnyAsync(f => f.Id == doc && f.UploadedBy == Me, ct)) return Error.Validation("leaves.document", "مدرک پیدا نشد.");
+        if (type is null) return Error.Validation("leaves.type", "Wählen Sie die Urlaubsart.");
+        if (r.DocumentFileId is { } doc && !await db.Files.AnyAsync(f => f.Id == doc && f.UploadedBy == Me, ct)) return Error.Validation("leaves.document", "Nachweis nicht gefunden.");
         var overlap = await db.LeaveRequests.AnyAsync(l => l.UserId == forUser && (l.Status == LeaveStatus.Pending || l.Status == LeaveStatus.Approved)
                                                            && l.From < r.To && r.From < l.To, ct);
-        if (overlap) return Error.Conflict("leaves.overlap", "در این بازه درخواست دیگری دارید.");
+        if (overlap) return Error.Conflict("leaves.overlap", "Für diesen Zeitraum haben Sie bereits einen anderen Antrag.");
         var now = clock.GetUtcNow();
         var created = LeaveRequest.Create(forUser, type, r.Hourly, r.From, r.To, r.Reason, r.DocumentFileId, Me, byManager, now);
         if (created.IsFailure) return created.Error!;
@@ -84,10 +84,10 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         changes.Record("presence", forUser, null, forUser, null, "leave");
         var userName = await db.Users.Where(u => u.Id == forUser).Select(u => u.DisplayName).FirstAsync(ct);
         if (byManager)
-            await notifier.NotifyAsync([forUser], "leave.registered", "مرخصی برای شما ثبت شد", type.Name, "/attendance", false, $"leave:{created.Value.Id:N}", ct);
+            await notifier.NotifyAsync([forUser], "leave.registered", "Für Sie wurde Urlaub eingetragen", type.Name, "/attendance", false, $"leave:{created.Value.Id:N}", ct);
         else
             await notifier.NotifyAsync((await notifier.StaffWithAsync(Permissions.AttendanceApprove, PermissionScope.All, ct)).Where(u => u != forUser),
-                "leave.request", $"درخواست مرخصی: {userName}", $"{type.Name} — {r.Reason}", "/attendance/live", false, $"leave:{created.Value.Id:N}", ct);
+                "leave.request", $"Urlaubsantrag: {userName}", $"{type.Name} — {r.Reason}", "/attendance/live", false, $"leave:{created.Value.Id:N}", ct);
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         return (await DtosAsync([created.Value!], ct))[0];
@@ -111,7 +111,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         if (d.IsFailure) return d.Error!;
         if (r.Approve) await ExcuseCoveredAbsencesAsync(l, ct);
         audit.Add(r.Approve ? "leaves.approved" : "leaves.rejected", nameof(LeaveRequest), id.ToString(), new { l.UserId });
-        await notifier.NotifyAsync([l.UserId], "leave.decided", r.Approve ? "مرخصی شما تأیید شد" : "مرخصی شما رد شد", r.Note, "/attendance", false, $"leave-d:{l.Id:N}", ct);
+        await notifier.NotifyAsync([l.UserId], "leave.decided", r.Approve ? "Ihr Urlaub wurde genehmigt" : "Ihr Urlaub wurde abgelehnt", r.Note, "/attendance", false, $"leave-d:{l.Id:N}", ct);
         changes.Record("presence", l.UserId, null, l.UserId, null, "leave");
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
@@ -224,7 +224,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
                 if (now < expected.AddMinutes(sched.GraceMinutes) || now > Iran.At(today, day.End)) continue;
                 if (leaves.Any(l => l.UserId == uid && (l.Covers(now) || l.Covers(expected)))) continue;
                 db.Absences.Add(Absence.Detect(uid, today, expected, now, s.AbsenceReasonHours));
-                await notifier.NotifyAsync([uid], "absence.detected", "ورود امروز ثبت نشد", $"اگر مشکلی پیش آمده، دلیل را تا {s.AbsenceReasonHours} ساعت بنویسید.", "/attendance", true, $"abs:{uid:N}:{today}", ct);
+                await notifier.NotifyAsync([uid], "absence.detected", "Das Kommen heute wurde nicht erfasst", $"Falls etwas passiert ist, tragen Sie den Grund innerhalb von {s.AbsenceReasonHours} Stunden ein.", "/attendance", true, $"abs:{uid:N}:{today}", ct);
                 changes.Record("presence", uid, null, uid, null, "absence");
                 newlyAbsent.Add(uid);
             }
@@ -241,7 +241,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
             {
                 if (covering.FirstOrDefault(l => l.UserId == a.UserId && l.Covers(a.ExpectedAt)) is { } leave)
                 {
-                    if (a.ExcuseByLeave(leave.DecidedBy, "مرخصی تأییدشده این روز را پوشش می‌دهد."))
+                    if (a.ExcuseByLeave(leave.DecidedBy, "Ein genehmigter Urlaub deckt diesen Tag ab."))
                         audit.Add("absences.excusedByLeave", nameof(Absence), a.Id.ToString(), new { leave = leave.Id }, actorOverride: null);
                     continue;
                 }
@@ -274,13 +274,13 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
             var shown = 0;
             foreach (var n in others)
             {
-                var next = shown == 0 ? n : $"{body}، {n}";
+                var next = shown == 0 ? n : $"{body}, {n}";
                 if (next.Length > maxBody) break;
                 body = next;
                 shown++;
             }
-            if (shown < others.Count) body += $" و {others.Count - shown} نفر دیگر";
-            var title = others.Count == 1 ? $"غیبت: {others[0]}" : $"غیبت: {others.Count} نفر ورود نزده‌اند";
+            if (shown < others.Count) body += $" und {others.Count - shown} weitere";
+            var title = others.Count == 1 ? $"Abwesend: {others[0]}" : $"Abwesend: {others.Count} Personen haben nicht eingecheckt";
             await notifier.NotifyAsync([approver], "absence.team", title, body, "/attendance/live", false, $"abs-team:{today}:{now.ToUnixTimeSeconds()}", ct);
         }
     }
@@ -292,7 +292,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         var toDay = Iran.Today(l.To);
         var absences = await db.Absences.Where(a => a.UserId == l.UserId && a.Day >= fromDay && a.Day <= toDay).ToListAsync(ct);
         foreach (var a in absences.Where(a => l.Covers(a.ExpectedAt)))
-            if (a.ExcuseByLeave(Me, "مرخصی تأییدشده این روز را پوشش می‌دهد."))
+            if (a.ExcuseByLeave(Me, "Ein genehmigter Urlaub deckt diesen Tag ab."))
             {
                 audit.Add("absences.excusedByLeave", nameof(Absence), a.Id.ToString(), new { leave = l.Id });
                 changes.Record("presence", a.UserId, null, a.UserId, null, "absence");
@@ -302,7 +302,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
     // ---------------- calendar & report ----------------
     public async Task<Result<IReadOnlyList<CalendarRowDto>>> CalendarAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
-        if (to < from || to.DayNumber - from.DayNumber > 42) return Error.Validation("calendar.range", "بازه حداکثر ۴۲ روز.");
+        if (to < from || to.DayNumber - from.DayNumber > 42) return Error.Validation("calendar.range", "Zeitraum höchstens 42 Tage.");
         var users = SeesAll || CanApprove
             ? await db.Users.AsNoTracking().Where(u => u.Kind == UserKind.Staff && u.IsActive && (!u.IsDemo || me.IsDemo)).OrderBy(u => u.DisplayName).Select(u => new { u.Id, u.DisplayName }).ToListAsync(ct)
             : await db.Users.AsNoTracking().Where(u => u.Id == Me).Select(u => new { u.Id, u.DisplayName }).ToListAsync(ct);
@@ -335,7 +335,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
     public async Task<Result<IReadOnlyList<MonthReportRowDto>>> ReportAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
         if (!SeesAll) return Error.Forbidden();
-        if (to < from || to.DayNumber - from.DayNumber > 62) return Error.Validation("report.range", "بازه حداکثر ۶۲ روز.");
+        if (to < from || to.DayNumber - from.DayNumber > 62) return Error.Validation("report.range", "Zeitraum höchstens 62 Tage.");
         var now = clock.GetUtcNow();
         var users = await db.Users.AsNoTracking().Where(u => u.Kind == UserKind.Staff && (!u.IsDemo || me.IsDemo)).OrderBy(u => u.DisplayName).Select(u => new { u.Id, u.DisplayName }).ToListAsync(ct);
         var shifts = await db.Shifts.AsNoTracking().Where(s => s.Day >= from && s.Day <= to).ToListAsync(ct);
@@ -365,7 +365,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
         var r = await ReportAsync(from, to, ct);
         if (r.IsFailure) return r.Error!;
         static string H(int m) => $"{m / 60}:{m % 60:00}";
-        return excel.Export("Attendance", ["نام", "ساعت کار", "تأخیر (دقیقه)", "دفعات تأخیر", "زودرفتن (دقیقه)", "مرخصی با حقوق", "مرخصی بی‌حقوق", "غیبت موجه", "غیبت غیرموجه", "شیفت‌ها"],
+        return excel.Export("Attendance", ["Name", "Arbeitszeit", "Verspätung (Minuten)", "Anzahl Verspätungen", "Früher gegangen (Minuten)", "Bezahlter Urlaub", "Unbezahlter Urlaub", "Entschuldigte Abwesenheit", "Unentschuldigte Abwesenheit", "Schichten"],
             r.Value!.Select(x => (IReadOnlyList<object?>)[x.Name, H(x.WorkedMinutes), x.LateMinutes, x.LateCount, x.EarlyLeaveMinutes, H(x.PaidLeaveMinutes), H(x.UnpaidLeaveMinutes),
                 x.ExcusedAbsences, x.UnexcusedAbsences, x.Shifts]));
     }
@@ -385,7 +385,7 @@ public sealed class LeaveService(IAppDbContext db, ICurrentUser me, AttendanceSe
 
     private static DateTimeOffset PersianYearStart(DateTimeOffset now)
     {
-        var cal = new System.Globalization.PersianCalendar();
+        var cal = new System.Globalization.GregorianCalendar();
         var local = Iran.Local(now).DateTime;
         var start = cal.ToDateTime(cal.GetYear(local), 1, 1, 0, 0, 0, 0);
         return Iran.At(DateOnly.FromDateTime(start), TimeOnly.MinValue);

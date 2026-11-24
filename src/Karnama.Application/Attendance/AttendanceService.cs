@@ -39,8 +39,8 @@ public sealed class ClockRequestValidator : AbstractValidator<ClockRequest>
 {
     public ClockRequestValidator()
     {
-        RuleFor(x => x.IdempotencyKey).NotEmpty().MaximumLength(64).Matches("^[A-Za-z0-9_-]+$").WithMessage("شناسه‌ی درخواست معتبر نیست.");
-        RuleFor(x => x.ElapsedMs).InclusiveBetween(0, 72L * 3600 * 1000).When(x => x.ElapsedMs is not null).WithMessage("زمان ثبت آفلاین معتبر نیست.");
+        RuleFor(x => x.IdempotencyKey).NotEmpty().MaximumLength(64).Matches("^[A-Za-z0-9_-]+$").WithMessage("Die Antrags-ID ist ungültig.");
+        RuleFor(x => x.ElapsedMs).InclusiveBetween(0, 72L * 3600 * 1000).When(x => x.ElapsedMs is not null).WithMessage("Die Zeit des Offline-Eintrags ist ungültig.");
         RuleFor(x => x.Note).MaximumLength(500);
     }
 }
@@ -80,7 +80,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         var now = clock.GetUtcNow();
         var (at, offline, timeIssue) = await WhenAsync(r, now, ct);
         if (await db.Shifts.AnyAsync(s => s.UserId == Me && s.Status == ShiftStatus.Open, ct))
-            return Error.Conflict("attendance.alreadyIn", "ورود شما از قبل ثبت شده است.");
+            return Error.Conflict("attendance.alreadyIn", "Ihr Kommen ist bereits erfasst.");
 
         var check = await VerifyAsync(r.Evidence, now, ct);
         var day = Iran.Today(at);
@@ -93,7 +93,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         db.AttendanceEvents.Add(Event(shift.Id, AttendanceEventKind.ClockIn, at, now, r, check.Results, check.Trust));
         audit.Add("attendance.clockIn", nameof(Shift), shift.Id.ToString(), new { trust = check.Trust, offline, late });
         changes.Record("presence", Me, null, Me, null, "clockIn");
-        return await SaveOrReplayAsync(r.IdempotencyKey, Error.Conflict("attendance.alreadyIn", "ورود شما از قبل ثبت شده است."), ct);
+        return await SaveOrReplayAsync(r.IdempotencyKey, Error.Conflict("attendance.alreadyIn", "Ihr Kommen ist bereits erfasst."), ct);
     }
 
     public async Task<Result<TodayDto>> ClockOutAsync(ClockRequest r, CancellationToken ct)
@@ -102,7 +102,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         var now = clock.GetUtcNow();
         var (at, offline, timeIssue) = await WhenAsync(r, now, ct);
         var shift = await db.Shifts.FirstOrDefaultAsync(s => s.UserId == Me && s.Status == ShiftStatus.Open, ct);
-        if (shift is null) return Error.Conflict("attendance.notIn", "ورودی ثبت نشده است.");
+        if (shift is null) return Error.Conflict("attendance.notIn", "Kein Kommen erfasst.");
 
         var check = await VerifyAsync(r.Evidence, now, ct);
         var early = EarlyLeaveMinutes(await ScheduleForAsync(Me, ct), shift.Day, at);
@@ -113,7 +113,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         db.AttendanceEvents.Add(Event(shift.Id, AttendanceEventKind.ClockOut, at, now, r, check.Results, check.Trust));
         audit.Add("attendance.clockOut", nameof(Shift), shift.Id.ToString(), new { trust = check.Trust, offline, early });
         changes.Record("presence", Me, null, Me, null, "clockOut");
-        return await SaveOrReplayAsync(r.IdempotencyKey, Error.Conflict("attendance.notIn", "ورودی ثبت نشده است."), ct);
+        return await SaveOrReplayAsync(r.IdempotencyKey, Error.Conflict("attendance.notIn", "Kein Kommen erfasst."), ct);
     }
 
     public async Task<Result<TodayDto>> BreakAsync(bool start, ClockRequest r, CancellationToken ct)
@@ -122,14 +122,14 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         var now = clock.GetUtcNow();
         var (at, _, _) = await WhenAsync(r, now, ct);
         var shift = await db.Shifts.FirstOrDefaultAsync(s => s.UserId == Me && s.Status == ShiftStatus.Open, ct);
-        if (shift is null) return Error.Conflict("attendance.notIn", "اول ورود بزنید.");
+        if (shift is null) return Error.Conflict("attendance.notIn", "Bitte zuerst „Kommen“ tippen.");
         var res = start ? shift.StartBreak(at) : shift.EndBreak(at);
         if (res.IsFailure) return res.Error!;
         if (start) await StopTimerCoreAsync(at, ct);
         db.AttendanceEvents.Add(Event(shift.Id, start ? AttendanceEventKind.BreakStart : AttendanceEventKind.BreakEnd, at, now, r, [], Trust.Green));
         changes.Record("presence", Me, null, Me, null, start ? "breakStart" : "breakEnd");
         return await SaveOrReplayAsync(r.IdempotencyKey,
-            start ? Error.Conflict("attendance.onBreak", "استراحت از قبل شروع شده است.") : Error.Conflict("attendance.noBreak", "استراحتی شروع نشده است."), ct);
+            start ? Error.Conflict("attendance.onBreak", "Die Pause läuft bereits.") : Error.Conflict("attendance.noBreak", "Es läuft keine Pause."), ct);
     }
 
     // ---------------- work timer ----------------
@@ -138,18 +138,18 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
     {
         var now = clock.GetUtcNow();
         var item = await db.WorkItems.AsNoTracking().FirstOrDefaultAsync(w => w.Id == workItemId, ct);
-        if (item is null || item.AssigneeId != Me) return Error.NotFound("work.notFound", "این کار به شما سپرده نشده است.");
-        if (!item.IsOpen) return Error.Conflict("work.closed", "این کار بسته شده است.");
+        if (item is null || item.AssigneeId != Me) return Error.NotFound("work.notFound", "Diese Aufgabe ist Ihnen nicht zugewiesen.");
+        if (!item.IsOpen) return Error.Conflict("work.closed", "Diese Aufgabe ist geschlossen.");
         var shift = await db.Shifts.FirstOrDefaultAsync(s => s.UserId == Me && s.Status == ShiftStatus.Open, ct);
         if (shift is null)
         {
             var s = await settings.GetAsync(ct);
-            if (!s.AutoClockInOnTimer) return Error.Conflict("attendance.notIn", "تایمر فقط داخل شیفت کار می‌کند؛ اول ورود بزنید.");
+            if (!s.AutoClockInOnTimer) return Error.Conflict("attendance.notIn", "Der Timer läuft nur während einer Schicht; tippen Sie zuerst auf „Kommen“.");
             var check = await VerifyAsync(null, now, ct);
             shift = Shift.Open(Me, Iran.Today(now), now, check.Results, check.Trust, check.Reason is not null, check.Reason, false, 0);
             db.Shifts.Add(shift);
         }
-        if (shift.OnBreak) return Error.Conflict("attendance.onBreak", "اول استراحت را تمام کنید.");
+        if (shift.OnBreak) return Error.Conflict("attendance.onBreak", "Beenden Sie zuerst die Pause.");
         await StopTimerCoreAsync(now, ct);   // one timer at a time: a new one pauses the previous
         // Saved first: the "one running timer" unique index must see the old one stopped before the new insert.
         await db.SaveChangesAsync(ct);
@@ -218,51 +218,51 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
             results.Add(m switch
             {
                 "OfficeNetwork" => AttendanceSettingsStore.InNetworks(request.RemoteIp, s.OfficeNetworks)
-                    ? new MethodResult(m, true, "اینترنت دفتر ✓")
-                    : new MethodResult(m, false, "از اینترنت دفتر نبود"),
+                    ? new MethodResult(m, true, "Büro-Internet ✓")
+                    : new MethodResult(m, false, "Nicht aus dem Büro-Internet"),
                 "RotatingQr" => await CheckQrAsync(e?.Qr, now, ct),
                 "Geofence" => await CheckPlaceAsync(e, ct),
-                "ManagerApproval" => new MethodResult(m, false, "نیاز به تأیید مدیر"),
-                _ => new MethodResult(m, false, "این روش در این نسخه فعال نیست"),
+                "ManagerApproval" => new MethodResult(m, false, "Freigabe durch Manager nötig"),
+                _ => new MethodResult(m, false, "Diese Methode ist in dieser Version nicht aktiv"),
             });
         }
         var passed = rule.Evaluate(name => results.Any(r => r.Method == name && r.Passed));
         var fraud = results.Any(r => r.Fraud);
         var trust = fraud ? Trust.Red : passed ? Trust.Green : Trust.Yellow;
-        string? reason = fraud ? "شواهد مشکوک: " + string.Join("، ", results.Where(r => r.Fraud).Select(r => r.Evidence))
-            : passed ? null : $"قانون ورود ({text}) برقرار نشد: " + string.Join("، ", results.Where(r => !r.Passed).Select(r => r.Evidence));
+        string? reason = fraud ? "Verdächtige Hinweise: " + string.Join(", ", results.Where(r => r.Fraud).Select(r => r.Evidence))
+            : passed ? null : $"Die Check-in-Regel ({text}) ist nicht erfüllt: " + string.Join(", ", results.Where(r => !r.Passed).Select(r => r.Evidence));
         return new Check(results, trust, reason);
     }
 
     private async Task<MethodResult> CheckPlaceAsync(Evidence? e, CancellationToken ct)
     {
-        if (e?.Latitude is not { } lat || e.Longitude is not { } lng) return new MethodResult("Geofence", false, "موقعیت ارسال نشد");
-        if (e.Mock == true) return new MethodResult("Geofence", false, "مکان جعلی", Fraud: true);
-        if (e.Accuracy is > 200) return new MethodResult("Geofence", false, $"دقت موقعیت کم بود ({e.Accuracy:0} متر)");
+        if (e?.Latitude is not { } lat || e.Longitude is not { } lng) return new MethodResult("Geofence", false, "Standort wurde nicht gesendet");
+        if (e.Mock == true) return new MethodResult("Geofence", false, "Gefälschter Standort", Fraud: true);
+        if (e.Accuracy is > 200) return new MethodResult("Geofence", false, $"Die Standortgenauigkeit war gering ({e.Accuracy:0} Meter)");
         var places = await db.AttendancePlaces.AsNoTracking().ToListAsync(ct);
         var nearest = places.Select(p => (p, d: p.DistanceMeters(lat, lng))).OrderBy(x => x.d).FirstOrDefault();
-        if (nearest.p is null) return new MethodResult("Geofence", false, "هنوز مکانی تعریف نشده");
+        if (nearest.p is null) return new MethodResult("Geofence", false, "Noch kein Ort festgelegt");
         return nearest.d <= nearest.p.RadiusMeters
-            ? new MethodResult("Geofence", true, $"{nearest.d:0} متر از «{nearest.p.Name}» ✓")
-            : new MethodResult("Geofence", false, $"{nearest.d:0} متر از «{nearest.p.Name}» (بیرون از محدوده)");
+            ? new MethodResult("Geofence", true, $"{nearest.d:0} Meter von „{nearest.p.Name}“ ✓")
+            : new MethodResult("Geofence", false, $"{nearest.d:0} Meter von „{nearest.p.Name}“ (außerhalb des Bereichs)");
     }
 
     /// <summary>QR = "k1.{step}.{n}.{mac}": valid for the current or previous 30-second step, each (step, n) usable once.</summary>
     private async Task<MethodResult> CheckQrAsync(string? qr, DateTimeOffset now, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(qr)) return new MethodResult("RotatingQr", false, "QR اسکن نشد");
+        if (string.IsNullOrWhiteSpace(qr)) return new MethodResult("RotatingQr", false, "QR nicht gescannt");
         var parts = qr.Trim().Split('.');
         if (parts.Length != 4 || parts[0] != "k1" || !long.TryParse(parts[1], out var step) || !int.TryParse(parts[2], out var n) || n is < 0 or > 10_000)
-            return new MethodResult("RotatingQr", false, "QR نامعتبر", Fraud: true);
+            return new MethodResult("RotatingQr", false, "QR ungültig", Fraud: true);
         var key = await settings.KioskKeyAsync(ct);
         if (!CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(Mac(key, step, n)), Encoding.ASCII.GetBytes(parts[3])))
-            return new MethodResult("RotatingQr", false, "QR جعلی", Fraud: true);
+            return new MethodResult("RotatingQr", false, "QR gefälscht", Fraud: true);
         var current = now.ToUnixTimeSeconds() / QrStepSeconds;
-        if (step < current - 1 || step > current) return new MethodResult("RotatingQr", false, "QR منقضی شده (عکس قدیمی؟)", Fraud: true);
+        if (step < current - 1 || step > current) return new MethodResult("RotatingQr", false, "QR abgelaufen (altes Foto?)", Fraud: true);
         // Single use: the insert fails for the second scan of the same code.
         var inserted = await db.Database.ExecuteSqlInterpolatedAsync(
             $"INSERT INTO kiosk_code_uses (\"Step\", \"N\", \"UserId\", \"At\") VALUES ({step}, {n}, {Me}, {now}) ON CONFLICT DO NOTHING", ct);
-        return inserted == 1 ? new MethodResult("RotatingQr", true, "QR دفتر ✓") : new MethodResult("RotatingQr", false, "QR تکراری", Fraud: true);
+        return inserted == 1 ? new MethodResult("RotatingQr", true, "Büro-QR ✓") : new MethodResult("RotatingQr", false, "QR doppelt", Fraud: true);
     }
 
     private static string Mac(byte[] key, long step, int n) =>
@@ -274,7 +274,7 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         // A kiosk login used from home must not be able to mint valid office codes.
         var networks = (await settings.GetAsync(ct)).OfficeNetworks;
         if (networks.Count > 0 && !AttendanceSettingsStore.InNetworks(request.RemoteIp, networks))
-            return Error.Forbidden("kiosk.officeOnly", "صفحه‌ی QR فقط از اینترنت دفتر باز می‌شود.");
+            return Error.Forbidden("kiosk.officeOnly", "Die QR-Seite öffnet sich nur im Büro-Internet.");
         var now = clock.GetUtcNow();
         var step = now.ToUnixTimeSeconds() / QrStepSeconds;
         var used = await db.KioskCodeUses.CountAsync(u => u.Step == step, ct);
@@ -336,9 +336,9 @@ public sealed class AttendanceService(IAppDbContext db, ICurrentUser me, IReques
         string? issue = null;
         // The elapsed time comes from the device, so an offline event is never trusted on its own: a manager confirms it.
         // (Otherwise "I was offline for 2 hours" would turn an 11:00 arrival into a green 09:00.)
-        if (offline) issue = $"ثبت آفلاین ({(int)elapsed.TotalMinutes} دقیقه قبل) — مدیر تأیید کند";
+        if (offline) issue = $"Offline erfasst (vor {(int)elapsed.TotalMinutes} Minuten) – Manager muss bestätigen";
         if (r.DeviceAt is { } d && Math.Abs((d - at).TotalMinutes) > s.OfflineToleranceMinutes)
-            issue = $"ساعت گوشی {Math.Abs((d - at).TotalMinutes):0} دقیقه با ساعت سرور فرق داشت";
+            issue = $"Die Handyuhr wich {Math.Abs((d - at).TotalMinutes):0} Minuten von der Serverzeit ab";
         // Never before the person's previous event: no overlapping or reordered shifts.
         var uid = Me;
         var last = await db.AttendanceEvents.Where(e => e.UserId == uid).MaxAsync(e => (DateTimeOffset?)e.At, ct);

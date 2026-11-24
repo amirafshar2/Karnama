@@ -16,7 +16,7 @@ namespace Karnama.Infrastructure.Seeding;
 /// </summary>
 public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, ILogger<DataSeeder> logger, Karnama.Application.Abstractions.IVault vault, Karnama.Application.Abstractions.IMediaStore media)
 {
-    public const string OwnerDemoPhone = "09000000000";
+    public const string OwnerDemoPhone = "015100000000";
 
     public async Task SeedAsync(CancellationToken ct)
     {
@@ -72,7 +72,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
     private async Task SeedLanguagesAsync(CancellationToken ct)
     {
         if (await db.Languages.AnyAsync(ct)) return;
-        db.Languages.Add(Language.Create("fa", "فارسی", TextDirection.Rtl, CalendarKind.Persian, DigitStyle.Persian, isDefault: true, sortOrder: 0).Value);
+        db.Languages.Add(Language.Create("de", "Deutsch", TextDirection.Ltr, CalendarKind.Gregorian, DigitStyle.Latin, isDefault: true, sortOrder: 0).Value);
         db.Languages.Add(Language.Create("en", "English", TextDirection.Ltr, CalendarKind.Gregorian, DigitStyle.Latin, sortOrder: 1).Value);
     }
 
@@ -82,11 +82,12 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         if (await db.Platforms.IgnoreQueryFilters().AnyAsync(ct)) return;
         (string Key, string Fa, string En, string? Url)[] list =
         [
-            ("instagram", "اینستاگرام", "Instagram", "https://instagram.com/{handle}"),
-            ("telegram", "تلگرام", "Telegram", "https://t.me/{handle}"),
-            ("eitaa", "ایتا", "Eitaa", "https://eitaa.com/{handle}"),
-            ("bale", "بله", "Bale", "https://ble.ir/{handle}"),
-            ("rubika", "روبیکا", "Rubika", "https://rubika.ir/{handle}"),
+            ("instagram", "Instagram", "Instagram", "https://instagram.com/{handle}"),
+            ("telegram", "Telegram", "Telegram", "https://t.me/{handle}"),
+            ("tiktok", "TikTok", "TikTok", "https://www.tiktok.com/@{handle}"),
+            ("facebook", "Facebook", "Facebook", "https://facebook.com/{handle}"),
+            ("linkedin", "LinkedIn", "LinkedIn", "https://www.linkedin.com/company/{handle}"),
+            ("youtube", "YouTube", "YouTube", "https://youtube.com/@{handle}"),
         ];
         for (var i = 0; i < list.Length; i++)
             db.Platforms.Add(Karnama.Domain.Catalog.Platform.Create(list[i].Key, Name(list[i].Fa, list[i].En), list[i].Url, i).Value);
@@ -99,7 +100,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         var owner = await db.Roles.IgnoreQueryFilters().Include(r => r.Permissions).FirstOrDefaultAsync(r => r.SystemKey == SystemRoles.Owner, ct);
         if (owner is null)
         {
-            owner = Role.CreateSystem(SystemRoles.Owner, Name("مالک", "Owner"), allGrants);
+            owner = Role.CreateSystem(SystemRoles.Owner, Name("Inhaber", "Owner"), allGrants);
             db.Roles.Add(owner);
         }
         else
@@ -110,7 +111,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         var client = await db.Roles.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.SystemKey == SystemRoles.Client, ct);
         if (client is null)
         {
-            client = Role.CreateSystem(SystemRoles.Client, Name("مشتری", "Client"), []);
+            client = Role.CreateSystem(SystemRoles.Client, Name("Kunde", "Client"), []);
             db.Roles.Add(client);
         }
         return (owner, client);
@@ -121,7 +122,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         if (await db.Users.IgnoreQueryFilters().AnyAsync(u => u.IsDemo, ct)) return;
 
         var all = Permissions.Catalog.Select(p => new PermissionGrant(p.Code, p.MaxScope)).ToList();
-        var manager = Role.Create(Name("مدیر", "Manager"), "ادمین دوم: همه‌چیز جز مدیریت نقش‌ها", all.Where(g => g.Code != Permissions.RolesManage)).Value;
+        var manager = Role.Create(Name("Manager", "Manager"), "Zweiter Admin: alles außer Rollenverwaltung", all.Where(g => g.Code != Permissions.RolesManage)).Value;
 
         PermissionGrant[] worker =
         [
@@ -135,32 +136,32 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             new(Permissions.ScoresView, PermissionScope.Own),
             new(Permissions.AssetsView, PermissionScope.Own),
         ];
-        var editorRole = Role.Create(Name("تدوینگر", "Video editor"), "تدوین ریلز و ویدیو", worker).Value;
-        var writerRole = Role.Create(Name("عکاس و متن‌نویس", "Photographer & copywriter"), "عکاسی، کپشن و متن", [.. worker, new(Permissions.BlogWrite, PermissionScope.Own)]).Value;
-        var aiRole = Role.Create(Name("کار با هوش مصنوعی", "AI specialist"), "تولید محتوا با ابزارهای هوش مصنوعی", worker).Value;
+        var editorRole = Role.Create(Name("Cutter", "Video editor"), "Schnitt von Reels und Videos", worker).Value;
+        var writerRole = Role.Create(Name("Fotograf & Texter", "Photographer & copywriter"), "Fotografie, Caption und Text", [.. worker, new(Permissions.BlogWrite, PermissionScope.Own)]).Value;
+        var aiRole = Role.Create(Name("KI-Spezialist", "AI specialist"), "Content-Produktion mit KI-Tools", worker).Value;
         db.Roles.AddRange(manager, editorRole, writerRole, aiRole);
 
         // Admin demo = manager role (never the Owner role) so it can't touch real keys or users.
         // It holds every grant so roles management can be shown; demo installs contain only sample data.
-        var demoAdminRole = Role.Create(Name("ادمین نمایشی", "Demo admin"), "فقط برای نمایش", all).Value;
+        var demoAdminRole = Role.Create(Name("Demo-Admin", "Demo admin"), "Nur zur Demonstration", all).Value;
         db.Roles.Add(demoAdminRole);
 
-        AddUser(OwnerDemoPhone, "مالک آژانس (نمونه)", UserKind.Staff, owner.Id);
-        AddUser(DemoAccounts.Find("admin")!.Phone, "سارا (مدیر نمونه)", UserKind.Staff, demoAdminRole.Id);
-        AddUser(DemoAccounts.Find("editor")!.Phone, "علی (تدوینگر نمونه)", UserKind.Staff, editorRole.Id);
-        AddUser(DemoAccounts.Find("writer")!.Phone, "مریم (متن‌نویس نمونه)", UserKind.Staff, writerRole.Id);
-        AddUser(DemoAccounts.Find("client")!.Phone, "کافه نمونه", UserKind.Client, client.Id);
-        AddUser("09000000005", "رضا (تدوینگر دوم نمونه)", UserKind.Staff, editorRole.Id);
-        AddUser("09000000006", "نگار (هوش مصنوعی نمونه)", UserKind.Staff, aiRole.Id);
-        AddUser("09000000007", "محمد (مدیر نمونه)", UserKind.Staff, manager.Id);
+        AddUser(OwnerDemoPhone, "Agenturinhaber (Beispiel)", UserKind.Staff, owner.Id);
+        AddUser(DemoAccounts.Find("admin")!.Phone, "Sarah (Beispiel-Managerin)", UserKind.Staff, demoAdminRole.Id);
+        AddUser(DemoAccounts.Find("editor")!.Phone, "Lukas (Beispiel-Cutter)", UserKind.Staff, editorRole.Id);
+        AddUser(DemoAccounts.Find("writer")!.Phone, "Marie (Beispiel-Texterin)", UserKind.Staff, writerRole.Id);
+        AddUser(DemoAccounts.Find("client")!.Phone, "Café Beispiel", UserKind.Client, client.Id);
+        AddUser("015100000005", "Jonas (zweiter Beispiel-Cutter)", UserKind.Staff, editorRole.Id);
+        AddUser("015100000006", "Lena (Beispiel-KI-Spezialistin)", UserKind.Staff, aiRole.Id);
+        AddUser("015100000007", "Daniel (Beispiel-Manager)", UserKind.Staff, manager.Id);
     }
 
-    /// <summary>The «بازاریاب» role (PROMPT2 §4) and its demo user; also added to demo installs made before N7.</summary>
+    /// <summary>The «Vertrieb» role (PROMPT2 §4) and its demo user; also added to demo installs made before N7.</summary>
     private async Task EnsureDemoMarketerAsync(CancellationToken ct)
     {
         var phone = DemoAccounts.Find("marketer")!.Phone;
         if (await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Phone == phone, ct)) return;
-        var role = Role.Create(Name("بازاریاب", "Marketer"), "سرنخ‌های خودش، تماس و پیگیری",
+        var role = Role.Create(Name("Vertrieb", "Marketer"), "Eigene Leads, Anrufe und Wiedervorlagen",
         [
             new(Permissions.CrmLeads, PermissionScope.Own),
             new(Permissions.ChatUse, PermissionScope.Own),
@@ -170,7 +171,7 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
             new(Permissions.AssetsView, PermissionScope.Own),
         ]).Value;
         db.Roles.Add(role);
-        AddUser(phone, "نیما (بازاریاب نمونه)", UserKind.Staff, role.Id);
+        AddUser(phone, "Tim (Beispiel-Vertriebler)", UserKind.Staff, role.Id);
         await db.SaveChangesAsync(ct);
     }
 
@@ -208,5 +209,5 @@ public sealed class DataSeeder(AppDbContext db, IOptions<SeedOptions> options, I
         db.Users.Add(user);
     }
 
-    private static LocalizedText Name(string fa, string en) => new(new Dictionary<string, string> { ["fa"] = fa, ["en"] = en });
+    private static LocalizedText Name(string fa, string en) => new(new Dictionary<string, string> { ["de"] = fa, ["en"] = en });
 }

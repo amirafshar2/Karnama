@@ -101,22 +101,22 @@ public sealed partial class Package : AuditableEntity
     public Result Update(PackageSpec s, IReadOnlyList<QuotaSpec> quotas, string? descriptionHtml)
     {
         // Slug is optional input: normalised, or generated from the Persian name (automatic SEO-friendly URL).
-        s = s with { Slug = Common.Slug.From(string.IsNullOrWhiteSpace(s.Slug) ? s.Name.Get("fa") : s.Slug) };
-        if (s.Name.IsEmpty) return Error.Validation("packages.nameRequired", "نام پکیج الزامی است.");
+        s = s with { Slug = Common.Slug.From(string.IsNullOrWhiteSpace(s.Slug) ? s.Name.Get("de") : s.Slug) };
+        if (s.Name.IsEmpty) return Error.Validation("packages.nameRequired", "Der Paketname ist Pflicht.");
         if (!SlugPattern().IsMatch(s.Slug ?? string.Empty) || s.Slug!.Length > 80)
-            return Error.Validation("packages.invalidSlug", "نامک فقط حروف، عدد و خط تیره (مثل مدیریت-پیج-طلایی).");
+            return Error.Validation("packages.invalidSlug", "Der Slug besteht nur aus Buchstaben, Ziffern und Bindestrichen (z. B. seitenbetreuung-gold).");
         if (!SkuPattern().IsMatch(s.Sku ?? string.Empty))
-            return Error.Validation("packages.invalidSku", "کد پکیج فقط حروف بزرگ انگلیسی، عدد و خط تیره (مثل PKG-GOLD).");
-        if (s.Price < 0 || s.CompareAtPrice is < 0 || s.SpecialPrice is < 0) return Error.Validation("packages.invalidPrice", "قیمت نمی‌تواند منفی باشد.");
-        if (s.SpecialPrice is { } sp && sp >= s.Price) return Error.Validation("packages.specialTooHigh", "قیمت ویژه باید کمتر از قیمت اصلی باشد.");
-        if (s.SpecialFrom is { } sf && s.SpecialTo is { } st && st <= sf) return Error.Validation("packages.specialDates", "پایان تخفیف باید بعد از شروعش باشد.");
-        if (s.SaleFrom is { } a && s.SaleTo is { } b && b <= a) return Error.Validation("packages.saleDates", "پایان فروش باید بعد از شروعش باشد.");
-        if (s.ValidityDays is < 1 or > 3650) return Error.Validation("packages.validity", "مدت اعتبار باید بین ۱ تا ۳۶۵۰ روز باشد.");
-        if (s.Capacity is < 1) return Error.Validation("packages.capacity", "ظرفیت باید حداقل ۱ باشد (خالی = نامحدود).");
-        if (s.ConsultSessions < 0 || s.RevisionsPerItem < 0 || s.DeliveryHours < 0) return Error.Validation("packages.negative", "اعداد نمی‌توانند منفی باشند.");
-        if (quotas.Any(q => q.Count is < 1 or > 10_000)) return Error.Validation("packages.quota", "تعداد هر سهمیه باید بین ۱ تا ۱۰۰۰۰ باشد.");
-        if (quotas.GroupBy(q => q.ServiceTypeId).Any(g => g.Count() > 1)) return Error.Validation("packages.quotaDuplicate", "هر نوع خدمت فقط یک بار در سهمیه‌ها.");
-        if (s.Features.Count > 30 || s.Faq.Count > 30 || s.Tags.Count > 20) return Error.Validation("packages.tooMany", "حداکثر ۳۰ ویژگی، ۳۰ پرسش و ۲۰ برچسب.");
+            return Error.Validation("packages.invalidSku", "Der Paketcode besteht nur aus lateinischen Großbuchstaben, Ziffern und Bindestrichen (z. B. PKG-GOLD).");
+        if (s.Price < 0 || s.CompareAtPrice is < 0 || s.SpecialPrice is < 0) return Error.Validation("packages.invalidPrice", "Der Preis darf nicht negativ sein.");
+        if (s.SpecialPrice is { } sp && sp >= s.Price) return Error.Validation("packages.specialTooHigh", "Der Sonderpreis muss unter dem Normalpreis liegen.");
+        if (s.SpecialFrom is { } sf && s.SpecialTo is { } st && st <= sf) return Error.Validation("packages.specialDates", "Das Rabattende muss nach dem Rabattbeginn liegen.");
+        if (s.SaleFrom is { } a && s.SaleTo is { } b && b <= a) return Error.Validation("packages.saleDates", "Das Verkaufsende muss nach dem Verkaufsstart liegen.");
+        if (s.ValidityDays is < 1 or > 3650) return Error.Validation("packages.validity", "Die Gültigkeitsdauer muss zwischen 1 und 3650 Tagen liegen.");
+        if (s.Capacity is < 1) return Error.Validation("packages.capacity", "Die Kapazität muss mindestens 1 sein (leer = unbegrenzt).");
+        if (s.ConsultSessions < 0 || s.RevisionsPerItem < 0 || s.DeliveryHours < 0) return Error.Validation("packages.negative", "Zahlen dürfen nicht negativ sein.");
+        if (quotas.Any(q => q.Count is < 1 or > 10_000)) return Error.Validation("packages.quota", "Jedes Kontingent muss zwischen 1 und 10000 liegen.");
+        if (quotas.GroupBy(q => q.ServiceTypeId).Any(g => g.Count() > 1)) return Error.Validation("packages.quotaDuplicate", "Jede Leistungsart nur einmal in den Kontingenten.");
+        if (s.Features.Count > 30 || s.Faq.Count > 30 || s.Tags.Count > 20) return Error.Validation("packages.tooMany", "Höchstens 30 Merkmale, 30 Fragen und 20 Etiketten.");
 
         Name = s.Name; Slug = s.Slug!; Sku = s.Sku!; Category = Clean(s.Category);
         Tags = s.Tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct().ToList();

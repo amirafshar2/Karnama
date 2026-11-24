@@ -51,7 +51,7 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
             date = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds(),
             chat = new { id = chatId, type = "private" },
             from = new { id = chatId },
-            caption = "راش‌های کافه",
+            caption = "Café-Rohmaterial",
             video = new { file_id = $"BAACAgQ-{unique}", file_unique_id = unique, file_size = 48_000_000, duration = 95, mime_type = "video/mp4", thumbnail = new { file_id = $"thumb-{unique}", file_unique_id = $"t{unique}" } },
         },
     });
@@ -85,15 +85,15 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         (await PostUpdateAsync(Video(Interlocked.Increment(ref _update), 999_111, "unlinked-file"))).StatusCode.Should().Be(HttpStatusCode.OK);
         (await Db(db => db.MediaAssets.CountAsync())).Should().Be(before);
         await DispatchAsync();
-        _f.Bots.Calls.Should().Contain(c => c.Method == "sendMessage" && c.Args["chat_id"]!.GetValue<long>() == 999_111 && c.Args["text"]!.GetValue<string>().Contains("وصل"));
+        _f.Bots.Calls.Should().Contain(c => c.Method == "sendMessage" && c.Args["chat_id"]!.GetValue<long>() == 999_111 && c.Args["text"]!.GetValue<string>().Contains("erbind"));
     }
 
     [Fact]
     public async Task A_file_is_recorded_once_archived_sent_to_admins_and_delivered_to_the_assigned_worker()
     {
-        var editor = await LinkAsync("09000000002", 610_002);
-        var adminId = await LinkAsync("09000000001", 610_001);
-        var writer = await LinkAsync("09000000003", 610_003);
+        var editor = await LinkAsync("015100000002", 610_002);
+        var adminId = await LinkAsync("015100000001", 610_001);
+        var writer = await LinkAsync("015100000003", 610_003);
 
         var update = Interlocked.Increment(ref _update);
         var body = Video(update, 610_002, "rush-cafe-1");
@@ -105,7 +105,7 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         var asset = assets[0];
         asset.SenderId.Should().Be(editor);
         asset.FileSize.Should().Be(48_000_000);
-        asset.Caption.Should().Be("راش‌های کافه");
+        asset.Caption.Should().Be("Café-Rohmaterial");
 
         await DispatchAsync();   // archive copy + the "which work?" question
         _f.Bots.Calls.Should().Contain(c => c.Method == "copyMessage" && c.Args["chat_id"]!.GetValue<long>() == KarnamaFactory.ArchiveChat && c.Args["from_chat_id"]!.GetValue<long>() == 610_002);
@@ -131,7 +131,7 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         assigned.GetProperty("status").GetString().Should().Be("assigned");
         await DispatchAsync();
         var delivered = _f.Bots.Calls.Last(c => c.Method == "copyMessage" && c.Args["chat_id"]!.GetValue<long>() == 610_003);
-        delivered.Args["caption"]!.GetValue<string>().Should().Contain("برای کار").And.NotContain("0900", "captions never carry phone numbers");
+        delivered.Args["caption"]!.GetValue<string>().Should().Contain("Für die Aufgabe").And.NotContain("0900", "captions never carry phone numbers");
         (await Db(db => db.MediaAssets.Where(m => m.Id == asset.Id).Select(m => m.Status).FirstAsync())).Should().Be(MediaStatus.Delivered);
 
         // The inbox lists it with the work and who has it.
@@ -146,9 +146,9 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     [Fact]
     public async Task Admin_can_assign_from_inside_telegram_and_a_blocked_bot_is_reported()
     {
-        await LinkAsync("09000000002", 620_002);
-        await LinkAsync("09000000001", 620_001);
-        var writer = await LinkAsync("09000000003", 620_003);
+        await LinkAsync("015100000002", 620_002);
+        await LinkAsync("015100000001", 620_001);
+        var writer = await LinkAsync("015100000003", 620_003);
         await Ok(await PostUpdateAsync(Video(Interlocked.Increment(ref _update), 620_002, "rush-blocked")));
         await DispatchAsync();
         await DispatchAsync();
@@ -174,14 +174,14 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         (await (await As("editor")).GetAsync("/api/v1/media")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         await Ok(await PostUpdateAsync(Callback(Interlocked.Increment(ref _update), 620_002, pick)));
         await DispatchAsync();
-        _f.Bots.Calls.Should().Contain(c => c.Method == "answerCallbackQuery" && c.Args["text"]!.GetValue<string>().Contains("اجازه"));
+        _f.Bots.Calls.Should().Contain(c => c.Method == "answerCallbackQuery" && c.Args["text"]!.GetValue<string>().Contains("dürfen"));
     }
 
     [Fact]
     public async Task Assigning_to_someone_without_the_bot_is_refused()
     {
         var admin = await As("admin");
-        await LinkAsync("09000000002", 630_002);
+        await LinkAsync("015100000002", 630_002);
         await Ok(await PostUpdateAsync(Video(Interlocked.Increment(ref _update), 630_002, "rush-nolink")));
         var asset = await Db(db => db.MediaAssets.FirstAsync(m => m.FileUniqueId == "rush-nolink"));
         var unlinked = await Db(async db =>
@@ -197,14 +197,14 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     public async Task Targets_show_the_link_of_the_files_messenger_and_a_person_must_be_staff()
     {
         var admin = await As("admin");
-        await LinkAsync("09000000002", 640_002);
+        await LinkAsync("015100000002", 640_002);
         await Ok(await PostUpdateAsync(Video(Interlocked.Increment(ref _update), 640_002, "rush-targets")));
         var asset = await Db(db => db.MediaAssets.FirstAsync(m => m.FileUniqueId == "rush-targets"));
 
         // Linked on Bale only: reachable for a Bale file, not for this Telegram one.
         var baleOnly = await Db(async db =>
         {
-            var id = await db.Users.Where(u => u.Phone == "09000000006").Select(u => u.Id).FirstAsync();
+            var id = await db.Users.Where(u => u.Phone == "015100000006").Select(u => u.Id).FirstAsync();
             await db.MessengerLinks.Where(l => l.UserId == id).ExecuteDeleteAsync();
             db.MessengerLinks.Add(new MessengerLink(id, Messenger.Bale, 640_006, DateTimeOffset.UtcNow));
             await db.SaveChangesAsync();
@@ -216,7 +216,7 @@ public sealed class MediaTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         (await admin.GetAsync($"/api/v1/media/targets?mediaId={Guid.NewGuid()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         // A client's portal account (even one linked on Telegram) can't be picked as a "person".
-        var client = await LinkAsync("09000000004", 640_004);
+        var client = await LinkAsync("015100000004", 640_004);
         var toClient = await admin.PostAsJsonAsync($"/api/v1/media/{asset.Id}/assign", new { toUserId = client, workItemId = (Guid?)null, toClient = false });
         toClient.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         (await toClient.JsonAsync()).GetProperty("code").GetString().Should().Be("media.staffOnly");

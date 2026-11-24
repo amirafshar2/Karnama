@@ -8,34 +8,34 @@ test.describe("N10: public website (home, packages, portfolio, consultation)", (
     await expect(page.getByTestId("home-hero")).toBeVisible();
     await expect(page.locator("#services")).toBeVisible();
     await expect(page.locator("#packages")).toBeVisible();
-    await expect(page.locator('section[aria-labelledby="cases"]').getByText("نمونه", { exact: true }).first()).toBeVisible();
+    await expect(page.locator('section[aria-labelledby="cases"]').getByText("Beispiel", { exact: true }).first()).toBeVisible();
     const ld = JSON.parse((await page.locator('script[type="application/ld+json"]').first().textContent())!);
     const types = ld["@graph"].flatMap((g: { "@type": string | string[] }) => g["@type"]);
     expect(types).toEqual(expect.arrayContaining(["ProfessionalService", "FAQPage", "WebSite"]));
     expect(await page.locator('meta[name="description"]').getAttribute("content")).toBeTruthy();
     await shot(page, info, "n10-home");
 
-    const phone = { desktop: "09120000301", pixel7: "09120000302", phone360: "09120000303" }[info.project.name] ?? "09120000309";
+    const phone = { desktop: "015120000301", pixel7: "015120000302", phone360: "015120000303" }[info.project.name] ?? "015120000309";
     const form = page.getByTestId("consult-form");
-    await form.getByLabel("نام شما").fill(`مهمان ${info.project.name}`);
-    await form.getByLabel("شماره‌ی موبایل").fill(phone);
-    await form.getByLabel("کسب‌وکار (اختیاری)").fill("نانوایی");
-    await form.getByRole("button", { name: "درخواست تماس" }).click();
+    await form.getByLabel("Ihr Name").fill(`Gast ${info.project.name}`);
+    await form.getByLabel("Handynummer").fill(phone);
+    await form.getByLabel("Unternehmen (optional)").fill("Bäckerei");
+    await form.getByRole("button", { name: "Rückruf anfragen" }).click();
     await expect(page.getByTestId("consult-sent")).toBeVisible();
 
     await page.goto(`${DEMO_URL}/plans`);
     await page.getByTestId("packages-list").getByRole("link").first().click();
     await expect(page.locator("h1")).toBeVisible();
-    await expect(page.getByText("تومان").first()).toBeVisible();
+    await expect(page.getByText("€").first()).toBeVisible();
     await shot(page, info, "n10-package");
     await page.goto(`${DEMO_URL}/cases`);
     await page.getByTestId("cases-list").getByRole("link").first().click();
-    await expect(page.getByTestId("case")).toContainText("نمونه");
+    await expect(page.getByTestId("case")).toContainText("Beispiel");
     await shot(page, info, "n10-case");
 
     await demoLogin(page, "admin");
     await navTo(page, mobile, "crm");
-    await expect(page.getByTestId("crm-board")).toContainText(`مهمان ${info.project.name}`);
+    await expect(page.getByTestId("crm-board")).toContainText(`Gast ${info.project.name}`);
     await shot(page, info, "n10-leads");
   });
 
@@ -44,28 +44,28 @@ test.describe("N10: public website (home, packages, portfolio, consultation)", (
     await demoLogin(page, "admin");
     await navTo(page, mobile, "content/home");
     await expect(page.getByTestId("home-editor")).toBeVisible();
-    const hero = `پیج شما در دستان حرفه‌ای (${info.project.name})`;
+    const hero = `Ihre Seite in professionellen Händen (${info.project.name})`;
     await page.getByTestId("home-hero-title").fill(hero);
-    await page.getByTestId("home-seo-desc").fill("کوتاه");
+    await page.getByTestId("home-seo-desc").fill("Kurz");
     await page.getByTestId("home-save").click();
     await expect(page.getByTestId("home-editor").getByRole("alert")).toBeVisible();
-    await page.getByTestId("home-seo-desc").fill("مدیریت پیج اینستاگرام و تولید محتوا برای کسب‌وکارهای شیراز با برنامه‌ی انتشار، گزارش ماهانه و پنل اختصاصی.");
+    await page.getByTestId("home-seo-desc").fill("Instagram-Betreuung und Content-Produktion für Unternehmen in Stuttgart mit Veröffentlichungsplan, Monatsbericht und eigenem Panel.");
     await page.getByTestId("home-save").click();
-    await expect(page.getByText("صفحه‌ی اصلی ذخیره شد")).toBeVisible();
+    await expect(page.getByText("Startseite gespeichert")).toBeVisible();
     await shot(page, info, "n10-home-editor");
 
     await navTo(page, mobile, "content/cases");
-    await expect(page.getByTestId("cases-admin")).toContainText("کافه نمونه");
+    await expect(page.getByTestId("cases-admin")).toContainText("Café Beispiel");
     await page.getByTestId("case-new").click();
-    await page.getByTestId("case-name").fill(`قنادی واقعی ${info.project.name}`);
+    await page.getByTestId("case-name").fill(`Echte Konditorei ${info.project.name}`);
     await page.getByTestId("case-fb").fill("800");
     await page.getByTestId("case-fa").fill("2400");
     await shot(page, info, "n10-case-editor");
     await page.getByTestId("case-editor-save").click();
-    await expect(page.getByText("نمونه‌کار ذخیره شد.")).toBeVisible();
-    const card = page.getByTestId("cases-admin").locator("li", { hasText: `قنادی واقعی ${info.project.name}` });
-    await card.getByRole("button", { name: "انتشار روی سایت" }).click();
-    await expect(page.getByText("بدون رضایت کتبی مشتری (و فایل آن)")).toBeVisible();
+    await expect(page.getByText("Referenz gespeichert.")).toBeVisible();
+    const card = page.getByTestId("cases-admin").locator("li", { hasText: `Echte Konditorei ${info.project.name}` });
+    await card.getByRole("button", { name: "Auf der Website veröffentlichen" }).click();
+    await expect(page.getByText("Ohne schriftliche Einwilligung des Kunden (und deren Datei)")).toBeVisible();
 
     // The public home follows (cached up to a minute).
     await expect(async () => {

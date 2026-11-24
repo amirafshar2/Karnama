@@ -20,7 +20,7 @@ import { scoreTone, statusTone, type Category, type PostDetail, type SeoPreview 
 type Fields = { title: string; categoryId: string; tags: string; coverImage: string | null; coverUrl: string | null; coverAlt: string; seoTitle: string; metaDescription: string; focusKeyword: string; slug: string };
 
 const fieldsOf = (p: PostDetail): Fields => ({
-  title: p.title, categoryId: p.categoryId ?? "", tags: p.tags.join("، "), coverImage: p.coverImage, coverUrl: p.coverUrl, coverAlt: p.coverAlt ?? "",
+  title: p.title, categoryId: p.categoryId ?? "", tags: p.tags.join(", "), coverImage: p.coverImage, coverUrl: p.coverUrl, coverAlt: p.coverAlt ?? "",
   seoTitle: p.seoTitleLocked ? p.seoTitle : "", metaDescription: p.metaLocked ? p.metaDescription : "", focusKeyword: p.keywordLocked ? p.focusKeyword : "", slug: p.slugLocked ? p.slug : "",
 });
 
@@ -281,7 +281,7 @@ function EditorForm({ initial }: { initial: PostDetail }) {
               <h2 className="font-bold">{t("seo.title")}</h2>
               <span className={cn("text-2xl font-black tabular-nums", scoreTone(s?.score ?? post.seoScore))} data-testid="seo-score">
                 {formatNumber(s?.score ?? post.seoScore)}
-                <span className="text-sm">٪</span>
+                <span className="text-sm">%</span>
               </span>
             </div>
             <div className="rounded-lg border bg-background p-3" aria-label={t("seo.preview")}>

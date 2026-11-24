@@ -47,26 +47,26 @@ public sealed class BlogSeoTests
     public void Seo_is_generated_without_any_author_input()
     {
         var json = Doc(
-            P("سلام!"),
-            P("مدیریت پیج اینستاگرام برای کسب‌وکارهای شیراز با یک برنامه‌ی ثابت انتشار و لحن یکدست شروع می‌شود و مشتری را نگه می‌دارد."),
-            H(2, "برنامه‌ی انتشار"), P("سه پست در هفته کافی است."),
-            H(1, "پرسش‌های متداول"),
-            H(3, "هر چند وقت پست بگذاریم؟"), P("سه بار در هفته."),
+            P("Hallo!"),
+            P("Instagram-Betreuung für Unternehmen in Stuttgart beginnt mit einem festen Veröffentlichungsplan und einheitlicher Tonalität und bindet Kunden."),
+            H(2, "Veröffentlichungsplan"), P("Drei Posts pro Woche reichen."),
+            H(1, "Häufige Fragen"),
+            H(3, "Wie oft sollten wir posten?"), P("Dreimal pro Woche."),
             new JsonObject { ["type"] = "image", ["attrs"] = new JsonObject { ["src"] = "/media/public/blog/0123456789abcdef0123456789abcdef.webp" } });
-        var title = "راهنمای کامل مدیریت پیج اینستاگرام برای کافه‌ها و رستوران‌های شیراز در سال ۱۴۰۵";
-        var r = SeoAutomation.Run(title, json, "کارنما");
+        var title = "Der komplette Leitfaden zur Instagram-Betreuung für Cafés und Restaurants in Stuttgart 2026";
+        var r = SeoAutomation.Run(title, json, "Karnama");
         r.SeoTitle.Length.Should().BeLessThanOrEqualTo(60);
         r.SeoTitle.Should().EndWith("…");
-        r.MetaDescription.Should().StartWith("مدیریت پیج").And.NotContain("سلام");
+        r.MetaDescription.Should().StartWith("Instagram-Betreuung").And.NotContain("Hallo");
         r.MetaDescription.Length.Should().BeLessThanOrEqualTo(160);
-        r.Slug.Should().StartWith("راهنمای-کامل-مدیریت-پیج").And.NotContain("--");
+        r.Slug.Should().StartWith("der-komplette-leitfaden").And.NotContain("--");
         r.Slug.Length.Should().BeLessThanOrEqualTo(60);
-        r.FocusKeyword.Should().Be("مدیریت پیج اینستاگرام");   // a target phrase from docs/SEO.md
+        r.FocusKeyword.Should().Be("Instagram-Betreuung");   // a target phrase from docs/SEO.md
         r.Toc.Should().HaveCount(3);
         r.Toc[1].Level.Should().Be(2);   // h1 inside the body becomes h2 (the title is the page's h1)
-        r.Faq.Should().ContainSingle(f => f.Question.StartsWith("هر چند وقت") && f.Answer == "سه بار در هفته.");
+        r.Faq.Should().ContainSingle(f => f.Question.StartsWith("Wie oft") && f.Answer == "Dreimal pro Woche.");
         r.AltFilled.Should().Be(1);
-        r.Html.Should().Contain("alt=\"هر چند وقت پست بگذاریم؟\"");   // nearest heading above the image
+        r.Html.Should().Contain("alt=\"Wie oft sollten wir posten?\"");   // nearest heading above the image
         r.Checks.Should().Contain(c => c.Key == "internalLinks" && c.Level == "bad");
         r.ReadingMinutes.Should().Be(1);
         r.Score.Should().BeInRange(1, 99);
@@ -75,7 +75,7 @@ public sealed class BlogSeoTests
     [Fact]
     public void Short_titles_get_the_brand_and_slugs_normalize_arabic_letters()
     {
-        SeoAutomation.Title("ریلز یا پست؟", "کارنما").Should().Be("ریلز یا پست؟ | کارنما");
-        SeoAutomation.SlugFor("كيك تولد ۱۴۰۵").Should().Be("کیک-تولد-1405");
+        SeoAutomation.Title("Reels oder Posts?", "Karnama").Should().Be("Reels oder Posts? | Karnama");
+        SeoAutomation.SlugFor("Geburtstagstorte 2026").Should().Be("geburtstagstorte-2026");
     }
 }

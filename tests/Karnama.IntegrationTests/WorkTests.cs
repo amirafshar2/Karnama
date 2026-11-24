@@ -19,20 +19,20 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         return await r.JsonAsync();
     }
 
-    private async Task<(Guid ClientId, Guid ReelId, Guid EditorId)> RefsAsync(HttpClient admin, string client = "کافه نمونه")
+    private async Task<(Guid ClientId, Guid ReelId, Guid EditorId)> RefsAsync(HttpClient admin, string client = "Café Beispiel")
     {
         var clients = await Ok(await admin.GetAsync("/api/v1/clients?q=" + Uri.EscapeDataString(client)));
         var clientId = clients.GetProperty("items")[0].GetProperty("id").GetGuid();
         var services = await Ok(await admin.GetAsync("/api/v1/services/options"));
-        var reel = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "ریلز").GetProperty("id").GetGuid();
+        var reel = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "Reels").GetProperty("id").GetGuid();
         var users = await Ok(await admin.GetAsync("/api/v1/users?limit=100"));
-        var editor = users.GetProperty("items").EnumerateArray().First(u => u.GetProperty("displayName").GetString()!.StartsWith("علی")).GetProperty("id").GetGuid();
+        var editor = users.GetProperty("items").EnumerateArray().First(u => u.GetProperty("displayName").GetString()!.StartsWith("Lukas")).GetProperty("id").GetGuid();
         return (clientId, reel, editor);
     }
 
-    private static object Order(Guid clientId, Guid serviceId, bool autoAccept = true, string? topic = "معرفی منوی پاییز") => new
+    private static object Order(Guid clientId, Guid serviceId, bool autoAccept = true, string? topic = "Vorstellung der Herbstkarte") => new
     {
-        clientId, serviceTypeId = serviceId, title = "ریلز منوی پاییز", answers = topic is null ? new Dictionary<string, object>() : new Dictionary<string, object> { ["topic"] = topic, ["mood"] = "friendly" },
+        clientId, serviceTypeId = serviceId, title = "Reel zur Herbstkarte", answers = topic is null ? new Dictionary<string, object>() : new Dictionary<string, object> { ["topic"] = topic, ["mood"] = "friendly" },
         priority = "high", autoAccept,
     };
 
@@ -41,11 +41,11 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     {
         var admin = await As("admin");
         // The clinic's sample package has 4 reels and the demo board already used 1 (only this test orders for it).
-        var (clientId, reel, _) = await RefsAsync(admin, "کلینیک زیبایی نمونه");
+        var (clientId, reel, _) = await RefsAsync(admin, "Kosmetikstudio Beispiel");
 
         var bad = await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel, topic: null));
         bad.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await bad.Content.ReadAsStringAsync()).Should().Contain("موضوع محتوا");
+        (await bad.Content.ReadAsStringAsync()).Should().Contain("Thema des Inhalts");
 
         var o = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel)));
         o.GetProperty("status").GetString().Should().Be("inProgress");
@@ -55,7 +55,7 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         stages.Should().HaveCount(3);
         stages[0].GetProperty("status").GetString().Should().Be("todo");
         stages[1].GetProperty("status").GetString().Should().Be("waiting");
-        o.GetProperty("answers").EnumerateArray().First(a => a.GetProperty("key").GetString() == "topic").GetProperty("value").GetString().Should().Be("معرفی منوی پاییز");
+        o.GetProperty("answers").EnumerateArray().First(a => a.GetProperty("key").GetString() == "topic").GetProperty("value").GetString().Should().Be("Vorstellung der Herbstkarte");
 
         // A submitted (not auto-accepted) order waits; accept needs the current version.
         var pending = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel, autoAccept: false)));
@@ -70,7 +70,7 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         (await Ok(await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel)))).GetProperty("outsidePackage").GetBoolean().Should().BeFalse();
         var extra = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel)));
         extra.GetProperty("outsidePackage").GetBoolean().Should().BeTrue();
-        extra.GetProperty("price").GetInt64().Should().Be(25_000_000);
+        extra.GetProperty("price").GetInt64().Should().Be(250);
 
         // PROMPT §6.4: the admins are warned about the extra order (once per order).
         var bell = (await Ok(await admin.GetAsync("/api/v1/notifications"))).GetProperty("items").EnumerateArray()
@@ -86,7 +86,7 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var o = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", Order(clientId, reel)));
         var itemId = o.GetProperty("stages")[0].GetProperty("id").GetGuid();
         var users = (await Ok(await admin.GetAsync("/api/v1/users?limit=100"))).GetProperty("items").EnumerateArray().ToList();
-        var marketer = users.First(u => u.GetProperty("displayName").GetString()!.Contains("بازاریاب")).GetProperty("id").GetGuid();
+        var marketer = users.First(u => u.GetProperty("displayName").GetString()!.Contains("Vertrieb")).GetProperty("id").GetGuid();
 
         var suggestions = (await Ok(await admin.GetAsync($"/api/v1/work/{itemId}/suggestions"))).EnumerateArray().Select(s => s.GetProperty("userId").GetGuid()).ToList();
         suggestions.Should().Contain(editorId).And.NotContain(marketer);
@@ -94,7 +94,7 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var v = (await Ok(await admin.GetAsync($"/api/v1/work/{itemId}"))).GetProperty("card").GetProperty("version").GetUInt32();
         var bad = await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/assign", new { userId = marketer, version = v });
         bad.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await bad.Content.ReadAsStringAsync()).Should().Contain("نمی‌تواند کار انجام دهد");
+        (await bad.Content.ReadAsStringAsync()).Should().Contain("kann keine Aufgaben bearbeiten");
         (await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/assign", new { userId = editorId, version = v }))).GetProperty("assigneeId").GetGuid().Should().Be(editorId);
     }
 
@@ -180,12 +180,12 @@ public sealed class WorkTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         (await Move(editor, ids[2], "clientReview", (await Card(editor, ids[2])).GetProperty("version").GetUInt32())).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         // Manager: request changes (with a note), then approve all the way to done → the order completes.
-        await Ok(await editor.PostAsJsonAsync($"/api/v1/work/{ids[2]}/comments", new { body = "نسخه‌ی اول آماده است", visibility = "internal" }));
-        (await editor.PostAsJsonAsync($"/api/v1/work/{ids[2]}/comments", new { body = "سلام مشتری", visibility = "client" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        var changes = await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{ids[2]}/move", new { status = "changesRequested", version = (await Card(admin, ids[2])).GetProperty("version").GetUInt32(), note = "رنگ لوگو را درست کن" }));
+        await Ok(await editor.PostAsJsonAsync($"/api/v1/work/{ids[2]}/comments", new { body = "Die erste Version ist fertig", visibility = "internal" }));
+        (await editor.PostAsJsonAsync($"/api/v1/work/{ids[2]}/comments", new { body = "Hallo Kunde", visibility = "client" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var changes = await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{ids[2]}/move", new { status = "changesRequested", version = (await Card(admin, ids[2])).GetProperty("version").GetUInt32(), note = "Logofarbe korrigieren" }));
         changes.GetProperty("revisionCount").GetInt32().Should().Be(1);
         var withNote = await Ok(await editor.GetAsync($"/api/v1/work/{ids[2]}"));
-        withNote.GetProperty("comments").EnumerateArray().Select(c => c.GetProperty("body").GetString()).Should().Contain("رنگ لوگو را درست کن");
+        withNote.GetProperty("comments").EnumerateArray().Select(c => c.GetProperty("body").GetString()).Should().Contain("Logofarbe korrigieren");
         await Ok(await Move(admin, ids[2], "done", (await Card(admin, ids[2])).GetProperty("version").GetUInt32()));
         var order = await Ok(await admin.GetAsync($"/api/v1/orders/{o.GetProperty("id").GetGuid()}"));
         order.GetProperty("status").GetString().Should().Be("completed");

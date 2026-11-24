@@ -10,7 +10,7 @@ type Props = { searchParams: Promise<{ page?: string; category?: string }> };
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const [{ page, category }, t, brand] = await Promise.all([searchParams, getT(), getBrand()]);
-  const name = brand?.name ?? "کارنما";
+  const name = brand?.name ?? "Karnama";
   const p = Number(page) > 1 ? Number(page) : 1;
   const qs = new URLSearchParams({ ...(category ? { category } : {}), ...(p > 1 ? { page: String(p) } : {}) }).toString();
   const url = `${SITE_URL}/blog${qs ? `?${qs}` : ""}`;

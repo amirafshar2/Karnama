@@ -29,8 +29,8 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
     {
         using var scope = _f.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var cafe = await db.Clients.AsNoTracking().FirstAsync(c => c.BusinessName == "کافه نمونه");
-        var other = await db.Clients.AsNoTracking().FirstAsync(c => c.BusinessName == "پوشاک نمونه");
+        var cafe = await db.Clients.AsNoTracking().FirstAsync(c => c.BusinessName == "Café Beispiel");
+        var other = await db.Clients.AsNoTracking().FirstAsync(c => c.BusinessName == "Mode Beispiel");
         var own = cafe.Accounts.First(a => a.Management == PageManagement.ClientManaged);
         var agency = cafe.Accounts.First(a => a.Management == PageManagement.AgencyManaged);
         return (cafe.Id, own.PlatformId, own.Handle, agency.PlatformId, agency.Handle, other.Id);
@@ -58,13 +58,13 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         var orderId = (await Ok(await client.GetAsync("/api/v1/portal/home"))).GetProperty("orders")[0].GetProperty("id").GetGuid();
 
         (await client.PostAsJsonAsync($"/api/v1/portal/orders/{orderId}/messages", new { body = "  " })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        var sent = await Ok(await client.PostAsJsonAsync($"/api/v1/portal/orders/{orderId}/messages", new { body = "لطفاً رنگ لوگو پررنگ‌تر باشد" }));
+        var sent = await Ok(await client.PostAsJsonAsync($"/api/v1/portal/orders/{orderId}/messages", new { body = "Bitte die Logofarbe kräftiger" }));
         sent.GetProperty("fromMe").GetBoolean().Should().BeTrue();
 
         var inbox = await Ok(await admin.GetAsync("/api/v1/notifications"));
         inbox.GetProperty("unread").GetInt32().Should().BeGreaterThan(0);
         var n = inbox.GetProperty("items").EnumerateArray().First(i => i.GetProperty("kind").GetString() == "portal.message");
-        n.GetProperty("body").GetString().Should().Contain("رنگ لوگو");
+        n.GetProperty("body").GetString().Should().Contain("Logofarbe");
         // Workers don't get client messages (only admins talk to clients).
         (await Ok(await editor.GetAsync("/api/v1/notifications"))).GetProperty("items").EnumerateArray()
             .Should().NotContain(i => i.GetProperty("kind").GetString() == "portal.message");
@@ -75,17 +75,17 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         // The admin replies on the work card (client-visible) → the client's bell.
         var link = n.GetProperty("link").GetString()!;
         var workId = Guid.Parse(link[(link.IndexOf('=') + 1)..]);
-        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{workId}/comments", new { body = "حتماً، نسخه‌ی جدید را می‌فرستیم.", visibility = "client" }));
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{workId}/comments", new { body = "Natürlich, wir schicken die neue Version.", visibility = "client" }));
         var mine = await Ok(await client.GetAsync("/api/v1/notifications"));
         mine.GetProperty("items").EnumerateArray().Should().Contain(i => i.GetProperty("kind").GetString() == "portal.message");
         var thread = await Ok(await client.GetAsync($"/api/v1/portal/orders/{orderId}/messages"));
-        thread.EnumerateArray().Select(m => m.GetProperty("author").GetString()).Should().Contain("آژانس");
+        thread.EnumerateArray().Select(m => m.GetProperty("author").GetString()).Should().Contain("Agentur");
 
         // Another client's order: not found.
         var other = (await Ok(await admin.GetAsync("/api/v1/orders?limit=100"))).GetProperty("items").EnumerateArray()
-            .First(o => o.GetProperty("clientName").GetString() != "کافه نمونه").GetProperty("id").GetGuid();
-        (await client.PostAsJsonAsync($"/api/v1/portal/orders/{other}/messages", new { body = "سلام" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await admin.PostAsJsonAsync($"/api/v1/portal/orders/{other}/messages", new { body = "سلام" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            .First(o => o.GetProperty("clientName").GetString() != "Café Beispiel").GetProperty("id").GetGuid();
+        (await client.PostAsJsonAsync($"/api/v1/portal/orders/{other}/messages", new { body = "Hallo" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await admin.PostAsJsonAsync($"/api/v1/portal/orders/{other}/messages", new { body = "Hallo" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         object Update(long id, string text) => new { update_id = id, message = new { chat = new { id = 777001L }, text } };
         (await anon.PostAsJsonAsync("/api/v1/bots/bale/wrong-secret", Update(1, "/start " + secret))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await anon.PostAsJsonAsync("/api/v1/bots/bale/" + KarnamaFactory.BaleSecret, Update(9001, "/start nope"))).StatusCode.Should().Be(HttpStatusCode.OK);
-        _f.Messenger.Sent.Should().Contain(m => m.ChatId == 777001 && m.Text.Contains("معتبر نیست"));
+        _f.Messenger.Sent.Should().Contain(m => m.ChatId == 777001 && m.Text.Contains("ungültig"));
         (await anon.PostAsJsonAsync("/api/v1/bots/bale/" + KarnamaFactory.BaleSecret, Update(9002, "/start " + secret))).StatusCode.Should().Be(HttpStatusCode.OK);
         var prefs = await Ok(await editor.GetAsync("/api/v1/notifications/prefs"));
         prefs.GetProperty("linked").EnumerateArray().Select(x => x.GetString()).Should().Contain("bale");
@@ -112,7 +112,7 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         await anon.PostAsJsonAsync("/api/v1/bots/bale/" + KarnamaFactory.BaleSecret, Update(9002, "/start " + secret));
         _f.Messenger.Sent.Count.Should().Be(before);
         await anon.PostAsJsonAsync("/api/v1/bots/bale/" + KarnamaFactory.BaleSecret, Update(9003, "/start " + secret));
-        _f.Messenger.Sent.Last().Text.Should().Contain("معتبر نیست");
+        _f.Messenger.Sent.Last().Text.Should().Contain("ungültig");
 
         // Opt in to Bale, then an important notification is queued for it and the dispatcher sends it (with the app link).
         await Ok(await editor.PutAsJsonAsync("/api/v1/notifications/prefs", new { channels = new[] { "inApp", "bale" }, muted = Array.Empty<string>() }));
@@ -121,14 +121,14 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
             var notifier = scope.ServiceProvider.GetRequiredService<Karnama.Application.Notify.Notifier>();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var editorId = await db.MessengerLinks.Where(l => l.ChatId == 777001).Select(l => l.UserId).FirstAsync();
-            await notifier.NotifyAsync([editorId], "test.important", "کار فوری", "متن آزمایشی", "/work", true, "test-important-1", default);
-            await notifier.NotifyAsync([editorId], "test.important", "کار فوری", "متن آزمایشی", "/work", true, "test-important-1", default);   // same event: once
+            await notifier.NotifyAsync([editorId], "test.important", "Dringende Aufgabe", "Testtext", "/work", true, "test-important-1", default);
+            await notifier.NotifyAsync([editorId], "test.important", "Dringende Aufgabe", "Testtext", "/work", true, "test-important-1", default);   // same event: once
             await db.SaveChangesAsync();
             (await db.Outbox.CountAsync(o => o.UserId == editorId && o.IdempotencyKey.StartsWith("test-important-1"))).Should().Be(1);
         }
         var dispatcher = new OutboxDispatcher(_f.Services.GetRequiredService<IServiceScopeFactory>(), NullLogger<OutboxDispatcher>.Instance);
         await dispatcher.DispatchOnceAsync(default);
-        _f.Messenger.Sent.Should().Contain(m => m.M == Messenger.Bale && m.ChatId == 777001 && m.Text.Contains("کار فوری") && m.Text.Contains("/work"));
+        _f.Messenger.Sent.Should().Contain(m => m.M == Messenger.Bale && m.ChatId == 777001 && m.Text.Contains("Dringende Aufgabe") && m.Text.Contains("/work"));
         using (var scope = _f.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -197,12 +197,12 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         var at = _f.Clock.GetUtcNow().AddMinutes(10);
         object Job(Guid platform, string handle, Guid? client = null) => new
         {
-            clientId = client ?? clientId, platformId = platform, handle, publishAt = at, caption = "پست آزمایشی", hashtags = new[] { "#کافه", "شیراز" }, fileIds = Array.Empty<Guid>(),
+            clientId = client ?? clientId, platformId = platform, handle, publishAt = at, caption = "Testpost", hashtags = new[] { "#Café", "Stuttgart" }, fileIds = Array.Empty<Guid>(),
         };
         (await admin.PostAsJsonAsync("/api/v1/publishing", Job(ownPlatform, ownHandle, otherClient))).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         var own = await Ok(await admin.PostAsJsonAsync("/api/v1/publishing", Job(ownPlatform, ownHandle)));
         own.GetProperty("management").GetString().Should().Be("clientManaged");
-        own.GetProperty("hashtags").EnumerateArray().Select(h => h.GetString()).Should().Equal("کافه", "شیراز");
+        own.GetProperty("hashtags").EnumerateArray().Select(h => h.GetString()).Should().Equal("Café", "Stuttgart");
         var agency = await Ok(await admin.PostAsJsonAsync("/api/v1/publishing", Job(agencyPlatform, agencyHandle)));
 
         var editor = await As("editor");
@@ -226,7 +226,7 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
             .IsSuccessStatusCode.Should().BeFalse();
         (await client.PostAsJsonAsync($"/api/v1/portal/publishing/{own.GetProperty("id").GetGuid()}/published", new { postUrl = "javascript:alert(1)" }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        var done = await Ok(await client.PostAsJsonAsync($"/api/v1/portal/publishing/{own.GetProperty("id").GetGuid()}/published", new { postUrl = "https://t.me/cafe_nemoone/12" }));
+        var done = await Ok(await client.PostAsJsonAsync($"/api/v1/portal/publishing/{own.GetProperty("id").GetGuid()}/published", new { postUrl = "https://t.me/cafe_beispiel/12" }));
         done.GetProperty("status").GetString().Should().Be("published");
         done.GetProperty("publishedByClient").GetBoolean().Should().BeTrue();
 
@@ -248,21 +248,21 @@ public sealed class NotifyTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         var writer = await As("writer");
         var (clientId, _, _, agencyPlatform, agencyHandle, _) = await CafeAsync();
         var services = await Ok(await admin.GetAsync("/api/v1/services/options"));
-        var post = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "پست تکی").GetProperty("id").GetGuid();
+        var post = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "Einzelpost").GetProperty("id").GetGuid();
         var order = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", new
         {
-            clientId, serviceTypeId = post, title = "پست انتشار", answers = new Dictionary<string, object> { ["topic"] = "انتشار", ["mood"] = "friendly" }, autoAccept = true,
+            clientId, serviceTypeId = post, title = "Veröffentlichungspost", answers = new Dictionary<string, object> { ["topic"] = "Veröffentlichung", ["mood"] = "friendly" }, autoAccept = true,
         }));
         var orderId = order.GetProperty("id").GetGuid();
         var itemId = order.GetProperty("stages")[0].GetProperty("id").GetGuid();
         var users = await Ok(await admin.GetAsync("/api/v1/users?limit=100"));
-        var editorId = users.GetProperty("items").EnumerateArray().First(u => u.GetProperty("displayName").GetString()!.StartsWith("علی")).GetProperty("id").GetGuid();
+        var editorId = users.GetProperty("items").EnumerateArray().First(u => u.GetProperty("displayName").GetString()!.StartsWith("Lukas")).GetProperty("id").GetGuid();
         var v = (await Ok(await admin.GetAsync($"/api/v1/work/{itemId}"))).GetProperty("card").GetProperty("version").GetUInt32();
         await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/assign", new { userId = editorId, version = v }));
 
         object Job(Guid? oid) => new
         {
-            clientId, orderId = oid, platformId = agencyPlatform, handle = agencyHandle, publishAt = _f.Clock.GetUtcNow().AddMinutes(30), caption = "پست", fileIds = Array.Empty<Guid>(),
+            clientId, orderId = oid, platformId = agencyPlatform, handle = agencyHandle, publishAt = _f.Clock.GetUtcNow().AddMinutes(30), caption = "Post", fileIds = Array.Empty<Guid>(),
         };
         var withOrder = (await Ok(await admin.PostAsJsonAsync("/api/v1/publishing", Job(orderId)))).GetProperty("id").GetGuid();
         var noOrder = (await Ok(await admin.PostAsJsonAsync("/api/v1/publishing", Job(null)))).GetProperty("id").GetGuid();

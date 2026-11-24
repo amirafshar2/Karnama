@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LoginScreen } from "./login-screen";
 
-export const metadata: Metadata = { title: "ورود" };
+export const metadata: Metadata = { title: "Anmelden" };
 
 export default function LoginPage() {
   return <LoginScreen />;

@@ -192,7 +192,7 @@ function CurrentCard({ a, when }: { a: Assignment; when: (s: string) => string }
       </div>
       {a.expectedReturn && <div className="text-xs">{t("as.returnBy", { date: formatDate(a.expectedReturn, { weekday: "long", day: "numeric", month: "long" }) })}</div>}
       {a.conditionOut && <div className="text-xs">{t("as.conditionOut")}: {a.conditionOut}</div>}
-      {a.accessories.length > 0 && <div className="text-xs">{t("as.accessories")}: {a.accessories.join("، ")}</div>}
+      {a.accessories.length > 0 && <div className="text-xs">{t("as.accessories")}: {a.accessories.join(", ")}</div>}
       {a.conditionIn && <div className="text-xs">{t("as.conditionIn")}: {a.conditionIn}</div>}
       {a.damage && <div className="text-xs font-semibold text-destructive">{t("as.damage")}: {a.damage}</div>}
       {a.transferToName && <div className="text-xs font-semibold">{t("as.transferWaiting", { name: a.transferToName })}</div>}

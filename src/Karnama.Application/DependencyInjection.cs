@@ -13,7 +13,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("fa");
+        ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("de");
         services.AddValidatorsFromAssemblyContaining<RequestOtpValidator>(includeInternalTypes: true);
         services.AddScoped<AuthService>();
         services.AddScoped<Qa.QaService>();

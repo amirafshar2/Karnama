@@ -45,7 +45,7 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     public async Task<Result<WorkDetailDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var w = await access.VisibleItems().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
+        if (w is null) return Error.NotFound("work.notFound", "Aufgabe nicht gefunden.");
         var order = await db.Orders.AsNoTracking().FirstAsync(o => o.Id == w.OrderId, ct);
         var comments = await db.WorkComments.AsNoTracking().Where(c => c.WorkItemId == id).OrderBy(c => c.CreatedAt).ToListAsync(ct);
         var files = await db.Files.AsNoTracking().Where(f => f.WorkItemId == id && f.Status == Domain.Files.FileStatus.Ready).OrderBy(f => f.CreatedAt).ToListAsync(ct);
@@ -68,9 +68,9 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     {
         if (!me.Has(Permissions.WorkReview, PermissionScope.All)) return Error.Forbidden();
         var w = await db.WorkItems.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
+        if (w is null) return Error.NotFound("work.notFound", "Aufgabe nicht gefunden.");
         // Stars feed the assignee's score: nobody rates their own work.
-        if (w.AssigneeId == me.UserId) return Error.Forbidden("work.rateSelf", "به کار خودتان نمی‌توانید امتیاز بدهید.");
+        if (w.AssigneeId == me.UserId) return Error.Forbidden("work.rateSelf", "Ihre eigene Arbeit können Sie nicht bewerten.");
         var r = w.RateByManager(stars);
         if (r.IsFailure) return r;
         audit.Add("work.rated", nameof(WorkItem), w.Id.ToString(), new { stars });
@@ -83,8 +83,8 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     public async Task<Result<WorkCardDto>> MoveAsync(Guid id, MoveRequest r, CancellationToken ct)
     {
         var w = await access.VisibleItems().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
-        if (ActorFor(w) is not { } actor) return Error.Forbidden("work.notYours", "این کار به شما سپرده نشده است.");
+        if (w is null) return Error.NotFound("work.notFound", "Aufgabe nicht gefunden.");
+        if (ActorFor(w) is not { } actor) return Error.Forbidden("work.notYours", "Diese Aufgabe ist Ihnen nicht zugewiesen.");
         db.SetOriginalVersion(w, r.Version);
         var from = w.Status;
         var moved = w.MoveTo(r.Status, actor, clock.GetUtcNow(), actor == WorkActor.Manager ? r.Rank : null);
@@ -117,18 +117,18 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     private async Task NotifyMoveAsync(WorkItem w, CancellationToken ct)
     {
         var link = $"/work?open={w.Id}";
-        var what = $"{w.Title} — {w.StageName.Get("fa")}";
+        var what = $"{w.Title} — {w.StageName.Get("de")}";
         var key = $"move:{w.Id:N}:{w.Status}:{w.RevisionCount}";
         switch (w.Status)
         {
             case WorkStatus.InReview:
-                await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.WorkReview, PermissionScope.All, ct), "work.review", "کاری برای بازبینی رسید", what, link, false, key, ct);
+                await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.WorkReview, PermissionScope.All, ct), "work.review", "Eine Aufgabe ist zur Prüfung eingegangen", what, link, false, key, ct);
                 break;
             case WorkStatus.ChangesRequested when w.AssigneeId is { } a:
-                await notifier.NotifyAsync([a], "work.changes", "این کار نیاز به اصلاح دارد", what, link, false, key, ct);
+                await notifier.NotifyAsync([a], "work.changes", "Diese Arbeit muss überarbeitet werden", what, link, false, key, ct);
                 break;
             case WorkStatus.ClientReview when await notifier.PortalUserAsync(w.ClientId, ct) is { } portal:
-                await notifier.NotifyAsync([portal], "portal.approval", "محتوای جدید منتظر تأیید شماست", w.Title, "/dashboard", true, key, ct);
+                await notifier.NotifyAsync([portal], "portal.approval", "Neue Inhalte warten auf Ihre Freigabe", w.Title, "/dashboard", true, key, ct);
                 break;
         }
     }
@@ -172,14 +172,14 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     {
         if (!access.CanAssign) return Error.Forbidden();
         var w = await db.WorkItems.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
+        if (w is null) return Error.NotFound("work.notFound", "Aufgabe nicht gefunden.");
         if (r.UserId is { } uid)
         {
             if (!await db.Users.AnyAsync(u => u.Id == uid && u.Kind == UserKind.Staff && u.IsActive, ct))
-                return Error.Validation("work.assignee", "این همکار پیدا نشد یا غیرفعال است.");
+                return Error.Validation("work.assignee", "Dieser Mitarbeiter wurde nicht gefunden oder ist inaktiv.");
             // A kiosk tablet, a marketer or a blog writer can't see or run work: the item would be silently stuck.
             if (!(await notifier.StaffWithAsync(Permissions.WorkRun, PermissionScope.Assigned, ct)).Contains(uid))
-                return Error.Validation("work.assigneeCantRun", "این همکار نمی‌تواند کار انجام دهد.");
+                return Error.Validation("work.assigneeCantRun", "Dieser Mitarbeiter kann keine Aufgaben bearbeiten.");
         }
         db.SetOriginalVersion(w, r.Version);
         var previous = w.AssigneeId;
@@ -187,7 +187,7 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
         if (res.IsFailure) return res.Error!;
         audit.Add("work.assigned", nameof(WorkItem), id.ToString(), new { previous, to = r.UserId });
         if (r.UserId is { } assignee && assignee != me.UserId)
-            await notifier.NotifyAsync([assignee], "work.assigned", "کار جدید به شما سپرده شد", $"{w.Title} — {w.StageName.Get("fa")}", $"/work?open={w.Id}", false, $"assign:{w.Id:N}:{assignee:N}:{w.Version}", ct);
+            await notifier.NotifyAsync([assignee], "work.assigned", "Ihnen wurde eine neue Aufgabe zugewiesen", $"{w.Title} — {w.StageName.Get("de")}", $"/work?open={w.Id}", false, $"assign:{w.Id:N}:{assignee:N}:{w.Version}", ct);
         changes.Record("work", w.Id, null, w.AssigneeId, previous, "assignee");   // the portal never learns who works on what
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
@@ -199,7 +199,7 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     {
         if (!access.CanAssign) return Error.Forbidden();
         var w = await db.WorkItems.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
+        if (w is null) return Error.NotFound("work.notFound", "Aufgabe nicht gefunden.");
         // Only people who can actually run work (work.run, assigned scope or wider).
         var runners = await notifier.StaffWithAsync(Permissions.WorkRun, PermissionScope.Assigned, ct);
         var staff = await db.Users.AsNoTracking().Where(u => runners.Contains(u.Id))
@@ -218,16 +218,16 @@ public sealed class WorkService(IAppDbContext db, ICurrentUser me, WorkAccess ac
     public async Task<Result<CommentDto>> CommentAsync(Guid id, CommentRequest r, CancellationToken ct)
     {
         var w = await access.VisibleItems().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (w is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
-        if (ActorFor(w) is null) return Error.Forbidden("work.notYours", "این کار به شما سپرده نشده است.");
+        if (w is null) return Error.NotFound("work.notFound", "Aufgabe nicht gefunden.");
+        if (ActorFor(w) is null) return Error.Forbidden("work.notYours", "Diese Aufgabe ist Ihnen nicht zugewiesen.");
         if (r.Visibility == CommentVisibility.Client && !access.CanTalkToClient)
-            return Error.Forbidden("comments.clientOnlyAdmins", "پیام برای مشتری را فقط ادمین می‌فرستد.");
+            return Error.Forbidden("comments.clientOnlyAdmins", "Nachrichten an den Kunden schickt nur der Admin.");
         var c = WorkComment.Create(w, me.UserId, await MyNameAsync(ct), false, r.Visibility, r.Body, clock.GetUtcNow());
         if (c.IsFailure) return c.Error!;
         db.WorkComments.Add(c.Value!);
         changes.Record("work", w.Id, r.Visibility == CommentVisibility.Client ? w.ClientId : null, w.AssigneeId, null, "comments");
         if (r.Visibility == CommentVisibility.Client && await notifier.PortalUserAsync(w.ClientId, ct) is { } portalUser)
-            await notifier.NotifyAsync([portalUser], "portal.message", $"پیام تازه درباره‌ی سفارش {w.OrderNumber}", Short(c.Value!.Body), "/dashboard", false, $"msg:{c.Value!.Id:N}", ct);
+            await notifier.NotifyAsync([portalUser], "portal.message", $"Neue Nachricht zum Auftrag {w.OrderNumber}", Short(c.Value!.Body), "/dashboard", false, $"msg:{c.Value!.Id:N}", ct);
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         var x = c.Value!;

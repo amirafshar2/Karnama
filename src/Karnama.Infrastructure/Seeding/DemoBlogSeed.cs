@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Karnama.Infrastructure.Seeding;
 
-/// <summary>Sample posts (marked «نمونه») so the blog, the editor and the SEO checklist aren't empty in the demo.</summary>
+/// <summary>Sample posts (marked «Beispiel») so the blog, the editor and the SEO checklist aren't empty in the demo.</summary>
 internal static class DemoBlogSeed
 {
     private static JsonObject Text(string t, params string[] marks)
@@ -31,43 +31,43 @@ internal static class DemoBlogSeed
     public static async Task SeedAsync(AppDbContext db, CancellationToken ct)
     {
         if (await db.BlogPosts.IgnoreQueryFilters().AnyAsync(ct)) return;
-        var admin = await db.Users.Where(u => u.IsDemo && u.DisplayName.StartsWith("سارا")).Select(u => u.Id).FirstOrDefaultAsync(ct);
-        var writer = await db.Users.Where(u => u.IsDemo && u.DisplayName.StartsWith("مریم")).Select(u => u.Id).FirstOrDefaultAsync(ct);
+        var admin = await db.Users.Where(u => u.IsDemo && u.DisplayName.StartsWith("Sarah")).Select(u => u.Id).FirstOrDefaultAsync(ct);
+        var writer = await db.Users.Where(u => u.IsDemo && u.DisplayName.StartsWith("Marie")).Select(u => u.Id).FirstOrDefaultAsync(ct);
         if (admin == Guid.Empty) return;
         if (writer == Guid.Empty) writer = admin;
 
-        var insta = BlogCategory.Create("اینستاگرام", "مدیریت پیج، ریلز و استوری", 1).Value!;
-        var content = BlogCategory.Create("تولید محتوا", "عکاسی، کپشن و ایده‌ی محتوا", 2).Value!;
+        var insta = BlogCategory.Create("Instagram", "Seitenbetreuung, Reels und Storys", 1).Value!;
+        var content = BlogCategory.Create("Content-Produktion", "Fotografie, Caption und Content-Ideen", 2).Value!;
         db.BlogCategories.AddRange(insta, content);
 
         var now = DateTimeOffset.UtcNow;
-        var reelsSlug = SeoAutomation.SlugFor("ریلز یا پست؟ کدام برای فروش کسب‌وکار بهتر است (نمونه)");
+        var reelsSlug = SeoAutomation.SlugFor("Reels oder Posts? Was ist besser für den Umsatz eines Unternehmens (Beispiel)");
         var posts = new (string Title, Guid Author, Guid Cat, string[] Tags, string Json, PostStatus Status, int DaysAgo)[]
         {
-            ("۱۰ نکته برای مدیریت پیج اینستاگرام کسب‌وکارهای شیراز (نمونه)", admin, insta.Id, ["اینستاگرام", "شیراز"], Doc(
-                P("مدیریت پیج اینستاگرام برای یک کافه یا فروشگاه در شیراز فقط گذاشتن چند پست در هفته نیست؛ برنامه، لحن ثابت و جواب سریع به پیام‌ها مشتری را نگه می‌دارد. این مطلب نمونه است و برای نمایش ویرایشگر و سئوی خودکار نوشته شده."),
-                H(2, "برنامه‌ی انتشار ثابت داشته باشید"),
-                P("مخاطب وقتی بداند چه روزهایی منتظر محتوای شما باشد، بیشتر برمی‌گردد. یک تقویم انتشار ساده با سه پست و پنج استوری در هفته برای شروع کافی است."),
-                Ul("روزهای ثابت برای ریلز", "استوری روزانه از پشت صحنه", "یک پست آموزشی در هفته"),
-                Tip("در کارنما از «تقویم انتشار» برای زمان‌بندی و یادآوری استفاده کنید."),
-                H(2, "محتوای بومی و نزدیک به مشتری"),
-                P(Text("عکس واقعی از فضای مغازه و چهره‌ی آشنای کارکنان بیشتر از عکس‌های آماده اعتماد می‌سازد. برای ویدیو، "), Link("مقایسه‌ی ریلز و پست", "/blog/" + reelsSlug), Text(" را هم بخوانید.")),
-                H(2, "پرسش‌های متداول"),
-                H(3, "هر چند وقت یک بار پست بگذاریم؟"),
-                P("برای بیشتر کسب‌وکارهای کوچک سه پست در هفته و استوری روزانه نقطه‌ی شروع خوبی است."),
-                H(3, "به پیام‌ها چقدر سریع جواب بدهیم؟"),
-                P("تا جای ممکن در ساعات کاری کمتر از یک ساعت؛ سرعت جواب مستقیم روی فروش اثر دارد.")), PostStatus.Published, 6),
-            ("ریلز یا پست؟ کدام برای فروش کسب‌وکار بهتر است (نمونه)", admin, insta.Id, ["ریلز", "اینستاگرام"], Doc(
-                P("ریلز برای دیده‌شدن توسط آدم‌های تازه عالی است و پست برای معرفی دقیق محصول. ترکیب درست این دو بستگی به هدف شما دارد. این مطلب نمونه است."),
-                H(2, "ریلز برای دیده‌شدن"),
-                P("ریلزهای کوتاه زیر سی ثانیه با یک قلاب قوی در دو ثانیه‌ی اول، بیشترین بازدید را از کسانی می‌گیرند که هنوز شما را دنبال نمی‌کنند."),
-                H(2, "پست و کاروسل برای فروش"),
-                P("کاروسل با چند عکس از محصول، قیمت و راه سفارش، تصمیم خرید را ساده‌تر می‌کند."),
-                Ul("هفته‌ای دو ریلز برای جذب", "یک کاروسل محصول", "استوری با نظرسنجی برای تعامل")), PostStatus.Published, 3),
-            ("کپشن‌نویسی: ۵ قالب ساده که جواب می‌دهد (نمونه)", writer, content.Id, ["کپشن", "تولید محتوا"], Doc(
-                P("کپشن خوب کوتاه شروع می‌شود، یک مشکل را نام می‌برد و آخرش می‌گوید مخاطب چه کار کند. این پیش‌نویس نمونه منتظر بازبینی است."),
-                H(2, "قالب مشکل و راه‌حل"),
-                P("یک جمله درباره‌ی مشکل مشتری، یک جمله درباره‌ی راه‌حل شما و یک دعوت به اقدام.")), PostStatus.InReview, 1),
+            ("10 Tipps für die Instagram-Betreuung von Unternehmen in Stuttgart (Beispiel)", admin, insta.Id, ["Instagram", "Stuttgart"], Doc(
+                P("Instagram-Betreuung für ein Café oder einen Laden in Stuttgart heißt nicht nur ein paar Posts pro Woche; Plan, einheitliche Tonalität und schnelle Antworten auf Nachrichten binden die Kunden. Dies ist ein Beispielbeitrag, geschrieben zur Demonstration des Editors und der automatischen SEO."),
+                H(2, "Haben Sie einen festen Veröffentlichungsplan"),
+                P("Wenn Ihr Publikum weiß, an welchen Tagen neue Inhalte kommen, kommt es öfter wieder. Ein einfacher Veröffentlichungskalender mit drei Posts und fünf Storys pro Woche reicht für den Anfang."),
+                Ul("Feste Tage für Reels", "Tägliche Story hinter den Kulissen", "Ein Lern-Post pro Woche"),
+                Tip("Nutzen Sie in Karnama den „Veröffentlichungskalender“ für Planung und Erinnerungen."),
+                H(2, "Lokale, kundennahe Inhalte"),
+                P(Text("Echte Fotos vom Laden und vertraute Gesichter der Mitarbeiter schaffen mehr Vertrauen als Stockfotos. Für Videos "), Link("Reels und Posts im Vergleich", "/blog/" + reelsSlug), Text(" ebenfalls lesen.")),
+                H(2, "Häufige Fragen"),
+                H(3, "Wie oft sollten wir posten?"),
+                P("Für die meisten kleinen Unternehmen sind drei Posts pro Woche und eine tägliche Story ein guter Start."),
+                H(3, "Wie schnell sollten wir auf Nachrichten antworten?"),
+                P("Während der Arbeitszeit möglichst in unter einer Stunde; die Antwortgeschwindigkeit wirkt sich direkt auf den Umsatz aus.")), PostStatus.Published, 6),
+            ("Reels oder Posts? Was ist besser für den Umsatz eines Unternehmens (Beispiel)", admin, insta.Id, ["Reels", "Instagram"], Doc(
+                P("Reels sind ideal, um von neuen Leuten gesehen zu werden, Posts für die genaue Vorstellung eines Produkts. Die richtige Mischung hängt von Ihrem Ziel ab. Dies ist ein Beispielbeitrag."),
+                H(2, "Reels für Reichweite"),
+                P("Kurze Reels unter dreißig Sekunden mit einem starken Hook in den ersten zwei Sekunden holen die meisten Aufrufe von Leuten, die Ihnen noch nicht folgen."),
+                H(2, "Posts und Karussells für den Verkauf"),
+                P("Ein Karussell mit mehreren Produktfotos, Preis und Bestellweg macht die Kaufentscheidung leichter."),
+                Ul("Zwei Reels pro Woche für Reichweite", "Ein Produkt-Karussell", "Story mit Umfrage für mehr Interaktion")), PostStatus.Published, 3),
+            ("Captions schreiben: 5 einfache Vorlagen, die funktionieren (Beispiel)", writer, content.Id, ["Caption", "Content-Produktion"], Doc(
+                P("Eine gute Caption beginnt kurz, nennt ein Problem und sagt am Ende, was das Publikum tun soll. Dieser Beispielentwurf wartet auf Prüfung."),
+                H(2, "Vorlage Problem und Lösung"),
+                P("Ein Satz zum Problem des Kunden, ein Satz zu Ihrer Lösung und eine Handlungsaufforderung.")), PostStatus.InReview, 1),
         };
 
         foreach (var x in posts)

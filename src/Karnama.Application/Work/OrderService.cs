@@ -36,9 +36,9 @@ public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
 {
     public CreateOrderValidator()
     {
-        RuleFor(x => x.ServiceTypeId).NotEmpty().WithMessage("نوع خدمت را انتخاب کنید.");
-        RuleFor(x => x.Title).MaximumLength(Order.MaxTitle).WithMessage("عنوان حداکثر ۱۵۰ کاراکتر است.");
-        RuleFor(x => x.Note).MaximumLength(Order.MaxNote).WithMessage("توضیح حداکثر ۴۰۰۰ کاراکتر است.");
+        RuleFor(x => x.ServiceTypeId).NotEmpty().WithMessage("Wählen Sie die Leistungsart.");
+        RuleFor(x => x.Title).MaximumLength(Order.MaxTitle).WithMessage("Der Titel darf höchstens 150 Zeichen haben.");
+        RuleFor(x => x.Note).MaximumLength(Order.MaxNote).WithMessage("Die Beschreibung darf höchstens 4000 Zeichen haben.");
         RuleFor(x => x.Priority).IsInEnum();
     }
 }
@@ -82,7 +82,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
     public async Task<Result<OrderDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var o = await (await access.VisibleOrdersAsync(ct)).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        return o is null ? Error.NotFound("orders.notFound", "سفارش پیدا نشد.") : await ToDtoAsync(o, ct);
+        return o is null ? Error.NotFound("orders.notFound", "Auftrag nicht gefunden.") : await ToDtoAsync(o, ct);
     }
 
     public async Task<Result<OrderDto>> CreateAsync(CreateOrderRequest r, OrderSource source, CancellationToken ct)
@@ -96,16 +96,16 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
         else
         {
             if (!me.Has(Permissions.OrdersCreate, PermissionScope.All)) return Error.Forbidden();
-            if (r.ClientId == Guid.Empty) return Error.Validation("orders.client", "مشتری را انتخاب کنید.");
+            if (r.ClientId == Guid.Empty) return Error.Validation("orders.client", "Wählen Sie einen Kunden.");
             clientId = r.ClientId;
         }
 
         var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.Id == clientId, ct);
-        if (client is null) return Error.Validation("orders.client", "مشتری پیدا نشد.");
-        if (client.Status != ClientStatus.Active) return Error.Validation("orders.clientInactive", "همکاری با این مشتری فعال نیست.");
+        if (client is null) return Error.Validation("orders.client", "Kunde nicht gefunden.");
+        if (client.Status != ClientStatus.Active) return Error.Validation("orders.clientInactive", "Die Zusammenarbeit mit diesem Kunden ist nicht aktiv.");
         var service = await db.ServiceTypes.AsNoTracking().Include(s => s.Stages).FirstOrDefaultAsync(s => s.Id == r.ServiceTypeId, ct);
-        if (service is null || !service.IsActive) return Error.Validation("orders.service", "این خدمت فعال نیست.");
-        if (service.Stages.Count == 0) return Error.Validation("orders.noStages", "این خدمت هنوز مرحله‌ی کاری ندارد.");
+        if (service is null || !service.IsActive) return Error.Validation("orders.service", "Diese Leistung ist nicht aktiv.");
+        if (service.Stages.Count == 0) return Error.Validation("orders.noStages", "Diese Leistung hat noch keinen Arbeitsschritt.");
 
         var answers = FormSchema.ValidateData(FormSchema.Parse(service.FormSchemaJson), r.Answers);
         if (answers.IsFailure) return answers.Error!;
@@ -123,7 +123,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
             audit.Add("orders.created", nameof(Order), o.Id.ToString(), new { o.Number, source });
             changes.Record("order", o.Id, o.ClientId, null, null, "created");
             if (source == OrderSource.Client)
-                await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.OrdersManage, PermissionScope.All, t), "order.new", $"سفارش جدید از مشتری (#{o.Number})", o.Title, "/orders", false, $"order:{o.Id:N}", t);
+                await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.OrdersManage, PermissionScope.All, t), "order.new", $"Neuer Auftrag vom Kunden (#{o.Number})", o.Title, "/orders", false, $"order:{o.Id:N}", t);
             if (autoAccept)
             {
                 var accepted = await AcceptCoreAsync(o, service, t);
@@ -145,7 +145,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
         var result = await db.InTransactionAsync(async t =>
         {
             var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, t);
-            if (order is null) return (Result<Order>)Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+            if (order is null) return (Result<Order>)Error.NotFound("orders.notFound", "Auftrag nicht gefunden.");
             db.SetOriginalVersion(order, version);
             var service = await db.ServiceTypes.IgnoreQueryFilters().AsNoTracking().Include(s => s.Stages).FirstAsync(s => s.Id == order.ServiceTypeId, t);
             var r = await AcceptCoreAsync(order, service, t);
@@ -202,7 +202,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
             // PROMPT §6.4: quota used up (or the service isn't in the package) → the order is extra, and the admins are warned.
             var client = await db.Clients.IgnoreQueryFilters().AsNoTracking().Where(c => c.Id == order.ClientId).Select(c => c.BusinessName).FirstOrDefaultAsync(ct);
             await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.OrdersManage, PermissionScope.All, ct), "orders.outsidePackage",
-                $"سفارش خارج از پکیج: #{order.Number} ({client})", $"{order.Title} — سهمیه‌ی پکیج برای این خدمت کافی نیست؛ جداگانه حساب می‌شود.",
+                $"Auftrag außerhalb des Pakets: #{order.Number} ({client})", $"{order.Title} – Das Paketkontingent reicht für diese Leistung nicht aus; wird separat berechnet.",
                 "/orders", false, $"outside:{order.Id:N}", ct);
         }
         changes.Record("order", order.Id, order.ClientId, null, null, "status");
@@ -212,7 +212,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
     public async Task<Result<OrderDto>> RejectAsync(Guid id, RejectOrderRequest r, CancellationToken ct)
     {
         var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
-        if (order is null) return Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+        if (order is null) return Error.NotFound("orders.notFound", "Auftrag nicht gefunden.");
         var res = order.Reject(r.Reason);
         if (res.IsFailure) return res.Error!;
         audit.Add("orders.rejected", nameof(Order), id.ToString(), new { order.Number });
@@ -225,7 +225,7 @@ public sealed class OrderService(IAppDbContext db, ICurrentUser me, WorkAccess a
     public async Task<Result<OrderDto>> CancelAsync(Guid id, CancellationToken ct)
     {
         var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
-        if (order is null) return Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+        if (order is null) return Error.NotFound("orders.notFound", "Auftrag nicht gefunden.");
         var res = order.Cancel();
         if (res.IsFailure) return res.Error!;
         foreach (var w in await db.WorkItems.Where(w => w.OrderId == id).ToListAsync(ct))

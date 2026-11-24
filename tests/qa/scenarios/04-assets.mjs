@@ -6,7 +6,7 @@ import { randomInt } from "node:crypto";
 import { qa, pick, check, eq } from "../lib.mjs";
 
 export const id = "S04";
-export const title = "تجهیزات — تحویل با عکس، تأیید کارگر، انتقال مستقیم، دیرکرد، برگشت با خرابی";
+export const title = "Ausstattung – Übergabe mit Foto, Bestätigung durch Mitarbeiter, direkte Weitergabe, Verzug, Rückgabe mit Schaden";
 
 const userId = (actor) => JSON.parse(Buffer.from(actor.token.split(".")[1], "base64url").toString()).sub;
 const ANY = Array.from({ length: 500 }, (_, i) => i + 100);
@@ -38,18 +38,18 @@ export async function run(rec, { crowd }) {
 
   let camera, tripod, handover;
   await rec.step("2.4.a", "manager registers a camera and a tripod (tag = property code, unique)", async () => {
-    camera = (await manager.post("/api/v1/assets", { name: `دوربین QA ${run0}`, categoryId: CAMERA, brand: "Canon", model: "R6", serial: `SN-C-${run0}`, tag: `QC-${run0}`,
-      purchasedOn: "2025-01-10", purchasePrice: 900_000_000, warrantyUntil: "2027-01-10", note: "سناریو S04" })).asset;
+    camera = (await manager.post("/api/v1/assets", { name: `Kamera QA ${run0}`, categoryId: CAMERA, brand: "Canon", model: "R6", serial: `SN-C-${run0}`, tag: `QC-${run0}`,
+      purchasedOn: "2025-01-10", purchasePrice: 900_000_000, warrantyUntil: "2027-01-10", note: "Szenario S04" })).asset;
     eq(camera.status, "available", "new asset available");
-    tripod = (await manager.post("/api/v1/assets", { name: `سه‌پایه QA ${run0}`, categoryId: TRIPOD, tag: `QT-${run0}` })).asset;
-    const dup = await manager.call("POST", "/api/v1/assets", { name: "تکراری", categoryId: CAMERA, tag: `QC-${run0}` }, { expect: ANY });
+    tripod = (await manager.post("/api/v1/assets", { name: `Stativ QA ${run0}`, categoryId: TRIPOD, tag: `QT-${run0}` })).asset;
+    const dup = await manager.call("POST", "/api/v1/assets", { name: "Doppelt", categoryId: CAMERA, tag: `QC-${run0}` }, { expect: ANY });
     eq(dup.status, 409, `duplicate tag (${dup.code})`);
     eq(await w1.refused("POST", "/api/v1/assets", { name: "x", categoryId: CAMERA }, [403]), 403, "worker cannot create assets");
   });
 
   await rec.step("2.4.b", "camera handed to worker 1 with condition, accessories, expected return → pending acceptance; worker notified", async () => {
     const d = await manager.post(`/api/v1/assets/${camera.id}/handover`, {
-      userId: ids.w1, expectedReturn: tehranDate(1), condition: "سالم، بدون خط و خش", accessories: ["شارژر", "کیف", "باتری ×۲"], version: camera.version,
+      userId: ids.w1, expectedReturn: tehranDate(1), condition: "Unbeschädigt, ohne Kratzer und Schrammen", accessories: ["Ladegerät", "Tasche", "Akku ×2"], version: camera.version,
     });
     handover = d.current;
     eq(d.asset.status, "assigned", "asset status");
@@ -92,7 +92,7 @@ export async function run(rec, { crowd }) {
     eq((await manager.get(`/api/v1/assets/${camera.id}`)).current.state, "pendingAcceptance", "still pending");
   });
 
-  await rec.step("2.4.f", "worker 1 accepts → active with acceptance time; manager notified; listed under «پیش من»", async () => {
+  await rec.step("2.4.f", "worker 1 accepts → active with acceptance time; manager notified; listed under «Bei mir»", async () => {
     const d = await w1.post(`/api/v1/assets/assignments/${handover.id}/accept`);
     eq(d.current.state, "active", "state");
     check(d.current.acceptedAt, "acceptedAt");
@@ -120,10 +120,10 @@ export async function run(rec, { crowd }) {
   await rec.step("2.4.g", "decline: worker 3 refuses a tripod hand-over with a note → available again, manager gets an important notice", async () => {
     const t = (await manager.get(`/api/v1/assets/${tripod.id}`)).asset;
     const x = (await manager.post(`/api/v1/assets/${tripod.id}/handover`, { userId: ids.w3, version: t.version })).current;
-    const d = await w3.post(`/api/v1/assets/assignments/${x.id}/decline`, { note: "سه‌پایه پایه‌اش شکسته بود" });
+    const d = await w3.post(`/api/v1/assets/assignments/${x.id}/decline`, { note: "Das Stativbein war gebrochen" });
     eq(d.asset.status, "available", "available");
     const n = (await manager.get("/api/v1/notifications")).items.find((i) => i.kind === "assets.declined");
-    check(n?.important && n.body?.includes("شکسته"), `manager told, with the note (${JSON.stringify(n)})`);
+    check(n?.important && n.body?.includes("Kaputt"), `manager told, with the note (${JSON.stringify(n)})`);
   });
 
   await rec.step("2.4.g", "race: two hand-overs of the tripod at the same moment → exactly one wins (409 for the other)", async () => {
@@ -153,7 +153,7 @@ export async function run(rec, { crowd }) {
     check([403, 404].includes(steal.status), `worker 3 refused (${steal.status})`);
     const self = await w1.call("POST", `/api/v1/assets/assignments/${handover.id}/transfer/accept`, {}, { expect: ANY });
     eq(self.status, 403, "the giver cannot accept for the receiver");
-    const a = await w2.post(`/api/v1/assets/assignments/${handover.id}/transfer/accept`, { condition: "تحویل گرفتم، سالم" });
+    const a = await w2.post(`/api/v1/assets/assignments/${handover.id}/transfer/accept`, { condition: "Übernommen, unbeschädigt" });
     transferred = a.current;
     eq(a.asset.holderId, ids.w2, "holder is worker 2");
     eq(a.asset.status, "assigned", "never went back to the shelf");
@@ -188,13 +188,13 @@ export async function run(rec, { crowd }) {
   });
 
   await rec.step("2.4.j", "worker 2 returns with a damage report + return photo → waiting for the manager (important notice)", async () => {
-    const r = await w2.post(`/api/v1/assets/assignments/${transferred.id}/return`, { condition: "لنز کثیف", damage: "ترک روی LCD" });
+    const r = await w2.post(`/api/v1/assets/assignments/${transferred.id}/return`, { condition: "Objektiv verschmutzt", damage: "Riss im LCD" });
     eq(r.current.state, "returnSubmitted", "state");
-    eq(r.current.damage, "ترک روی LCD", "damage kept");
+    eq(r.current.damage, "Riss im LCD", "damage kept");
     const p = await w2.post(`/api/v1/assets/${camera.id}/photos?stage=Return&assignmentId=${transferred.id}`, undefined, { form: photoForm("return.png") });
     eq(p.stage, "return", "return photo");
     const n = (await manager.get("/api/v1/notifications")).items.find((x) => x.kind === "assets.return");
-    check(n?.important && n.body.includes("ترک"), `manager got an important return notice with the damage (${JSON.stringify(n)})`);
+    check(n?.important && n.body.includes("Riss"), `manager got an important return notice with the damage (${JSON.stringify(n)})`);
     const again = await w2.call("POST", `/api/v1/assets/assignments/${transferred.id}/return`, { condition: "x" }, { expect: ANY });
     eq(again.status, 409, "double return → 409");
     eq(await w2.refused("POST", `/api/v1/assets/assignments/${transferred.id}/return/confirm`, { status: "available" }, [403]), 403, "worker cannot confirm own return");
@@ -203,7 +203,7 @@ export async function run(rec, { crowd }) {
   await rec.step("2.4.k", "manager confirms the return as InRepair → asset off duty, no holder, full append-only history", async () => {
     const bad = await manager.call("POST", `/api/v1/assets/assignments/${transferred.id}/return/confirm`, { status: "assigned" }, { expect: ANY });
     eq(bad.status, 422, "invalid next status");
-    const d = await manager.post(`/api/v1/assets/assignments/${transferred.id}/return/confirm`, { status: "inRepair", damage: "ترک روی LCD — ارسال به تعمیر" });
+    const d = await manager.post(`/api/v1/assets/assignments/${transferred.id}/return/confirm`, { status: "inRepair", damage: "Riss im LCD – zur Reparatur geschickt" });
     eq(d.asset.status, "inRepair", "in repair");
     eq(d.asset.holderId, null, "no holder");
     eq(d.current, null, "no open hand-over");

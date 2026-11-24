@@ -26,24 +26,24 @@ public static partial class FormSchema
     public static Result<string> Normalize(IReadOnlyList<FormField>? fields)
     {
         fields ??= [];
-        if (fields.Count > MaxFields) return Error.Validation("forms.tooMany", "حداکثر ۴۰ فیلد.");
+        if (fields.Count > MaxFields) return Error.Validation("forms.tooMany", "Höchstens 40 Felder.");
         var keys = new HashSet<string>(StringComparer.Ordinal);
         var clean = new List<FormField>();
         foreach (var f in fields)
         {
-            if (!KeyPattern().IsMatch(f.Key ?? string.Empty)) return Error.Validation("forms.invalidKey", $"شناسه‌ی فیلد «{f.Key}» باید انگلیسی و بدون فاصله باشد (مثل topic).");
-            if (!keys.Add(f.Key!)) return Error.Validation("forms.duplicateKey", $"شناسه‌ی «{f.Key}» تکراری است.");
-            if (!Types.Contains(f.Type)) return Error.Validation("forms.invalidType", $"نوع فیلد «{f.Type}» معتبر نیست.");
+            if (!KeyPattern().IsMatch(f.Key ?? string.Empty)) return Error.Validation("forms.invalidKey", $"Die Feld-ID „{f.Key}“ muss auf Englisch und ohne Leerzeichen sein (z. B. topic).");
+            if (!keys.Add(f.Key!)) return Error.Validation("forms.duplicateKey", $"Die ID „{f.Key}“ ist doppelt.");
+            if (!Types.Contains(f.Type)) return Error.Validation("forms.invalidType", $"Der Feldtyp „{f.Type}“ ist ungültig.");
             var label = new LocalizedText(f.Label);
-            if (label.IsEmpty) return Error.Validation("forms.labelRequired", "برچسب هر فیلد الزامی است.");
-            if (f.Min is { } min && f.Max is { } max && max < min) return Error.Validation("forms.minMax", "حداکثر باید از حداقل بزرگ‌تر باشد.");
+            if (label.IsEmpty) return Error.Validation("forms.labelRequired", "Die Beschriftung jedes Felds ist Pflicht.");
+            if (f.Min is { } min && f.Max is { } max && max < min) return Error.Validation("forms.minMax", "Das Maximum muss größer als das Minimum sein.");
             List<FormOption>? options = null;
             if (f.Type is "select" or "multiselect")
             {
-                if (f.Options is null || f.Options.Count is 0 or > 50) return Error.Validation("forms.options", $"فیلد «{f.Key}» باید ۱ تا ۵۰ گزینه داشته باشد.");
+                if (f.Options is null || f.Options.Count is 0 or > 50) return Error.Validation("forms.options", $"Das Feld „{f.Key}“ muss 1 bis 50 Optionen haben.");
                 options = f.Options.Select(o => new FormOption(o.Value.Trim(), new LocalizedText(o.Label).Values.ToDictionary())).ToList();
-                if (options.Any(o => o.Value.Length is 0 or > 60)) return Error.Validation("forms.optionValue", "مقدار هر گزینه الزامی است.");
-                if (options.Select(o => o.Value).Distinct().Count() != options.Count) return Error.Validation("forms.optionDuplicate", "گزینه‌ی تکراری.");
+                if (options.Any(o => o.Value.Length is 0 or > 60)) return Error.Validation("forms.optionValue", "Der Wert jeder Option ist Pflicht.");
+                if (options.Select(o => o.Value).Distinct().Count() != options.Count) return Error.Validation("forms.optionDuplicate", "Doppelte Option.");
             }
             clean.Add(new FormField(f.Key!, f.Type, label.Values.ToDictionary(), f.Required,
                 f.Help is null ? null : new LocalizedText(f.Help).Values.ToDictionary(), f.Min, f.Max, options));
@@ -65,40 +65,40 @@ public static partial class FormSchema
         foreach (var f in fields)
         {
             if (f.Type == "file") continue;
-            var label = new LocalizedText(f.Label).Get("fa");
+            var label = new LocalizedText(f.Label).Get("de");
             JsonElement v = default;
             var has = input.ValueKind == JsonValueKind.Object && input.TryGetProperty(f.Key, out v) && v.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined)
                       && !(v.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(v.GetString()))
                       && !(v.ValueKind == JsonValueKind.Array && v.GetArrayLength() == 0);
             if (!has)
             {
-                if (f.Required) return Error.Validation("forms.required", $"«{label}» را پر کنید.");
+                if (f.Required) return Error.Validation("forms.required", $"Bitte „{label}“ ausfüllen.");
                 continue;
             }
             switch (f.Type)
             {
                 case "number":
-                    if (v.ValueKind != JsonValueKind.Number || !v.TryGetDecimal(out var n)) return Error.Validation("forms.number", $"«{label}» باید عدد باشد.");
-                    if (f.Min is { } min && n < min || f.Max is { } max && n > max) return Error.Validation("forms.range", $"«{label}» خارج از محدوده است.");
+                    if (v.ValueKind != JsonValueKind.Number || !v.TryGetDecimal(out var n)) return Error.Validation("forms.number", $"„{label}“ muss eine Zahl sein.");
+                    if (f.Min is { } min && n < min || f.Max is { } max && n > max) return Error.Validation("forms.range", $"„{label}“ liegt außerhalb des Bereichs.");
                     output[f.Key] = n;
                     break;
                 case "multiselect":
-                    if (v.ValueKind != JsonValueKind.Array) return Error.Validation("forms.multi", $"«{label}» معتبر نیست.");
+                    if (v.ValueKind != JsonValueKind.Array) return Error.Validation("forms.multi", $"„{label}“ ist ungültig.");
                     var picked = v.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString()! : "").ToList();
-                    if (picked.Any(p => f.Options?.All(o => o.Value != p) ?? true)) return Error.Validation("forms.option", $"گزینه‌ی «{label}» معتبر نیست.");
+                    if (picked.Any(p => f.Options?.All(o => o.Value != p) ?? true)) return Error.Validation("forms.option", $"Die Option „{label}“ ist ungültig.");
                     output[f.Key] = picked.Distinct().ToList();
                     break;
                 default:
-                    if (v.ValueKind != JsonValueKind.String) return Error.Validation("forms.text", $"«{label}» معتبر نیست.");
+                    if (v.ValueKind != JsonValueKind.String) return Error.Validation("forms.text", $"„{label}“ ist ungültig.");
                     var text = v.GetString()!.Trim();
-                    if (text.Length > (f.Type == "textarea" ? 4000 : 500)) return Error.Validation("forms.long", $"«{label}» خیلی طولانی است.");
-                    if (f.Type == "select" && (f.Options?.All(o => o.Value != text) ?? true)) return Error.Validation("forms.option", $"گزینه‌ی «{label}» معتبر نیست.");
+                    if (text.Length > (f.Type == "textarea" ? 4000 : 500)) return Error.Validation("forms.long", $"„{label}“ ist zu lang.");
+                    if (f.Type == "select" && (f.Options?.All(o => o.Value != text) ?? true)) return Error.Validation("forms.option", $"Die Option „{label}“ ist ungültig.");
                     if (f.Type == "url" && !(Uri.TryCreate(text, UriKind.Absolute, out var u) && u.Scheme is "https" or "http"))
-                        return Error.Validation("forms.url", $"«{label}» باید یک لینک کامل باشد (https://…).");
+                        return Error.Validation("forms.url", $"„{label}“ muss ein vollständiger Link sein (https://…).");
                     if (f.Type is "date" or "datetime" && !DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
-                        return Error.Validation("forms.date", $"تاریخ «{label}» معتبر نیست.");
+                        return Error.Validation("forms.date", $"Das Datum „{label}“ ist ungültig.");
                     if (f.Type == "color" && !System.Text.RegularExpressions.Regex.IsMatch(text, "^#[0-9a-fA-F]{6}$"))
-                        return Error.Validation("forms.color", $"رنگ «{label}» معتبر نیست.");
+                        return Error.Validation("forms.color", $"Die Farbe „{label}“ ist ungültig.");
                     output[f.Key] = text;
                     break;
             }

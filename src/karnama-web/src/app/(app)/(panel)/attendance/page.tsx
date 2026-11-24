@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@/lib/query";
+import { berlinOffset } from "@/lib/berlin";
 import { Coffee, LogIn, LogOut, MapPin, QrCode, Square, WifiOff } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -188,7 +189,7 @@ export default function AttendancePage() {
                       variant="destructive"
                       disabled={busy}
                       onClick={() => {
-                        const end = d.schedule && new Date(`${open.day}T${d.schedule.end}+03:30`);
+                        const end = d.schedule && new Date(`${open.day}T${d.schedule.end}${berlinOffset(open.day)}`);
                         if (end && !isNaN(end.getTime()) && Date.now() < end.getTime()) setEarly("");
                         else start("clock-out");
                       }}

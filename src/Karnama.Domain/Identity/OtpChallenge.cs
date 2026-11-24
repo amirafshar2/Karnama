@@ -42,13 +42,13 @@ public sealed class OtpChallenge : Entity
     public Result CheckUsable(DateTimeOffset now)
     {
         if (ConsumedAt is not null)
-            return Error.Validation("auth.otpUsed", "این کد قبلاً استفاده شده است. کد جدید بگیرید.");
+            return Error.Validation("auth.otpUsed", "Dieser Code wurde bereits verwendet. Fordern Sie einen neuen Code an.");
         if (now >= ExpiresAt)
-            return Error.Validation("auth.otpExpired", "کد منقضی شده است. کد جدید بگیرید.");
+            return Error.Validation("auth.otpExpired", "Der Code ist abgelaufen. Fordern Sie einen neuen Code an.");
         if (Attempts >= MaxAttempts)
-            return Error.TooMany("auth.otpTooManyAttempts", "تعداد تلاش‌ها زیاد بود. کد جدید بگیرید.");
+            return Error.TooMany("auth.otpTooManyAttempts", "Zu viele Versuche. Fordern Sie einen neuen Code an.");
         return Result.Success();
     }
 
-    public static Error WrongCode => Error.Validation("auth.otpWrong", "کد واردشده درست نیست.");
+    public static Error WrongCode => Error.Validation("auth.otpWrong", "Der eingegebene Code ist falsch.");
 }

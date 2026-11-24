@@ -13,44 +13,44 @@ const last = runs.at(-1);
 const esc = (x) => String(x).replace(/\|/g, "\\|").replace(/\n/g, " ");
 const pct = (xs, q) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.floor(q * s.length))] : 0; };
 
-let md = `# تست جمعی Q2 — ۸۳ نفر همزمان\n\n> ساخته‌شده با \`node tests/qa/crowd-report.mjs\` از \`tests/qa/reports/crowd-*/report.json\`. روش: \`docs/qa/QA_PLAN.md\`.\n\n`;
-md += `## همه‌ی اجراها\n\n| اجرا | مدت (دقیقه) | درخواست API | p50 / p95 (ms) | خطای 5xx | صفحه‌ی سالم | مشکل | ثابت‌ها |\n|---|---|---|---|---|---|---|---|\n`;
+let md = `# Massentest Q2 – 83 Personen gleichzeitig\n\n> Erstellt mit \`node tests/qa/crowd-report.mjs\` von \`tests/qa/reports/crowd-*/report.json\`. Methode: \`docs/qa/QA_PLAN.md\`.\n\n`;
+md += `## Alle Läufe\n\n| Lauf | Dauer (Minuten) | API-Anfragen | p50 / p95 (ms) | 5xx-Fehler | Fehlerfreie Seiten | Probleme | Konstanten |\n|---|---|---|---|---|---|---|---|\n`;
 for (const r of runs) {
   const s = r.summary;
   md += `| ${r.dir.replace("crowd-", "").slice(0, 16)} | ${s.minutes} | ${s.calls} | ${s.p50} / ${s.p95} | ${s.errors5xx} | ${s.pagesOk}/${s.pages} | ${s.problems} | ${s.invariantsOk ? "✅" : "❌"} |\n`;
 }
 const s = last.summary;
-md += `\n## آخرین اجرا (${last.dir.replace("crowd-", "").slice(0, 16)})\n\n`;
-md += `- **${s.people} نفر** (۸۱ نفر جمعیت + ۲ بازدیدکننده) یک روز کاری کامل (۰۸:۴۰ تا ۱۸:۴۰ به ساعت QA) را در ${s.minutes} دقیقه گذراندند.\n`;
-md += `- **${s.calls} درخواست API**؛ p50 = ${s.p50}ms، p95 = ${s.p95}ms؛ خطای سرور (5xx): **${s.errors5xx}**.\n`;
-md += `- **${s.pages} بار باز شدن صفحه** در ${s.browsers} مرورگر همزمان (دسکتاپ، گوشی ۳۹۰px، تبلت کیوسک ۷۶۸px، اپ اندروید)؛ سالم: ${s.pagesOk}؛ p95 بارگذاری: ${s.pageP95}ms.\n`;
-md += `- پیام تلگرام فرستاده‌شده (درگاه آزمایشی): ${s.telegram?.sent ?? "—"}؛ امضای نامعتبر: ${s.telegram?.badSignature ?? "—"}.\n`;
-md += `- ثابت‌های دیتابیس: ${last.invariants.map((i) => `${i.name} ${i.ok ? "✅" : "❌"}`).join("، ")}.\n\n`;
+md += `\n## Letzter Lauf (${last.dir.replace("crowd-", "").slice(0, 16)})\n\n`;
+md += `- **${s.people} Personen** (81 Personen Menge + 2 Besucher) einen vollen Arbeitstag (08:40 bis 18:40 QA-Zeit) in ${s.minutes} Minuten verbracht.\n`;
+md += `- **${s.calls} API-Anfragen**; p50 = ${s.p50}ms, p95 = ${s.p95}ms; Serverfehler (5xx): **${s.errors5xx}**.\n`;
+md += `- **${s.pages} Seitenaufrufe** in ${s.browsers} Gleichzeitige Browser (Desktop, Handy 390px, Kiosk-Tablet 768px, Android-App); fehlerfrei: ${s.pagesOk}; p95 Laden: ${s.pageP95}ms.\n`;
+md += `- gesendete Telegram-Nachricht (Test-Gateway): ${s.telegram?.sent ?? "—"}; ungültige Signatur: ${s.telegram?.badSignature ?? "—"}.\n`;
+md += `- Datenbank-Konstanten: ${last.invariants.map((i) => `${i.name} ${i.ok ? "✅" : "❌"}`).join(", ")}.\n\n`;
 
-md += `### کندترین درخواست‌ها (p95)\n\n| درخواست | تعداد | p50 | p95 | بیشینه | وضعیت‌ها |\n|---|---|---|---|---|---|\n`;
+md += `### Langsamste Anfragen (p95)\n\n| Anfrage | Anzahl | p50 | p95 | Maximum | Status |\n|---|---|---|---|---|---|\n`;
 for (const e of [...last.endpoints].sort((a, b) => b.p95 - a.p95).slice(0, 12))
   md += `| \`${e.endpoint}\` | ${e.n} | ${e.p50} | ${e.p95} | ${e.max} | ${esc(JSON.stringify(e.status))} |\n`;
-md += `\n### پرتکرارترین درخواست‌ها\n\n| درخواست | تعداد | p50 | p95 | وضعیت‌ها |\n|---|---|---|---|---|\n`;
+md += `\n### Häufigste Anfragen\n\n| Anfrage | Anzahl | p50 | p95 | Status |\n|---|---|---|---|---|\n`;
 for (const e of last.endpoints.slice(0, 15)) md += `| \`${e.endpoint}\` | ${e.n} | ${e.p50} | ${e.p95} | ${esc(JSON.stringify(e.status))} |\n`;
 
-md += `\n### بارگذاری صفحه‌ها به تفکیک دستگاه\n\n| دستگاه | نوع | تعداد | سالم | p50 (ms) | p95 (ms) |\n|---|---|---|---|---|---|\n`;
+md += `\n### Seitenladen nach Gerät\n\n| Gerät | Typ | Anzahl | Fehlerfrei | p50 (ms) | p95 (ms) |\n|---|---|---|---|---|---|\n`;
 const groups = {};
 for (const p of last.pageStats) (groups[`${p.device}|${p.kind}`] ??= []).push(p);
 for (const [k, ps] of Object.entries(groups)) {
   const ms = ps.filter((p) => p.ms).map((p) => p.ms);
   const [device, kind] = k.split("|");
-  md += `| ${device} | ${kind === "app" ? "اپ اندروید" : "وب"} | ${ps.length} | ${ps.filter((p) => p.ok).length} | ${pct(ms, 0.5)} | ${pct(ms, 0.95)} |\n`;
+  md += `| ${device} | ${kind === "app" ? "Android-App" : "Web"} | ${ps.length} | ${ps.filter((p) => p.ok).length} | ${pct(ms, 0.5)} | ${pct(ms, 0.95)} |\n`;
 }
 
-md += `\n### مشکل‌های آخرین اجرا\n\n`;
-if (!last.problems.length) md += "هیچ.\n";
+md += `\n### Probleme im letzten Lauf\n\n`;
+if (!last.problems.length) md += "Keine.\n";
 else {
   const g = {};
   for (const p of last.problems) for (const e of p.detail.split(" | ")) { const k = `${p.what} — ${e.slice(0, 140)}`; g[k] = (g[k] ?? 0) + 1; }
-  md += `| تعداد | مشکل |\n|---|---|\n` + Object.entries(g).sort((a, b) => b[1] - a[1]).map(([k, n]) => `| ${n} | ${esc(k)} |`).join("\n") + "\n";
+  md += `| Anzahl | Problem |\n|---|---|\n` + Object.entries(g).sort((a, b) => b[1] - a[1]).map(([k, n]) => `| ${n} | ${esc(k)} |`).join("\n") + "\n";
 }
 const notes = [...new Set(last.notes ?? [])];
-if (notes.length) md += `\n### یادداشت‌ها\n\n${notes.map((n) => `- ${n}`).join("\n")}\n`;
+if (notes.length) md += `\n### Notizen\n\n${notes.map((n) => `- ${n}`).join("\n")}\n`;
 md += "\n" + readFileSync(join(here, "crowd-findings.md"), "utf8");
 writeFileSync(join(here, "../../docs/qa/CROWD_RUN.md"), md);
 console.log(`CROWD_RUN.md: ${runs.length} runs`);

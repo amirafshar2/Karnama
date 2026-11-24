@@ -43,11 +43,11 @@ public sealed class SavePostValidator : AbstractValidator<SavePostRequest>
 {
     public SavePostValidator()
     {
-        RuleFor(x => x.Title).NotEmpty().MaximumLength(150).WithMessage("عنوان الزامی است (حداکثر ۱۵۰ کاراکتر).");
-        RuleFor(x => x.ContentJson).NotEmpty().MaximumLength(BlogPost.MaxJson).WithMessage("متن مطلب خیلی بزرگ است.");
-        RuleFor(x => x.SeoTitle).MaximumLength(70).WithMessage("عنوان سئو حداکثر ۷۰ کاراکتر.");
-        RuleFor(x => x.MetaDescription).MaximumLength(170).WithMessage("توضیح متا حداکثر ۱۷۰ کاراکتر.");
-        RuleFor(x => x.Slug).MaximumLength(80).WithMessage("نامک حداکثر ۸۰ کاراکتر.");
+        RuleFor(x => x.Title).NotEmpty().MaximumLength(150).WithMessage("Der Titel ist Pflicht (höchstens 150 Zeichen).");
+        RuleFor(x => x.ContentJson).NotEmpty().MaximumLength(BlogPost.MaxJson).WithMessage("Der Beitragstext ist zu groß.");
+        RuleFor(x => x.SeoTitle).MaximumLength(70).WithMessage("SEO-Titel höchstens 70 Zeichen.");
+        RuleFor(x => x.MetaDescription).MaximumLength(170).WithMessage("Meta-Beschreibung höchstens 170 Zeichen.");
+        RuleFor(x => x.Slug).MaximumLength(80).WithMessage("Slug höchstens 80 Zeichen.");
     }
 }
 
@@ -86,7 +86,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<PostDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var p = await Visible().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("blog.notFound", "مطلب پیدا نشد.");
+        if (p is null) return Error.NotFound("blog.notFound", "Beitrag nicht gefunden.");
         return await DtoAsync(p, ct);
     }
 
@@ -107,9 +107,9 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<PostDto>> UpdateAsync(Guid id, SavePostRequest r, CancellationToken ct)
     {
         var p = await Visible().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("blog.notFound", "مطلب پیدا نشد.");
-        if (!CanEdit(p)) return Error.Forbidden("blog.locked", "مطلب منتشرشده را فقط ویراستار تغییر می‌دهد.");
-        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        if (p is null) return Error.NotFound("blog.notFound", "Beitrag nicht gefunden.");
+        if (!CanEdit(p)) return Error.Forbidden("blog.locked", "Einen veröffentlichten Beitrag ändert nur die Redaktion.");
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "Die Datensatzversion fehlt; laden Sie die Seite neu.");
         db.SetOriginalVersion(p, v);
         var applied = await ApplyAsync(p, r, ct);
         if (applied.IsFailure) return applied.Error!;
@@ -122,14 +122,14 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     /// <summary>Edit + automatic SEO + a unique slug (+ a 301 from the old URL if a live post moved).</summary>
     private async Task<Result> ApplyAsync(BlogPost p, SavePostRequest r, CancellationToken ct)
     {
-        if (r.CategoryId is { } cat && !await db.BlogCategories.AnyAsync(c => c.Id == cat, ct)) return Error.Validation("blog.category", "دسته پیدا نشد.");
-        if (r.CoverImage is { Length: > 0 } cover && media.OpenPublic(cover) is not { } opened) return Error.Validation("blog.cover", "عکس کاور پیدا نشد.");
+        if (r.CategoryId is { } cat && !await db.BlogCategories.AnyAsync(c => c.Id == cat, ct)) return Error.Validation("blog.category", "Kategorie nicht gefunden.");
+        if (r.CoverImage is { Length: > 0 } cover && media.OpenPublic(cover) is not { } opened) return Error.Validation("blog.cover", "Titelbild nicht gefunden.");
         else if (r.CoverImage is { Length: > 0 }) media.OpenPublic(r.CoverImage)?.Stream.Dispose();
         try
         {
             using var _ = System.Text.Json.JsonDocument.Parse(r.ContentJson, new System.Text.Json.JsonDocumentOptions { MaxDepth = 64 });
         }
-        catch (System.Text.Json.JsonException) { return Error.Validation("blog.content", "متن ویرایشگر خراب است؛ صفحه را تازه کنید."); }
+        catch (System.Text.Json.JsonException) { return Error.Validation("blog.content", "Der Editortext ist beschädigt; laden Sie die Seite neu."); }
 
         var e = p.Edit(new BlogPost.EditSpec(r.Title, r.ContentJson, r.CategoryId, r.Tags ?? [], r.CoverImage, r.CoverAlt, r.SeoTitle, r.MetaDescription, r.FocusKeyword, r.Slug), clock.GetUtcNow());
         if (e.IsFailure) return e;
@@ -158,14 +158,14 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<SeoPreviewDto>> PreviewAsync(SeoPreviewRequest r, CancellationToken ct)
     {
         if (!CanWrite && !CanPublish) return Error.Forbidden();
-        if (r.ContentJson.Length > BlogPost.MaxJson) return Error.Validation("blog.content", "متن مطلب خیلی بزرگ است.");
+        if (r.ContentJson.Length > BlogPost.MaxJson) return Error.Validation("blog.content", "Der Beitragstext ist zu groß.");
         SeoResult seo;
         try
         {
             var b = await brand.GetAsync(ct);
             seo = SeoAutomation.Run(r.Title ?? "", r.ContentJson, b.Name, Blank(r.SeoTitle), Blank(r.MetaDescription), Blank(r.FocusKeyword));
         }
-        catch (System.Text.Json.JsonException) { return Error.Validation("blog.content", "متن ویرایشگر خراب است."); }
+        catch (System.Text.Json.JsonException) { return Error.Validation("blog.content", "Der Editortext ist beschädigt."); }
         var keyword = Blank(r.FocusKeyword) ?? seo.FocusKeyword;
         var links = await SuggestLinksAsync(r.PostId, seo.PlainText + " " + r.Title, keyword, seo.Html, ct);
         return new SeoPreviewDto(Blank(r.SeoTitle) ?? seo.SeoTitle, Blank(r.MetaDescription) ?? seo.MetaDescription, seo.Slug, keyword, seo.Checks, seo.Score,
@@ -192,7 +192,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
             if (p.FocusKeyword.Length > 0 && norm.Contains(SeoAutomation.Normalize(p.FocusKeyword), StringComparison.Ordinal)) { score += 5; reason = p.FocusKeyword; }
             var shared = SeoAutomation.Words(p.Title).Where(w => w.Length > 2 && words.Contains(w)).Distinct().ToList();
             score += shared.Count + shared.Count(kwWords.Contains) * 2 + p.Tags.Count(t => words.Contains(SeoAutomation.Normalize(t).ToLowerInvariant()));
-            if (reason.Length == 0 && shared.Count > 0) reason = string.Join("، ", shared.Take(3));
+            if (reason.Length == 0 && shared.Count > 0) reason = string.Join(", ", shared.Take(3));
             if (score >= 2) scored.Add((score, new LinkSuggestionDto(p.Title, url, reason)));
         }
         return scored.OrderByDescending(s => s.Score).Take(5).Select(s => s.Dto).ToList();
@@ -201,7 +201,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<PostDto>> SubmitAsync(Guid id, CancellationToken ct)
     {
         var p = await Visible().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("blog.notFound", "مطلب پیدا نشد.");
+        if (p is null) return Error.NotFound("blog.notFound", "Beitrag nicht gefunden.");
         if (p.AuthorId != Me && !CanPublish) return Error.Forbidden();
         var r = p.Submit();
         if (r.IsFailure) return r.Error!;
@@ -212,9 +212,9 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
 
     public async Task<Result<PostDto>> PublishAsync(Guid id, PublishPostRequest r, CancellationToken ct)
     {
-        if (!CanPublish) return Error.Forbidden("blog.publishOnly", "انتشار با ویراستار است.");
+        if (!CanPublish) return Error.Forbidden("blog.publishOnly", "Die Veröffentlichung liegt bei der Redaktion.");
         var p = await db.BlogPosts.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("blog.notFound", "مطلب پیدا نشد.");
+        if (p is null) return Error.NotFound("blog.notFound", "Beitrag nicht gefunden.");
         db.SetOriginalVersion(p, r.Version);
         var res = p.Publish(clock.GetUtcNow(), r.At);
         if (res.IsFailure) return res.Error!;
@@ -228,7 +228,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     {
         if (!CanPublish) return Error.Forbidden();
         var p = await db.BlogPosts.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("blog.notFound", "مطلب پیدا نشد.");
+        if (p is null) return Error.NotFound("blog.notFound", "Beitrag nicht gefunden.");
         var res = p.Unpublish();
         if (res.IsFailure) return res.Error!;
         audit.Add("blog.unpublished", nameof(BlogPost), p.Id.ToString());
@@ -240,7 +240,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result> ArchiveAsync(Guid id, CancellationToken ct)
     {
         var p = await Visible().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("blog.notFound", "مطلب پیدا نشد.");
+        if (p is null) return Error.NotFound("blog.notFound", "Beitrag nicht gefunden.");
         if (!CanPublish && !(p.AuthorId == Me && p.Status is PostStatus.Draft)) return Error.Forbidden();
         p.Archive(me.UserId, clock.GetUtcNow());
         audit.Add("blog.archived", nameof(BlogPost), p.Id.ToString());
@@ -270,7 +270,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public Result<string> MarkdownToHtml(MarkdownRequest r)
     {
         if (!CanWrite && !CanPublish) return Error.Forbidden();
-        if (r.Markdown is null || r.Markdown.Length > 200_000) return Error.Validation("blog.markdown", "متن خیلی بزرگ است.");
+        if (r.Markdown is null || r.Markdown.Length > 200_000) return Error.Validation("blog.markdown", "Der Text ist zu groß.");
         return renderer.MarkdownToSafeHtml(r.Markdown);
     }
 
@@ -301,7 +301,7 @@ public sealed class BlogService(IAppDbContext db, ICurrentUser me, IAuditWriter 
             c = created.Value!;
             db.BlogCategories.Add(c);
         }
-        if (await db.BlogCategories.AnyAsync(x => x.Slug == c.Slug && x.Id != c.Id, ct)) return Error.Conflict("blog.categoryExists", "دسته‌ای با همین نام هست.");
+        if (await db.BlogCategories.AnyAsync(x => x.Slug == c.Slug && x.Id != c.Id, ct)) return Error.Conflict("blog.categoryExists", "Eine Kategorie mit diesem Namen gibt es bereits.");
         await db.SaveChangesAsync(ct);
         return new CategoryDto(c.Id, c.Name, c.Slug, c.Description, c.SortOrder, 0);
     }

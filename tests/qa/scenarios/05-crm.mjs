@@ -5,7 +5,7 @@ import { randomInt } from "node:crypto";
 import { qa, pick, check, eq } from "../lib.mjs";
 
 export const id = "S05";
-export const title = "CRM — ۱۰۰ سرنخ چرخشی، تماس و پیگیری، ۳ برد → مشتری + پکیج، IDOR بازاریاب";
+export const title = "CRM – 100 Leads im Rotationsprinzip, Anrufe und Wiedervorlagen, 3 gewonnen → Kunde + Paket, IDOR Vertrieb";
 
 const userId = (actor) => JSON.parse(Buffer.from(actor.token.split(".")[1], "base64url").toString()).sub;
 const ANY = Array.from({ length: 500 }, (_, i) => i + 100);
@@ -39,13 +39,13 @@ export async function run(rec, { crowd }) {
   await rec.step("2.5.a", "manager creates 100 leads (unassigned); a duplicate phone is refused with 409", async () => {
     for (let i = 0; i < 100; i++) {
       const r = await manager.post("/api/v1/crm/leads", {
-        name: `سرنخ QA ${run0}-${i}`, phone: `${prefix}${String(i).padStart(2, "0")}`, business: `کسب‌وکار ${i}`, city: "شیراز",
+        name: `Lead QA ${run0}-${i}`, phone: `${prefix}${String(i).padStart(2, "0")}`, business: `Unternehmen ${i}`, city: "Stuttgart",
         sourceId: "0193a000-0000-7000-8000-000000000102", tags: ["QA"], budget: 50_000_000 + i,
       });
       eq(r.lead.ownerId, null, "unassigned until handed out");
       leads.push(r.lead);
     }
-    const dup = await manager.call("POST", "/api/v1/crm/leads", { name: "تکراری", phone: `${prefix}00` }, { expect: ANY });
+    const dup = await manager.call("POST", "/api/v1/crm/leads", { name: "Doppelt", phone: `${prefix}00` }, { expect: ANY });
     eq(dup.status, 409, "duplicate phone");
     eq(dup.code, "crm.duplicate", "code");
   });
@@ -83,14 +83,14 @@ export async function run(rec, { crowd }) {
     const b = leadB();
     const a = mk[A];
     eq(await a.refused("GET", `/api/v1/crm/leads/${b.id}`, undefined, [404]), 404, "read");
-    eq(await a.refused("PUT", `/api/v1/crm/leads/${b.id}`, { name: "هک", phone: b.phone }, [404]), 404, "update");
+    eq(await a.refused("PUT", `/api/v1/crm/leads/${b.id}`, { name: "Hack", phone: b.phone }, [404]), 404, "update");
     eq(await a.refused("POST", `/api/v1/crm/leads/${b.id}/calls`, { direction: "outgoing", outcome: "interested", durationSeconds: 10 }, [404]), 404, "call");
     eq(await a.refused("POST", `/api/v1/crm/leads/${b.id}/activities`, { kind: "note", note: "x" }, [404]), 404, "activity");
     eq(await a.refused("POST", `/api/v1/crm/leads/${b.id}/move`, { stageId: WON }, [404]), 404, "move");
     eq(await a.refused("POST", `/api/v1/crm/leads/${b.id}/follow-up`, { at: qa.tehran(12, 0) }, [404]), 404, "follow-up");
     eq(await a.refused("POST", `/api/v1/crm/leads/${b.id}/convert`, undefined, [404]), 404, "convert");
     eq((await a.get(`/api/v1/crm/leads?q=${b.phone}`)).items.length, 0, "search by B's phone finds nothing");
-    const dup = await a.call("POST", "/api/v1/crm/leads", { name: "کپی", phone: b.phone }, { expect: ANY });
+    const dup = await a.call("POST", "/api/v1/crm/leads", { name: "Kopieren", phone: b.phone }, { expect: ANY });
     eq(dup.status, 409, "duplicate still detected");
     check(!dup.title.includes(b.name), `duplicate message does not leak B's lead name (${dup.title})`);
     const after = await mk[B].get(`/api/v1/crm/leads/${b.id}`);
@@ -99,22 +99,22 @@ export async function run(rec, { crowd }) {
   });
 
   let called;
-  await rec.step("2.5.f", "marketer A calls: no answer (stays «جدید») then interested with a follow-up in 2h → «تماس اول», follow-up set, in «امروز»", async () => {
+  await rec.step("2.5.f", "marketer A calls: no answer (stays «Neu») then interested with a follow-up in 2h → «Erstkontakt», follow-up set, in «Heute»", async () => {
     called = mineOf(A)[0];
     const a = mk[A];
     const r1 = await a.post(`/api/v1/crm/leads/${called.id}/calls`, { direction: "outgoing", durationSeconds: 0, outcome: "noAnswer" });
     eq(r1.lead.stageId, called.stageId, "no answer keeps the stage");
     const follow = new Date(Date.parse((await qa.clock()).now) + 2 * 3600_000).toISOString();
-    const r2 = await a.post(`/api/v1/crm/leads/${called.id}/calls`, { direction: "outgoing", durationSeconds: 140, outcome: "interested", note: "قیمت پکیج طلایی را خواست", nextFollowUpAt: follow });
-    eq(r2.lead.stageId, "0193a000-0000-7000-8000-000000000002", "moved to «تماس اول»");
+    const r2 = await a.post(`/api/v1/crm/leads/${called.id}/calls`, { direction: "outgoing", durationSeconds: 140, outcome: "interested", note: "Hat nach dem Preis des Gold-Pakets gefragt", nextFollowUpAt: follow });
+    eq(r2.lead.stageId, "0193a000-0000-7000-8000-000000000002", "moved to «Erstkontakt»");
     eq(Date.parse(r2.lead.nextFollowUpAt), Date.parse(follow), "follow-up stored");
     const calls = r2.activities.filter((x) => x.kind === "call");
     eq(calls.length, 2, "two calls in the timeline");
     check(calls.some((c) => c.outcome === "interested" && c.durationSeconds === 140), "call result kept");
     check((await a.get("/api/v1/crm/today")).some((l) => l.id === called.id), "lead in today's call list");
-    const bad = await a.call("POST", `/api/v1/crm/leads/${called.id}/activities`, { kind: "message", note: "بدون کانال" }, { expect: ANY });
+    const bad = await a.call("POST", `/api/v1/crm/leads/${called.id}/activities`, { kind: "message", note: "Ohne Kanal" }, { expect: ANY });
     eq(bad.status, 422, "message without channel refused");
-    await a.post(`/api/v1/crm/leads/${called.id}/activities`, { kind: "message", channel: "whatsApp", note: "کاتالوگ فرستاده شد" });
+    await a.post(`/api/v1/crm/leads/${called.id}/activities`, { kind: "message", channel: "whatsApp", note: "Katalog gesendet" });
   });
 
   await rec.step("2.5.g", "every marketer logs a call result on one of their leads (5 marketers in parallel)", async () => {
@@ -142,7 +142,7 @@ export async function run(rec, { crowd }) {
   });
 
   const won = [];
-  await rec.step("2.5.i", "3 leads won (2 moved to «برد» first, 1 converted directly) → each becomes a client; managers notified", async () => {
+  await rec.step("2.5.i", "3 leads won (2 moved to «Gewonnen» first, 1 converted directly) → each becomes a client; managers notified", async () => {
     const picks = [mineOf(A)[2], mineOf(B)[2], mineOf(2)[2]];
     const owners = [A, B, 2];
     for (let k = 0; k < 3; k++) {
@@ -162,18 +162,18 @@ export async function run(rec, { crowd }) {
     check((await manager.get("/api/v1/notifications")).items.filter((n) => n.kind === "crm.won").length >= 3, "manager got crm.won");
   });
 
-  await rec.step("2.5.j", "manager assigns a package to each new client (the «پیشنهاد پکیج»); a marketer cannot", async () => {
+  await rec.step("2.5.j", "manager assigns a package to each new client (the «Paketvorschlag»); a marketer cannot", async () => {
     const pkgs = (await manager.get("/api/v1/packages?limit=50")).items.filter((p) => p.status === "active" && (p.capacity == null || p.activeClients + 3 <= p.capacity));
     // The QA crowd seed over-fills every demo package (see findings C.md), so a dedicated package is created when needed.
     const pkg = pkgs[0] ?? await manager.post("/api/v1/packages", {
-      name: { fa: `پکیج CRM QA ${run0}` }, slug: "", sku: `QAC-${run0}`, category: "مدیریت پیج", tags: [], shortDescription: { fa: "برای مشتری‌های تازه‌ی CRM" },
-      descriptionMarkdown: "پکیج آزمایشی سناریو S05", price: 150_000_000, period: "monthly", validityDays: 30, capacity: null, platformIds: [],
+      name: { fa: `Paket CRM QA ${run0}` }, slug: "", sku: `QAC-${run0}`, category: "Seitenbetreuung", tags: [], shortDescription: { fa: "Für neue Kunden aus dem CRM" },
+      descriptionMarkdown: "Testpaket Szenario S05", price: 150_000_000, period: "monthly", validityDays: 30, capacity: null, platformIds: [],
       defaultManagement: "agencyManaged", access: "usernameOnly", consultSessions: 1, revisionsPerItem: 2, deliveryHours: 48, features: [], faq: [],
       status: "active", showOnSite: false, sortOrder: 99, badge: "none", quotas: [],
     }, { expect: [200, 201] });
     check(pkg?.id, "a package with free capacity");
     for (const w of won) {
-      const c = await manager.post(`/api/v1/clients/${w.clientId}/packages`, { packageId: pkg.id, note: "از CRM" });
+      const c = await manager.post(`/api/v1/clients/${w.clientId}/packages`, { packageId: pkg.id, note: "Aus dem CRM" });
       const pkgName = typeof pkg.name === "string" ? pkg.name : pkg.nameValues.fa;
       eq(c.activePackage?.name, pkgName, "client's active package");
       check(c.activePackage.daysLeft > 0, "package running");

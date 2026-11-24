@@ -33,7 +33,7 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     private async Task<Guid> AddCameraAsync(HttpClient admin, string name) =>
         (await Ok(await admin.PostAsJsonAsync("/api/v1/cctv/cameras", new
         {
-            name, location = "سالن", sortOrder = 1, isActive = true, workAreaConfirmed = true,
+            name, location = "Saal", sortOrder = 1, isActive = true, workAreaConfirmed = true,
             mainUrl = "rtsp://admin:Sup3rSecret@192.168.1.64:554/Streaming/Channels/101",
             subUrl = "rtsp://admin:Sup3rSecret@192.168.1.64:554/Streaming/Channels/102",
         }))).GetProperty("id").GetGuid();
@@ -60,14 +60,14 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Cameras_need_an_office_address_and_the_work_area_promise_and_passwords_never_leave_the_vault()
     {
         var admin = await As("admin");
-        (await admin.PostAsJsonAsync("/api/v1/cctv/cameras", new { name = "بدون تأیید", sortOrder = 1, isActive = true, workAreaConfirmed = false, mainUrl = "rtsp://192.168.1.5/x" }))
+        (await admin.PostAsJsonAsync("/api/v1/cctv/cameras", new { name = "Ohne Freigabe", sortOrder = 1, isActive = true, workAreaConfirmed = false, mainUrl = "rtsp://192.168.1.5/x" }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await admin.PostAsJsonAsync("/api/v1/cctv/cameras", new { name = "اینترنتی", sortOrder = 1, isActive = true, workAreaConfirmed = true, mainUrl = "rtsp://8.8.8.8/x" }))
+        (await admin.PostAsJsonAsync("/api/v1/cctv/cameras", new { name = "Online", sortOrder = 1, isActive = true, workAreaConfirmed = true, mainUrl = "rtsp://8.8.8.8/x" }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         (await admin.PostAsJsonAsync("/api/v1/cctv/cameras", new { name = "http", sortOrder = 1, isActive = true, workAreaConfirmed = true, mainUrl = "http://192.168.1.5/x" }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
-        var id = await AddCameraAsync(admin, "سالن اصلی");
+        var id = await AddCameraAsync(admin, "Hauptsaal");
         var path = await Db(db => db.Cameras.Where(c => c.Id == id).Select(c => c.Path).FirstAsync());
         _f.Media.Paths[path].OnDemand.Should().BeTrue("the full-quality stream is pulled only while someone watches");
         _f.Media.Paths[path + "-low"].Source.Should().EndWith("/Channels/102");
@@ -82,7 +82,7 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         (await (await As("editor")).GetAsync("/api/v1/cctv")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         // Keep the address when the field is left empty.
-        await Ok(await admin.PutAsJsonAsync($"/api/v1/cctv/cameras/{id}", new { name = "سالن", sortOrder = 2, isActive = true, workAreaConfirmed = false }));
+        await Ok(await admin.PutAsJsonAsync($"/api/v1/cctv/cameras/{id}", new { name = "Saal", sortOrder = 2, isActive = true, workAreaConfirmed = false }));
         _f.Media.Paths[path].Source.Should().Contain("Sup3rSecret");
     }
 
@@ -90,7 +90,7 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Snapshots_are_shared_for_ten_seconds_and_only_for_viewers()
     {
         var admin = await As("admin");
-        var id = await AddCameraAsync(admin, "ورودی");
+        var id = await AddCameraAsync(admin, "Eingehend");
         var before = _f.Media.Snapshots;
         var a = await admin.GetAsync($"/api/v1/cctv/cameras/{id}/snapshot");
         a.Content.Headers.ContentType!.MediaType.Should().Be("image/jpeg");
@@ -103,8 +103,8 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Live_video_needs_a_short_token_for_that_one_camera_and_every_view_is_audited()
     {
         var admin = await As("admin");
-        var id = await AddCameraAsync(admin, "انبار");
-        var other = await AddCameraAsync(admin, "دفتر مدیر");
+        var id = await AddCameraAsync(admin, "Lager");
+        var other = await AddCameraAsync(admin, "Managerbüro");
         var path = await Db(db => db.Cameras.Where(c => c.Id == id).Select(c => c.Path).FirstAsync());
         var otherPath = await Db(db => db.Cameras.Where(c => c.Id == other).Select(c => c.Path).FirstAsync());
 
@@ -138,7 +138,7 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task A_camera_that_drops_warns_the_managers_once()
     {
         var admin = await As("admin");
-        var id = await AddCameraAsync(admin, "پارکینگ");
+        var id = await AddCameraAsync(admin, "Parkplatz");
         var path = await Db(db => db.Cameras.Where(c => c.Id == id).Select(c => c.Path).FirstAsync());
         async Task Health()
         {
@@ -150,7 +150,7 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         _f.Media.Down.Add(path + "-low");
         await Health();
         await Health();
-        (await Db(db => db.Notifications.Where(n => n.Kind == "cctv.offline" && n.Title.Contains("پارکینگ")).Select(n => n.EventKey).Distinct().CountAsync())).Should().Be(1);
+        (await Db(db => db.Notifications.Where(n => n.Kind == "cctv.offline" && n.Title.Contains("Parkplatz")).Select(n => n.EventKey).Distinct().CountAsync())).Should().Be(1);
         _f.Media.Down.Clear();
     }
 
@@ -158,7 +158,7 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task A_box_that_cannot_be_reached_is_reported_and_stop_needs_a_real_camera()
     {
         var admin = await As("admin");
-        var id = await AddCameraAsync(admin, "راهرو");
+        var id = await AddCameraAsync(admin, "Flur");
         var before = await Db(db => db.Cameras.CountAsync());
         static async Task<string?> Code(HttpResponseMessage r)
         {
@@ -171,7 +171,7 @@ public sealed class CctvTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         {
             (await Code(await admin.PostAsJsonAsync("/api/v1/cctv/cameras", new
             {
-                name = "حیاط", location = "بیرون", sortOrder = 2, isActive = true, workAreaConfirmed = true, mainUrl = "rtsp://192.168.1.70:554/main",
+                name = "Hof", location = "Draußen", sortOrder = 2, isActive = true, workAreaConfirmed = true, mainUrl = "rtsp://192.168.1.70:554/main",
             }))).Should().Be("cctv.unreachable");
             (await Db(db => db.Cameras.CountAsync())).Should().Be(before, "nothing is saved for a box that is down");
             (await Code(await admin.PostAsync("/api/v1/cctv/resync", null))).Should().Be("cctv.unreachable");

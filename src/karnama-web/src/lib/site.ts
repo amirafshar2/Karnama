@@ -38,16 +38,16 @@ export type Post = {
 /** JSON-LD inside <script type="application/ld+json">: "<" is escaped so content can never close the tag. */
 export const jsonLd = (data: unknown) => JSON.stringify(data).replace(/</g, "\\u003c");
 
-const faDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Tehran" });
+const faDate = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" });
 export const formatFaDate = (iso: string) => faDate.format(new Date(iso));
-export const faNum = (n: number) => n.toLocaleString("fa-IR");
+export const faNum = (n: number) => n.toLocaleString("de-DE");
 
 export type SiteKey = keyof typeof faSite;
 export type T = (key: SiteKey, vars?: Record<string, string | number>) => string;
 
 /** Server-side texts: the admin's edits (Settings › Texts) over the built-in Persian. */
 export async function getT(): Promise<T> {
-  const bundle = await siteGet<{ texts: Record<string, string> }>("/api/v1/i18n/fa", 60);
+  const bundle = await siteGet<{ texts: Record<string, string> }>("/api/v1/i18n/de", 60);
   const over = bundle?.texts ?? {};
   return (key, vars) => {
     let s = over[key] ?? faSite[key] ?? key;
@@ -73,5 +73,5 @@ export type SiteHero = { videoUrl: string | null; posterUrl: string | null; imag
 export type SiteHome = { hero: SiteHero; content: HomeContent; stats: { clients: number; deliveries: number; medianFollowerGrowth: number | null }; services: { name: string; description: string | null; icon: string | null }[]; cases: CaseCard[]; packages: PackageCard[]; testimonials: { quote: string; by: string; businessName: string; slug: string }[] };
 
 export const getHome = () => siteGet<SiteHome>("/api/v1/public/site/home", 60);
-/** Prices are stored in rials; the site shows tomans. */
-export const toman = (rial: number) => Math.round(rial / 10).toLocaleString("fa-IR");
+/** Prices are stored in whole euros. */
+export const toman = (euro: number) => Math.round(euro).toLocaleString("de-DE");

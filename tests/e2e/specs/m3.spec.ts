@@ -23,22 +23,22 @@ test.describe("M3: orders and the live work board", () => {
     await shot(page, info, "m3-orders");
     await page.getByTestId("orders-new").click();
     const client = page.getByTestId("order-client");
-    await client.selectOption((await client.locator("option", { hasText: "کافه نمونه" }).getAttribute("value"))!);
+    await client.selectOption((await client.locator("option", { hasText: "Café Beispiel" }).getAttribute("value"))!);
     const service = page.getByTestId("order-service");
-    await service.selectOption((await service.locator("option", { hasText: "ریلز" }).first().getAttribute("value"))!);
-    await page.getByTestId("answer-topic").fill(`ریلز تست ${run}`);
-    await page.getByTestId("order-title").fill(`سفارش تست ${run}`);
+    await service.selectOption((await service.locator("option", { hasText: "Reels" }).first().getAttribute("value"))!);
+    await page.getByTestId("answer-topic").fill(`Test-Reel ${run}`);
+    await page.getByTestId("order-title").fill(`Test-Auftrag ${run}`);
     await shot(page, info, "m3-order-form");
     await page.getByTestId("order-create-save").click();
-    await expect(page.getByText("سفارش ثبت شد.")).toBeVisible();
-    await expect(page.getByTestId("order-sheet")).toContainText("سناریو و کپشن");
+    await expect(page.getByText("Auftrag erfasst.")).toBeVisible();
+    await expect(page.getByTestId("order-sheet")).toContainText("Konzept und Caption");
     await shot(page, info, "m3-order-detail");
     await page.keyboard.press("Escape");
 
     // The new card is on the board in "to do"
     await page.goto(`${DEMO_URL}/work`);
     // The first stage is the one that can start now (later stages wait in the queue column).
-    const card = (mobile ? page : page.getByTestId("col-todo")).locator("[data-testid^=card-]", { hasText: `سفارش تست ${run}` }).filter({ visible: true });
+    const card = (mobile ? page : page.getByTestId("col-todo")).locator("[data-testid^=card-]", { hasText: `Test-Auftrag ${run}` }).filter({ visible: true });
     if (mobile) await page.getByTestId("tab-todo").click();
     await expect(card.first()).toBeVisible();
 
@@ -46,12 +46,12 @@ test.describe("M3: orders and the live work board", () => {
     await card.first().getByRole("button").first().click();
     await expect(page.getByTestId("work-sheet")).toBeVisible();
     await page.getByTestId("assign-suggested").click();
-    await expect(page.getByText("کار سپرده شد.")).toBeVisible();
-    await page.getByTestId("comment-body").fill("لطفاً تا فردا");
+    await expect(page.getByText("Aufgabe zugewiesen.")).toBeVisible();
+    await page.getByTestId("comment-body").fill("Bitte bis morgen");
     await page.getByTestId("comment-send").click();
-    await expect(page.getByTestId("comments")).toContainText("لطفاً تا فردا");
+    await expect(page.getByTestId("comments")).toContainText("Bitte bis morgen");
     await page.getByTestId("files-input").setInputFiles("specs/fixtures/logo.png");
-    await expect(page.getByText("فایل آپلود شد.")).toBeVisible();
+    await expect(page.getByText("Datei hochgeladen.")).toBeVisible();
     await expect(page.getByTestId("files")).toContainText("logo.png");
     await shot(page, info, "m3-work-sheet");
     await page.keyboard.press("Escape");
@@ -64,7 +64,7 @@ test.describe("M3: orders and the live work board", () => {
       await expect(card.first()).toBeVisible();
     } else {
       await card.first().dragTo(page.getByTestId("col-inProgress"));
-      await expect(page.getByTestId("col-inProgress").locator("[data-testid^=card-]", { hasText: `سفارش تست ${run}` })).toBeVisible();
+      await expect(page.getByTestId("col-inProgress").locator("[data-testid^=card-]", { hasText: `Test-Auftrag ${run}` })).toBeVisible();
     }
     await shot(page, info, "m3-moved");
   });
@@ -79,19 +79,19 @@ test.describe("M3: orders and the live work board", () => {
     await adminPage.goto(`${DEMO_URL}/work`);
 
     // The editor (Ali) has the café reel's editing stage in progress.
-    const editorCard = editorPage.locator("[data-testid^=card-]", { hasText: "ریلز منوی پاییزه" }).filter({ visible: true }).first();
+    const editorCard = editorPage.locator("[data-testid^=card-]", { hasText: "Reel zur Herbstkarte" }).filter({ visible: true }).first();
     await expect(editorCard).toBeVisible();
-    await expect(editorPage.locator("[data-testid^=card-]", { hasText: "اسلاید راهنمای سایز" })).toHaveCount(0); // someone else's
+    await expect(editorPage.locator("[data-testid^=card-]", { hasText: "Slide Größentabelle" })).toHaveCount(0); // someone else's
     await shot(editorPage, info, "m3-editor-board");
 
     await editorCard.getByRole("button").first().click();
     await expect(editorPage.getByTestId("action-inReview")).toBeVisible();
     await expect(editorPage.getByTestId("action-done")).toHaveCount(0); // review can't be skipped
     await editorPage.getByTestId("action-inReview").click();
-    await expect(editorPage.getByText("کارت جابه‌جا شد.")).toBeVisible();
+    await expect(editorPage.getByText("Karte verschoben.")).toBeVisible();
 
     // Admin's board updates without a reload.
-    await expect(adminPage.getByTestId("col-inReview").locator("[data-testid^=card-]", { hasText: "ریلز منوی پاییزه" })).toBeVisible({ timeout: 8000 });
+    await expect(adminPage.getByTestId("col-inReview").locator("[data-testid^=card-]", { hasText: "Reel zur Herbstkarte" })).toBeVisible({ timeout: 8000 });
     await shot(adminPage, info, "m3-admin-live");
   });
 });

@@ -22,9 +22,9 @@ public sealed class BlogTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     {
         ["type"] = "doc",
         ["content"] = new JsonArray(
-            new JsonObject { ["type"] = "paragraph", ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = string.Join(" ", Enumerable.Repeat("عکاسی محصول برای فروشگاه آنلاین کیفیت فروش را بالا می‌برد.", sentences)) }) },
-            new JsonObject { ["type"] = "heading", ["attrs"] = new JsonObject { ["level"] = 2 }, ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = "نور طبیعی" }) },
-            new JsonObject { ["type"] = "paragraph", ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = "لینک", ["marks"] = new JsonArray(new JsonObject { ["type"] = "link", ["attrs"] = new JsonObject { ["href"] = extraLink } }) }) }),
+            new JsonObject { ["type"] = "paragraph", ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = string.Join(" ", Enumerable.Repeat("Produktfotografie für den Onlineshop steigert die Verkaufsqualität.", sentences)) }) },
+            new JsonObject { ["type"] = "heading", ["attrs"] = new JsonObject { ["level"] = 2 }, ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = "Natürliches Licht" }) },
+            new JsonObject { ["type"] = "paragraph", ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = "Link", ["marks"] = new JsonArray(new JsonObject { ["type"] = "link", ["attrs"] = new JsonObject { ["href"] = extraLink } }) }) }),
     }.ToJsonString();
 
     [Fact]
@@ -35,13 +35,13 @@ public sealed class BlogTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var editor = await As("editor");
         (await editor.GetAsync("/api/v1/blog/posts")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var title = "عکاسی محصول با موبایل برای فروشگاه‌های کوچک";
+        var title = "Produktfotografie mit dem Handy für kleine Shops";
         var post = await Ok(await writer.PostAsJsonAsync("/api/v1/blog/posts", new { title, contentJson = Body(8) }));
         var id = post.GetProperty("id").GetGuid();
-        post.GetProperty("slug").GetString().Should().Be("عکاسی-محصول-با-موبایل-برای-فروشگاه-های-کوچک");
+        post.GetProperty("slug").GetString().Should().Be("produktfotografie-mit-dem-handy-fuer-kleine-shops");
         post.GetProperty("seoTitle").GetString().Should().Contain(title);
-        post.GetProperty("metaDescription").GetString().Should().StartWith("عکاسی محصول");
-        post.GetProperty("focusKeyword").GetString().Should().Be("عکاسی محصول");
+        post.GetProperty("metaDescription").GetString().Should().StartWith("Produktfotografie");
+        post.GetProperty("focusKeyword").GetString().Should().Be("Produktfotografie");
         post.GetProperty("seoScore").GetInt32().Should().BeGreaterThan(0);
         post.GetProperty("toc").GetArrayLength().Should().Be(1);
 
@@ -50,7 +50,7 @@ public sealed class BlogTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var submitted = await Ok(await writer.PostAsync($"/api/v1/blog/posts/{id}/submit", null));
         submitted.GetProperty("status").GetString().Should().Be("inReview");
-        var seeded = (await Ok(await admin.GetAsync("/api/v1/blog/posts?limit=100"))).GetProperty("items").EnumerateArray().First(p => p.GetProperty("authorName").GetString()!.StartsWith("سارا"));
+        var seeded = (await Ok(await admin.GetAsync("/api/v1/blog/posts?limit=100"))).GetProperty("items").EnumerateArray().First(p => p.GetProperty("authorName").GetString()!.StartsWith("Sarah"));
         (await writer.GetAsync($"/api/v1/blog/posts/{seeded.GetProperty("id").GetGuid()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         // Not public yet.
@@ -61,25 +61,25 @@ public sealed class BlogTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var published = await Ok(await admin.PostAsJsonAsync($"/api/v1/blog/posts/{id}/publish", new { at = (DateTimeOffset?)null, version = submitted.GetProperty("version").GetUInt32() }));
         published.GetProperty("status").GetString().Should().Be("published");
         var pub = await Ok(await anon.GetAsync($"/api/v1/public/blog/posts/{slug}"));
-        pub.GetProperty("html").GetString().Should().Contain("<h2 id=\"نور-طبیعی\"");
+        pub.GetProperty("html").GetString().Should().Contain("<h2 id=\"natuerliches-licht\"");
         pub.GetProperty("metaDescription").GetString().Should().NotBeEmpty();
         (await Ok(await anon.GetAsync("/api/v1/public/blog/sitemap"))).EnumerateArray().Should().Contain(e => e.GetProperty("path").GetString() == "/blog/" + post.GetProperty("slug").GetString());
 
         // A published post: the writer can no longer change it; the editor renames it → the old URL redirects.
         (await writer.PutAsJsonAsync($"/api/v1/blog/posts/{id}", new { title, contentJson = Body(8), version = published.GetProperty("version").GetUInt32() }))
             .StatusCode.Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.NotFound);
-        var renamed = await Ok(await admin.PutAsJsonAsync($"/api/v1/blog/posts/{id}", new { title = "عکاسی محصول با گوشی", contentJson = Body(8), version = published.GetProperty("version").GetUInt32() }));
-        renamed.GetProperty("slug").GetString().Should().Be("عکاسی-محصول-با-گوشی");
+        var renamed = await Ok(await admin.PutAsJsonAsync($"/api/v1/blog/posts/{id}", new { title = "Produktfotografie mit dem Smartphone", contentJson = Body(8), version = published.GetProperty("version").GetUInt32() }));
+        renamed.GetProperty("slug").GetString().Should().Be("produktfotografie-mit-dem-smartphone");
         var moved = await Ok(await anon.GetAsync($"/api/v1/public/blog/posts/{slug}"));
-        moved.GetProperty("redirectTo").GetString().Should().Be("عکاسی-محصول-با-گوشی");
+        moved.GetProperty("redirectTo").GetString().Should().Be("produktfotografie-mit-dem-smartphone");
 
         // Stale version → 409.
         (await admin.PutAsJsonAsync($"/api/v1/blog/posts/{id}", new { title = "x y z w", contentJson = Body(8), version = published.GetProperty("version").GetUInt32() }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         // Locked SEO title survives the automatic pass; empty unlocks it.
-        var locked = await Ok(await admin.PutAsJsonAsync($"/api/v1/blog/posts/{id}", new { title = "عکاسی محصول با گوشی", contentJson = Body(8), seoTitle = "عنوان دستی من", version = renamed.GetProperty("version").GetUInt32() }));
-        locked.GetProperty("seoTitle").GetString().Should().Be("عنوان دستی من");
+        var locked = await Ok(await admin.PutAsJsonAsync($"/api/v1/blog/posts/{id}", new { title = "Produktfotografie mit dem Smartphone", contentJson = Body(8), seoTitle = "Mein eigener Titel", version = renamed.GetProperty("version").GetUInt32() }));
+        locked.GetProperty("seoTitle").GetString().Should().Be("Mein eigener Titel");
         locked.GetProperty("seoTitleLocked").GetBoolean().Should().BeTrue();
     }
 
@@ -87,10 +87,10 @@ public sealed class BlogTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Same_title_gets_a_unique_slug_and_bad_input_is_refused()
     {
         var admin = await As("admin");
-        var a = await Ok(await admin.PostAsJsonAsync("/api/v1/blog/posts", new { title = "عنوان تکراری آزمایشی", contentJson = Body(2) }));
-        var b = await Ok(await admin.PostAsJsonAsync("/api/v1/blog/posts", new { title = "عنوان تکراری آزمایشی", contentJson = Body(2) }));
+        var a = await Ok(await admin.PostAsJsonAsync("/api/v1/blog/posts", new { title = "Doppelter Testtitel", contentJson = Body(2) }));
+        var b = await Ok(await admin.PostAsJsonAsync("/api/v1/blog/posts", new { title = "Doppelter Testtitel", contentJson = Body(2) }));
         b.GetProperty("slug").GetString().Should().Be(a.GetProperty("slug").GetString() + "-2");
-        (await admin.PostAsJsonAsync("/api/v1/blog/posts", new { title = "خراب", contentJson = "{not json" })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await admin.PostAsJsonAsync("/api/v1/blog/posts", new { title = "Defekt", contentJson = "{not json" })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         // Too short to publish.
         (await admin.PostAsJsonAsync($"/api/v1/blog/posts/{a.GetProperty("id").GetGuid()}/publish", new { at = (DateTimeOffset?)null, version = a.GetProperty("version").GetUInt32() }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -101,7 +101,7 @@ public sealed class BlogTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         (await (await As("client")).GetAsync("/api/v1/blog/posts")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         // The seeded sample posts are public, the in-review one isn't.
         var list = await Ok(await _f.CreateClient().GetAsync("/api/v1/public/blog"));
-        list.GetProperty("items").EnumerateArray().Select(i => i.GetProperty("title").GetString()).Should().NotContain(t => t!.StartsWith("کپشن‌نویسی"));
+        list.GetProperty("items").EnumerateArray().Select(i => i.GetProperty("title").GetString()).Should().NotContain(t => t!.StartsWith("Captions schreiben"));
         list.GetProperty("categories").GetArrayLength().Should().BeGreaterThan(0);
     }
 }

@@ -7,11 +7,11 @@ public static class DemoAccounts
 
     public static IReadOnlyList<Account> All { get; } =
     [
-        new("admin", "09000000001", "ادمین", "مدیریت مشتری‌ها، کارها، تیم و تنظیمات", "shield"),
-        new("editor", "09000000002", "تدوینگر", "کارهای من، تایمر و تحویل ویدیو", "clapperboard"),
-        new("writer", "09000000003", "متن‌نویس", "کپشن، عکس و متن‌های سپرده‌شده", "pen-line"),
-        new("client", "09000000004", "مشتری", "پیگیری سفارش‌ها و تأیید محتوا", "store"),
-        new("marketer", "09000000008", "بازاریاب", "سرنخ‌ها، تماس و پیگیری فروش", "phone"),
+        new("admin", "015100000001", "Admin", "Kunden, Aufgaben, Team und Einstellungen verwalten", "shield"),
+        new("editor", "015100000002", "Cutter", "Meine Aufgaben, Timer und Videoabgabe", "clapperboard"),
+        new("writer", "015100000003", "Texter", "Captions, Fotos und zugewiesene Texte", "pen-line"),
+        new("client", "015100000004", "Kunde", "Aufträge verfolgen und Inhalte freigeben", "store"),
+        new("marketer", "015100000008", "Vertrieb", "Leads, Anrufe und Vertriebs-Wiedervorlagen", "phone"),
     ];
 
     public static Account? Find(string key) => All.FirstOrDefault(a => a.Key == key);

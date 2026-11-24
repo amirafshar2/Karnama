@@ -27,7 +27,7 @@ internal sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
             var fromToken = Principal?.FindFirst(KarnamaClaims.Language)?.Value;
             if (!string.IsNullOrEmpty(fromToken)) return fromToken;
             var header = accessor.HttpContext?.Request.Headers.AcceptLanguage.ToString();
-            return string.IsNullOrEmpty(header) ? "fa" : header.Split(',')[0].Split('-')[0].Trim().ToLowerInvariant();
+            return string.IsNullOrEmpty(header) ? "de" : header.Split(',')[0].Split('-')[0].Trim().ToLowerInvariant();
         }
     }
 

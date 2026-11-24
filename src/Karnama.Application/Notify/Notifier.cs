@@ -130,7 +130,7 @@ public sealed class InboxService(IAppDbContext db, ICurrentUser me, TimeProvider
     {
         var o = options.Value;
         var bot = m == Messenger.Bale ? o.BaleBotUsername : o.TelegramBotUsername;
-        if (string.IsNullOrEmpty(bot)) return Error.Validation("messenger.off", "این ربات هنوز راه‌اندازی نشده است.");
+        if (string.IsNullOrEmpty(bot)) return Error.Validation("messenger.off", "Dieser Bot ist noch nicht eingerichtet.");
         var code = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(12));
         var expires = clock.GetUtcNow().AddMinutes(10);
         db.MessengerLinkCodes.Add(new MessengerLinkCode(Me, m, Hash(code), expires));
@@ -169,21 +169,21 @@ public sealed class BotUpdateService(IAppDbContext db, TimeProvider clock)
         if (text.StartsWith("/start", StringComparison.Ordinal))
         {
             var code = text.Length > 6 ? text[6..].Trim() : "";
-            if (code.Length is 0 or > 64) return "سلام! برای اتصال، از پروفایل خودتان در کارنما دکمه‌ی «اتصال» را بزنید.";
+            if (code.Length is 0 or > 64) return "Hallo! Zum Verbinden tippen Sie in Ihrem Karnama-Profil auf „Verbinden“.";
             var now = clock.GetUtcNow();
             var hash = InboxService.Hash(code);
             var c = await db.MessengerLinkCodes.FirstOrDefaultAsync(x => x.CodeHash == hash && x.Messenger == m && x.UsedAt == null && x.ExpiresAt > now, ct);
-            if (c is null) return "این کد معتبر نیست یا منقضی شده. از پروفایل دوباره «اتصال» را بزنید.";
+            if (c is null) return "Dieser Code ist ungültig oder abgelaufen. Tippen Sie im Profil erneut auf „Verbinden“.";
             c.Use(now);
             await db.MessengerLinks.Where(l => (l.UserId == c.UserId && l.Messenger == m) || (l.ChatId == u.ChatId && l.Messenger == m)).ExecuteDeleteAsync(ct);
             db.MessengerLinks.Add(new MessengerLink(c.UserId, m, u.ChatId, now));
             await db.SaveChangesAsync(ct);
-            return "✅ اتصال انجام شد. از این به بعد اعلان‌های کارنما را اینجا می‌گیرید. برای قطع: /stop";
+            return "✅ Verbunden. Ab jetzt erhalten Sie Karnama-Benachrichtigungen hier. Zum Trennen: /stop";
         }
         if (text == "/stop")
         {
             await db.MessengerLinks.Where(l => l.ChatId == u.ChatId && l.Messenger == m).ExecuteDeleteAsync(ct);
-            return "اتصال قطع شد.";
+            return "Verbindung getrennt.";
         }
         return null;
     }

@@ -81,7 +81,7 @@ public interface IAppDbContext
     /// <summary>For the few statements EF can't express (e.g. INSERT … ON CONFLICT DO NOTHING).</summary>
     Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }
 
-    /// <summary>Next human order number ("سفارش ۱۰۴۲") from a database sequence.</summary>
+    /// <summary>Next human order number ("Auftrag 1042") from a database sequence.</summary>
     Task<long> NextOrderNumberAsync(CancellationToken ct);
 
     /// <summary>Sets the concurrency token the client last saw, so a stale update fails with a conflict.</summary>

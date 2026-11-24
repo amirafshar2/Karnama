@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { atBerlin } from "@/lib/berlin";
 import { EditorSheet } from "@/components/app/editor-sheet";
 import { JalaliDateField, TextArea, TextField } from "@/components/app/form";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n/provider";
 import { notify } from "@/lib/notify";
 
-const at = (dayIso: string | null, hhmm: string) => (dayIso && /^\d{1,2}:\d{2}$/.test(hhmm) ? `${dayIso.slice(0, 10)}T${hhmm.padStart(5, "0")}:00+03:30` : null);
+const at = (dayIso: string | null, hhmm: string) => (dayIso && /^\d{1,2}:\d{2}$/.test(hhmm) ? atBerlin(dayIso, hhmm.padStart(5, "0")) : null);
 
 export function CorrectionSheet({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();

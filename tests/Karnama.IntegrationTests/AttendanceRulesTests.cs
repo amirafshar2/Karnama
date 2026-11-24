@@ -50,7 +50,7 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
     {
         var id = await Db(async db =>
         {
-            var role = Role.Create(new LocalizedText(new Dictionary<string, string> { ["fa"] = $"نقش {name}", ["en"] = $"Role {phone}" }), null, grants).Value!;
+            var role = Role.Create(new LocalizedText(new Dictionary<string, string> { ["de"] = $"Rolle {name}", ["en"] = $"Role {phone}" }), null, grants).Value!;
             db.Roles.Add(role);
             var user = User.Create(phone, name, UserKind.Staff).Value!;
             user.AssignRole(role.Id);
@@ -65,7 +65,7 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
     private HttpClient As(Guid userId, Dictionary<string, PermissionScope>? perms = null)
     {
         var tokens = _f.Services.GetRequiredService<ITokenService>();
-        return _f.CreateClient().WithToken(tokens.CreateAccessToken(new TokenSubject(userId, UserKind.Staff, false, "fa", perms ?? SelfOnly), Guid.NewGuid(), out _));
+        return _f.CreateClient().WithToken(tokens.CreateAccessToken(new TokenSubject(userId, UserKind.Staff, false, "de", perms ?? SelfOnly), Guid.NewGuid(), out _));
     }
 
     private async Task<HttpClient> Admin() => _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
@@ -97,12 +97,12 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
         })).IsSuccessStatusCode.Should().BeTrue();
 
         var self = new PermissionGrant(Permissions.AttendanceSelf, PermissionScope.Own);
-        var late = await UserAsync("09351000001", "دیرکرد آزمون", self);
-        var phoned = await UserAsync("09351000002", "تلفنی آزمون", self);
-        var corrected = await UserAsync("09351000003", "اصلاح آزمون", self);
-        var forgot = await UserAsync("09351000004", "فراموشکار آزمون", self);
-        var silent = await UserAsync("09351000005", "بی‌خبر آزمون", self);
-        var kiosk = await UserAsync("09351000006", "کیوسک آزمون", new PermissionGrant(Permissions.AttendanceKiosk, PermissionScope.All));
+        var late = await UserAsync("015151000001", "Test Verzug", self);
+        var phoned = await UserAsync("015151000002", "Test telefonisch", self);
+        var corrected = await UserAsync("015151000003", "Test-Korrektur", self);
+        var forgot = await UserAsync("015151000004", "Test Vergesslich", self);
+        var silent = await UserAsync("015151000005", "Test unentschuldigt", self);
+        var kiosk = await UserAsync("015151000006", "Test-Kiosk", new PermissionGrant(Permissions.AttendanceKiosk, PermissionScope.All));
 
         SetTehran(day, 8, 50);
         await Ok(await As(forgot.Id).PostAsJsonAsync("/api/v1/attendance/clock-in", ClockBody()));
@@ -133,7 +133,7 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
         // B5: an approved clock-in correction to 08:58 clears the lateness (shift and report).
         SetTehran(day, 10, 0);
         var corr = await Ok(await As(corrected.Id).PostAsJsonAsync("/api/v1/attendance/corrections",
-            new { day, clockIn = Iran.At(day, new TimeOnly(8, 58)), reason = "کیوسک خراب بود، ساعت ۸:۵۸ رسیدم" }));
+            new { day, clockIn = Iran.At(day, new TimeOnly(8, 58)), reason = "Der Kiosk war kaputt, ich war um 8:58 da" }));
         admin = await Admin();
         await Ok(await admin.PostAsJsonAsync($"/api/v1/attendance/corrections/{corr.GetProperty("id").GetGuid()}/decide", new { approve = true }));
         var shift = await Db(db => db.Shifts.AsNoTracking().SingleAsync(s => s.UserId == corrected.Id && s.Day == day));
@@ -142,7 +142,7 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
 
         // B4: a clock-in-only correction for a past day while clocked in would open a second shift → a clear 409.
         var open = await Ok(await As(late.Id).PostAsJsonAsync("/api/v1/attendance/corrections",
-            new { day = day.AddDays(-2), clockIn = Iran.At(day.AddDays(-2), new TimeOnly(9, 0)), reason = "ورود آن روز ثبت نشد" }));
+            new { day = day.AddDays(-2), clockIn = Iran.At(day.AddDays(-2), new TimeOnly(9, 0)), reason = "Das Kommen an diesem Tag wurde nicht erfasst" }));
         var conflict = await admin.PostAsJsonAsync($"/api/v1/attendance/corrections/{open.GetProperty("id").GetGuid()}/decide", new { approve = true });
         conflict.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await conflict.JsonAsync()).GetProperty("code").GetString().Should().Be("corrections.openShift");
@@ -151,7 +151,7 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
 
         // B7: a whole missed day added by a correction gets clock-in and clock-out events (actor = approver).
         var missed = await Ok(await As(late.Id).PostAsJsonAsync("/api/v1/attendance/corrections",
-            new { day = day.AddDays(-1), clockIn = Iran.At(day.AddDays(-1), new TimeOnly(9, 0)), clockOut = Iran.At(day.AddDays(-1), new TimeOnly(17, 0)), reason = "کل روز را ثبت نکردم" }));
+            new { day = day.AddDays(-1), clockIn = Iran.At(day.AddDays(-1), new TimeOnly(9, 0)), clockOut = Iran.At(day.AddDays(-1), new TimeOnly(17, 0)), reason = "Ich habe den ganzen Tag nicht erfasst" }));
         await Ok(await admin.PostAsJsonAsync($"/api/v1/attendance/corrections/{missed.GetProperty("id").GetGuid()}/decide", new { approve = true }));
         var missedShift = await Db(db => db.Shifts.AsNoTracking().SingleAsync(s => s.UserId == late.Id && s.Day == day.AddDays(-1)));
         missedShift.WorkedMinutes(_f.Clock.GetUtcNow()).Should().Be(480);
@@ -164,7 +164,7 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
         var sick = types.EnumerateArray().First(t => t.GetProperty("kind").GetString() == "sick").GetProperty("id").GetGuid();
         var leave = await Ok(await admin.PostAsJsonAsync("/api/v1/leave/requests", new
         {
-            leaveTypeId = sick, hourly = false, from = Iran.At(day, TimeOnly.MinValue), to = Iran.At(day.AddDays(1), TimeOnly.MinValue), reason = "تلفنی خبر داد: بیمار است", forUserId = phoned.Id,
+            leaveTypeId = sick, hourly = false, from = Iran.At(day, TimeOnly.MinValue), to = Iran.At(day.AddDays(1), TimeOnly.MinValue), reason = "Telefonisch gemeldet: krank", forUserId = phoned.Id,
         }));
         leave.GetProperty("status").GetString().Should().Be("approved");
         (await Db(db => db.Absences.AsNoTracking().SingleAsync(a => a.UserId == phoned.Id && a.Day == day))).Status.Should().Be(AbsenceStatus.Excused);
@@ -173,8 +173,8 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
         await Db(async db =>
         {
             var type = await db.LeaveTypes.FirstAsync(t => t.Id == sick);
-            var adminId = await db.Users.Where(u => u.Phone == "09000000001").Select(u => u.Id).FirstAsync();
-            db.LeaveRequests.Add(LeaveRequest.Create(silent.Id, type, false, Iran.At(day, TimeOnly.MinValue), Iran.At(day.AddDays(1), TimeOnly.MinValue), "ثبت قدیمی",
+            var adminId = await db.Users.Where(u => u.Phone == "015100000001").Select(u => u.Id).FirstAsync();
+            db.LeaveRequests.Add(LeaveRequest.Create(silent.Id, type, false, Iran.At(day, TimeOnly.MinValue), Iran.At(day.AddDays(1), TimeOnly.MinValue), "Alter Eintrag",
                 null, adminId, true, _f.Clock.GetUtcNow()).Value!);
             return await db.SaveChangesAsync();
         });
@@ -220,8 +220,8 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
     public async Task Racing_clock_ins_replay_or_conflict_and_never_fail_with_500()
     {
         var self = new PermissionGrant(Permissions.AttendanceSelf, PermissionScope.Own);
-        var tapper = await UserAsync("09351000011", "دوبار‌زن آزمون", self);
-        var retrier = await UserAsync("09351000012", "صف آفلاین آزمون", self);
+        var tapper = await UserAsync("015151000011", "Test Doppeldrücker", self);
+        var retrier = await UserAsync("015151000012", "Test Offline-Warteschlange", self);
 
         // Five taps with different keys at once: one wins, the rest are told "already in".
         var c = As(tapper.Id);
@@ -252,7 +252,7 @@ public sealed class AttendanceRulesTests(FakeClockDemoAppFixture app) : IClassFi
         // Two managers add the same holiday at once: the check passes for both, the unique index refuses one.
         var admin = await Admin();
         var date = new DateOnly(2031, 3, 21);
-        var replies = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => admin.PostAsJsonAsync("/api/v1/attendance/setup/holidays", new { date, name = "نوروز" })));
+        var replies = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => admin.PostAsJsonAsync("/api/v1/attendance/setup/holidays", new { date, name = "Neujahr" })));
         var statuses = replies.Select(x => x.StatusCode).ToList();
         statuses.Count(s => s is HttpStatusCode.OK or HttpStatusCode.Created).Should().Be(1, string.Join(",", statuses));
         statuses.Should().OnlyContain(s => s == HttpStatusCode.OK || s == HttpStatusCode.Created || s == HttpStatusCode.Conflict, string.Join(",", statuses));

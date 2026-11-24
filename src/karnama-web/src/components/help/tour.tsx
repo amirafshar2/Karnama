@@ -62,7 +62,7 @@ function findTarget(s: Step): HTMLElement | null {
   return null;
 }
 
-/** Shown once per person on the first visit to the dashboard; again whenever they ask from «راهنما». */
+/** Shown once per person on the first visit to the dashboard; again whenever they ask from «Hilfe». */
 export function TourHost() {
   const { me } = useAuth();
   const path = usePathname();

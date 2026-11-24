@@ -15,7 +15,7 @@ public sealed class User : AuditableEntity
 
     private readonly List<UserRole> _roles = [];
 
-    private User() { Phone = string.Empty; DisplayName = string.Empty; LanguageCode = "fa"; }
+    private User() { Phone = string.Empty; DisplayName = string.Empty; LanguageCode = "de"; }
 
     public string Phone { get; private set; }
     public string DisplayName { get; private set; }
@@ -44,12 +44,12 @@ public sealed class User : AuditableEntity
 
     public IReadOnlyCollection<UserRole> Roles => _roles;
 
-    public static Result<User> Create(string phone, string displayName, UserKind kind, bool isDemo = false, string languageCode = "fa")
+    public static Result<User> Create(string phone, string displayName, UserKind kind, bool isDemo = false, string languageCode = "de")
     {
         if (!PhoneNumber.TryNormalize(phone, out var normalized))
-            return Error.Validation("users.invalidPhone", "شماره‌ی موبایل معتبر نیست.");
+            return Error.Validation("users.invalidPhone", "Die Handynummer ist ungültig.");
         if (string.IsNullOrWhiteSpace(displayName) || displayName.Trim().Length > 100)
-            return Error.Validation("users.invalidName", "نام باید بین ۱ تا ۱۰۰ کاراکتر باشد.");
+            return Error.Validation("users.invalidName", "Der Name muss zwischen 1 und 100 Zeichen haben.");
 
         return new User
         {
@@ -89,7 +89,7 @@ public sealed class User : AuditableEntity
     public Result ChangeLanguage(string code)
     {
         if (string.IsNullOrWhiteSpace(code) || code.Length > 10)
-            return Error.Validation("users.invalidLanguage", "زبان معتبر نیست.");
+            return Error.Validation("users.invalidLanguage", "Die Sprache ist ungültig.");
         LanguageCode = code.ToLowerInvariant();
         return Result.Success();
     }
@@ -97,7 +97,7 @@ public sealed class User : AuditableEntity
     public Result Rename(string displayName)
     {
         if (string.IsNullOrWhiteSpace(displayName) || displayName.Trim().Length > 100)
-            return Error.Validation("users.invalidName", "نام باید بین ۱ تا ۱۰۰ کاراکتر باشد.");
+            return Error.Validation("users.invalidName", "Der Name muss zwischen 1 und 100 Zeichen haben.");
         DisplayName = displayName.Trim();
         return Result.Success();
     }
@@ -111,14 +111,14 @@ public sealed class User : AuditableEntity
     public Result AcceptTwoFactorStep(long step)
     {
         if (LastTwoFactorStep is { } last && step <= last)
-            return Error.Validation("auth.totpReused", "این کد قبلاً استفاده شده است. منتظر کد بعدی بمانید.");
+            return Error.Validation("auth.totpReused", "Dieser Code wurde bereits verwendet. Warten Sie auf den nächsten Code.");
         LastTwoFactorStep = step;
         return Result.Success();
     }
 
     public Result ConfirmTwoFactor()
     {
-        if (TwoFactorSecret is null) return Error.Validation("auth.twoFactorNotStarted", "اول کد QR را بسازید.");
+        if (TwoFactorSecret is null) return Error.Validation("auth.twoFactorNotStarted", "Erzeugen Sie zuerst den QR-Code.");
         TwoFactorEnabled = true;
         return Result.Success();
     }

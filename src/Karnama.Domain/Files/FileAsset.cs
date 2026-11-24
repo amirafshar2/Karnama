@@ -39,9 +39,9 @@ public sealed class FileAsset : Entity
     {
         fileName = Path.GetFileName(fileName ?? string.Empty).Trim();
         if (fileName.Length is 0 or > MaxName || fileName.IndexOfAny(['\0', '/', '\\']) >= 0)
-            return Error.Validation("files.name", "نام فایل معتبر نیست.");
+            return Error.Validation("files.name", "Der Dateiname ist ungültig.");
         if (size <= 0 || size > maxSize)
-            return Error.Validation("files.size", $"حجم فایل باید کمتر از {maxSize / 1024 / 1024} مگابایت باشد.");
+            return Error.Validation("files.size", $"Die Datei muss kleiner als {maxSize / 1024 / 1024} MB sein.");
         var id = Guid.CreateVersion7();
         return new FileAsset
         {
@@ -55,9 +55,9 @@ public sealed class FileAsset : Entity
 
     public Result Advance(long offset, long length)
     {
-        if (Status != FileStatus.Uploading) return Error.Conflict("files.complete", "این فایل کامل شده است.");
-        if (offset != Received) return Error.Conflict("files.offset", "ادامه‌ی آپلود از جای اشتباه؛ دوباره تلاش می‌شود.");
-        if (Received + length > Size) return Error.Validation("files.tooLong", "حجم ارسالی بیشتر از حجم اعلام‌شده است.");
+        if (Status != FileStatus.Uploading) return Error.Conflict("files.complete", "Diese Datei ist vollständig.");
+        if (offset != Received) return Error.Conflict("files.offset", "Upload an falscher Stelle fortgesetzt; neuer Versuch läuft.");
+        if (Received + length > Size) return Error.Validation("files.tooLong", "Die gesendete Datenmenge ist größer als angegeben.");
         Received += length;
         return Result.Success();
     }

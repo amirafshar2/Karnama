@@ -70,7 +70,7 @@ export default function CasesPage() {
               {c.isSample && <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{t("cases.sample")}</span>}
             </div>
             <p className="text-sm text-muted-foreground">
-              {[c.industry, c.city].filter(Boolean).join("، ")}
+              {[c.industry, c.city].filter(Boolean).join(", ")}
               {c.followersBefore !== null && c.followersAfter !== null && ` · ${formatNumber(c.followersBefore)} → ${formatNumber(c.followersAfter)}`}
             </p>
             {!c.consentObtained && !c.isSample && <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">{t("cases.consentHelp")}</p>}

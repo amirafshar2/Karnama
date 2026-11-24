@@ -29,10 +29,10 @@ public sealed partial class Platform : AuditableEntity
     public Result Update(string key, LocalizedText name, string? urlTemplate, int sortOrder, bool isActive)
     {
         key = (key ?? string.Empty).Trim().ToLowerInvariant();
-        if (!KeyPattern().IsMatch(key)) return Error.Validation("platforms.invalidKey", "شناسه باید انگلیسی کوچک باشد (مثل instagram).");
-        if (name.IsEmpty) return Error.Validation("platforms.nameRequired", "نام شبکه الزامی است.");
+        if (!KeyPattern().IsMatch(key)) return Error.Validation("platforms.invalidKey", "Die ID muss aus kleinen lateinischen Buchstaben bestehen (z. B. instagram).");
+        if (name.IsEmpty) return Error.Validation("platforms.nameRequired", "Der Name des Netzwerks ist Pflicht.");
         if (urlTemplate is { Length: > 0 } && (!urlTemplate.StartsWith("https://", StringComparison.Ordinal) || !urlTemplate.Contains("{handle}", StringComparison.Ordinal) || urlTemplate.Length > 200))
-            return Error.Validation("platforms.invalidUrl", "الگوی لینک باید با https:// شروع شود و {handle} داشته باشد.");
+            return Error.Validation("platforms.invalidUrl", "Das Linkmuster muss mit https:// beginnen und {handle} haben.");
         Key = key;
         Name = name;
         UrlTemplate = string.IsNullOrWhiteSpace(urlTemplate) ? null : urlTemplate;

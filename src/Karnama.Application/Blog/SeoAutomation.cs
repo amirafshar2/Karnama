@@ -17,19 +17,14 @@ public static partial class SeoAutomation
     /// <summary>Target phrases from docs/SEO.md; a post that talks about one of them gets it as its keyword.</summary>
     public static readonly string[] TargetKeywords =
     [
-        "مدیریت پیج اینستاگرام شیراز", "مدیریت پیج اینستاگرام", "تولید محتوا شیراز", "تولید محتوا", "ادمین اینستاگرام شیراز", "ادمین اینستاگرام",
-        "تبلیغات اینستاگرام شیراز", "تبلیغات اینستاگرام", "آژانس دیجیتال مارکتینگ شیراز", "دیجیتال مارکتینگ", "تولید ریلز", "عکاسی محصول",
-        "سئو", "استوری اینستاگرام", "کپشن نویسی", "برندینگ",
+        "Instagram-Betreuung Stuttgart", "Instagram-Betreuung", "Content-Produktion Stuttgart", "Content-Produktion", "Instagram-Admin Stuttgart", "Instagram-Admin",
+        "Instagram-Werbung Stuttgart", "Instagram-Werbung", "Digitalagentur Stuttgart", "Digitales Marketing", "Reel-Produktion", "Produktfotografie",
+        "SEO", "Instagram-Story", "Captions schreiben", "Branding",
     ];
 
     private static readonly HashSet<string> Stop = new(StringComparer.Ordinal)
     {
-        "و", "در", "به", "از", "که", "این", "آن", "با", "را", "برای", "تا", "هم", "یا", "اما", "اگر", "چه", "چون", "پس", "هر", "همه", "یک", "دو", "سه",
-        "است", "هست", "نیست", "بود", "شد", "شود", "می", "شده", "کرد", "کند", "کنید", "کنیم", "کنند", "کردن", "دارد", "دارند", "داشت", "باید", "نباید", "شما", "ما",
-        "او", "آنها", "آن‌ها", "ها", "های", "ای", "رو", "بر", "روی", "زیر", "بین", "پیش", "بعد", "قبل", "خود", "خودش", "خیلی", "بیشتر", "کمتر", "چند", "چطور", "چگونه",
-        "چرا", "کجا", "وقتی", "حتی", "فقط", "نیز", "دیگر", "دیگری", "همین", "همان", "چیزی", "کسی", "مثل", "مانند", "یعنی", "بلکه", "ولی", "درباره", "تر", "ترین",
-        "می‌شود", "می‌کند", "می‌کنند", "می‌توان", "می‌توانید", "نمی", "هستند", "بودن", "شوند", "باشد", "باشند", "کنیم", "گرفت", "داد", "دهید", "دهد", "آیا",
-        "the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "is", "are", "with", "how", "what", "why",
+        "der", "die", "das", "den", "dem", "des", "ein", "eine", "einer", "eines", "einem", "einen", "und", "oder", "aber", "auch", "als", "am", "an", "auf", "aus", "bei", "bis", "da", "dass", "dein", "deine", "denn", "dich", "dir", "du", "durch", "er", "es", "euch", "für", "hat", "hatte", "haben", "habe", "hier", "ich", "ihr", "ihm", "ihn", "im", "in", "ist", "ja", "jede", "jeder", "jedes", "kann", "kein", "keine", "man", "mehr", "mich", "mir", "mit", "muss", "nach", "nicht", "noch", "nur", "ob", "ohne", "sehr", "sein", "seine", "sich", "sie", "sind", "so", "soll", "über", "um", "uns", "unser", "unter", "vom", "von", "vor", "war", "was", "weil", "wenn", "wer", "wie", "wir", "wird", "wo", "zu", "zum", "zur", "zwischen", "wurde", "werden", "sowie", "dieser", "diese", "dieses", "welche", "welcher", "schon", "the", "a", "and", "or", "of", "to", "on", "for", "is", "are", "with", "how", "what", "why",
     };
 
     [GeneratedRegex("[\\p{L}\\p{N}\\u200c]+")]
@@ -48,7 +43,7 @@ public static partial class SeoAutomation
         var cut = s[..(max - 1)];
         var sp = cut.LastIndexOf(' ');
         if (sp > max / 2) cut = cut[..sp];
-        return cut.TrimEnd(' ', '،', ',', '.', '؛', ':', '-') + "…";
+        return cut.TrimEnd(' ', ',', ',', '.', ';', ':', '-') + "…";
     }
 
     public static string Title(string title, string? brand)
@@ -118,7 +113,7 @@ public static partial class SeoAutomation
         var inFaq = false;
         foreach (var s in r.Sections)
         {
-            if (s.Level == 2) { inFaq = Regex.IsMatch(Normalize(s.Text), "پرسش|سوال|سؤال|FAQ", RegexOptions.IgnoreCase); continue; }
+            if (s.Level == 2) { inFaq = Regex.IsMatch(Normalize(s.Text), "Frage|Fragen|FAQ", RegexOptions.IgnoreCase); continue; }
             if (inFaq && s.Level == 3 && s.After.Count > 0) faq.Add(new FaqItem(s.Text, string.Join(" ", s.After)));
         }
         return faq.Take(20).ToList();

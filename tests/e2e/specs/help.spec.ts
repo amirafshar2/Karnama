@@ -9,7 +9,7 @@ test.describe("N12: help, page help and first-run tour", () => {
     await expect(page.getByTestId("tour")).toBeVisible();
     await shot(page, info, "n12-tour-1");
     await page.getByTestId("tour-next").click();
-    await expect(page.getByTestId("tour")).toContainText("تابلوی کار");
+    await expect(page.getByTestId("tour")).toContainText("Aufgabenboard");
     await shot(page, info, "n12-tour-2");
     await page.getByTestId("tour-skip").click();
     await expect(page.getByTestId("tour")).toHaveCount(0);
@@ -30,19 +30,19 @@ test.describe("N12: help, page help and first-run tour", () => {
     await demoLogin(page, "editor");
     await navTo(page, mobile, "attendance");
     await page.getByTestId("page-help").click();
-    await expect(page.getByTestId("page-help-text")).toContainText("ورود، خروج");
-    await expect(page.getByTestId("page-help-article")).toContainText("ورود و خروج");
+    await expect(page.getByTestId("page-help-text")).toContainText("Kommen, Gehen");
+    await expect(page.getByTestId("page-help-article")).toContainText("Kommen und Gehen");
     await shot(page, info, "n12-page-help");
     await page.getByTestId("page-help-article").click();
-    await expect(page.getByTestId("help-article")).toContainText("خروج یادم رفت");
+    await expect(page.getByTestId("help-article")).toContainText("Ich habe das Gehen vergessen");
     await shot(page, info, "n12-article");
 
-    await page.getByText("همه‌ی مقاله‌ها").click();
-    await page.getByTestId("help-search").fill("مرخصی");
-    await expect(page.getByTestId("help-list")).toContainText("چطور مرخصی بگیرم");
-    await expect(page.getByTestId("help-list")).not.toContainText("مشتری:");
+    await page.getByText("Alle Artikel").click();
+    await page.getByTestId("help-search").fill("Urlaub");
+    await expect(page.getByTestId("help-list")).toContainText("Wie ich Urlaub nehme");
+    await expect(page.getByTestId("help-list")).not.toContainText("Kunde:");
     await page.getByTestId("help-tab-glossary").click();
-    await expect(page.getByTestId("help-glossary")).toContainText("سهمیه");
+    await expect(page.getByTestId("help-glossary")).toContainText("Kontingent");
     await shot(page, info, "n12-glossary");
   });
 
@@ -50,8 +50,8 @@ test.describe("N12: help, page help and first-run tour", () => {
     const mobile = info.project.name !== "desktop";
     await demoLogin(page, "client");
     await navTo(page, mobile, "help");
-    await expect(page.getByTestId("help-list")).toContainText("چطور محتوا را تأیید کنم");
-    await expect(page.getByTestId("help-list")).not.toContainText("ورود و خروج");
+    await expect(page.getByTestId("help-list")).toContainText("Wie ich Inhalte freigebe");
+    await expect(page.getByTestId("help-list")).not.toContainText("Kommen und Gehen");
     await expect(page.getByTestId("help-ask")).toBeVisible();
     await shot(page, info, "n12-client-help");
   });

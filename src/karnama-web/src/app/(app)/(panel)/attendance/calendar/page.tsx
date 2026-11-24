@@ -34,7 +34,7 @@ export default function AttendanceCalendarPage() {
   const now = new Date();
   const j = toJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
   const [ym, setYm] = useState({ y: j.jy, m: j.jm });
-  const days = ym.m <= 6 ? 31 : ym.m < 12 ? 30 : iso(toGregorian(ym.y, 12, 30)) === iso(toGregorian(ym.y + 1, 1, 1)) ? 29 : 30;
+  const days = new Date(Date.UTC(ym.y, ym.m, 0)).getUTCDate();
   const from = iso(toGregorian(ym.y, ym.m, 1));
   const to = iso(toGregorian(ym.y, ym.m, days));
   const cal = useQuery({ queryKey: ["att-calendar", from], enabled: allowed, queryFn: () => api<Row[]>(`/api/v1/leave/calendar?from=${from}&to=${to}`) });

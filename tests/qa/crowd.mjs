@@ -114,7 +114,7 @@ const tgServer = createServer((req, res) => {
     res.end(JSON.stringify({ ok: true, result: { message_id: 10_000 + telegram.sent } }));
   });
 });
-await new Promise((r) => tgServer.once("error", () => { notes.push("درگاه آزمایشی تلگرام روی :5193 بالا نیامد (پورت مشغول)"); r(); }).listen(5193, "127.0.0.1", r));
+await new Promise((r) => tgServer.once("error", () => { notes.push("Das Telegram-Test-Gateway auf :5193 ist nicht gestartet (Port belegt)"); r(); }).listen(5193, "127.0.0.1", r));
 
 // ---------------------------------------------------------------- clock + jobs
 await qa.setClock(qa.tehran(8, 40));
@@ -168,8 +168,8 @@ async function worker(p) {
       await sleep(5000);
       if (tehranHour() > 10.5 && !p.state.reasoned) {
         const open = ((await p.get("/api/v1/leave/absences?open=true")).data ?? [])[0];
-        if (open) { await p.post(`/api/v1/leave/absences/${open.id}/reason`, { reason: "بیمار بودم، صبح خبر ندادم" }, [200, 204, 409]); p.state.reasoned = true; }
-        else if (tehranHour() > 12) { notes.push(`${p.name}: غایب بود ولی تا ظهر غیبت بازی برایش ثبت نشد`); p.state.reasoned = true; }
+        if (open) { await p.post(`/api/v1/leave/absences/${open.id}/reason`, { reason: "Ich war krank und habe morgens nicht Bescheid gegeben" }, [200, 204, 409]); p.state.reasoned = true; }
+        else if (tehranHour() > 12) { notes.push(`${p.name}: war abwesend, aber bis Mittag wurde keine Abwesenheit für ihn eingetragen`); p.state.reasoned = true; }
       }
     }
     return;
@@ -186,7 +186,7 @@ async function worker(p) {
       if (doing && chance(0.35)) {
         // the next column depends on the service: admin review, client review, or straight to done (others → 403 work.transition)
         for (const status of ["inReview", "clientReview", "done"]) {
-          const r = await p.post(`/api/v1/work/${doing.id}/move`, { status, version: doing.version, note: "تحویل شد" }, [200, 403, 409]);
+          const r = await p.post(`/api/v1/work/${doing.id}/move`, { status, version: doing.version, note: "Übergeben" }, [200, 403, 409]);
           if (r.status === 200) { p.state.delivered = (p.state.delivered ?? 0) + 1; break; }
           if (r.status !== 403) break;
         }
@@ -197,11 +197,11 @@ async function worker(p) {
       }
       if (chance(0.3)) await p.get("/api/v1/notifications");
       if (chance(0.15)) await p.get("/api/v1/attendance/me");
-      if (chance(0.1)) await chatWithManager(p, "این کار رو تا عصر تحویل می‌دم");
+      if (chance(0.1)) await chatWithManager(p, "Die Aufgabe liefere ich bis heute Nachmittag");
       if (!p.state.leaveAsked && chance(0.02) && h > 11) { // a few ask for hourly leave tomorrow
         const types = (await p.get("/api/v1/leave/types")).data ?? [];
         const annual = types.find((t) => t.kind === "annual");
-        if (annual) { await p.post("/api/v1/leave/requests", { leaveTypeId: annual.id, hourly: true, from: qa.tehran(10, 0, 1), to: qa.tehran(11, 0, 1), reason: "کار اداری" }, [200, 201, 409, 422]); p.state.leaveAsked = true; }
+        if (annual) { await p.post("/api/v1/leave/requests", { leaveTypeId: annual.id, hourly: true, from: qa.tehran(10, 0, 1), to: qa.tehran(11, 0, 1), reason: "Bürotätigkeit" }, [200, 201, 409, 422]); p.state.leaveAsked = true; }
       }
     }
     await think();
@@ -241,7 +241,7 @@ async function manager(p) {
     const board = (await p.get("/api/v1/work/board")).data ?? [];
     for (const c of board.filter((c) => c.status === "inReview").slice(0, 4)) {
       const back = chance(0.2);
-      await p.post(`/api/v1/work/${c.id}/move`, back ? { status: "changesRequested", version: c.version, note: "کمی روشن‌تر لطفاً" } : { status: "clientReview", version: c.version }, [200, 403, 409]);
+      await p.post(`/api/v1/work/${c.id}/move`, back ? { status: "changesRequested", version: c.version, note: "Etwas heller bitte" } : { status: "clientReview", version: c.version }, [200, 403, 409]);
     }
     // unassigned items left over
     for (const c of board.filter((c) => !c.assigneeId && c.status === "todo").slice(0, 2)) {
@@ -251,13 +251,13 @@ async function manager(p) {
     // leave requests and live board
     const reqs = (await p.get("/api/v1/leave/requests?pending=true")).data ?? [];
     for (const r of reqs.filter((r) => r.status === "pending" && r.userId !== managerId).slice(0, 2))
-      await p.post(`/api/v1/leave/requests/${r.id}/decide`, { approve: chance(0.7), note: "باشه" }, [200, 403, 409]);
+      await p.post(`/api/v1/leave/requests/${r.id}/decide`, { approve: chance(0.7), note: "Okay" }, [200, 403, 409]);
     await p.get("/api/v1/attendance/live");
     if (chance(0.3)) await p.get("/api/v1/notifications");
     if (chance(0.2)) {
       const convs = (await p.get("/api/v1/chat")).data;
       const unread = (convs ?? []).filter((c) => c.unread > 0);
-      if (unread[0]) { await p.get(`/api/v1/chat/${unread[0].id}/messages`); await p.post(`/api/v1/chat/${unread[0].id}/messages`, { body: "ممنون، دیدم", clientKey: randomUUID() }); }
+      if (unread[0]) { await p.get(`/api/v1/chat/${unread[0].id}/messages`); await p.post(`/api/v1/chat/${unread[0].id}/messages`, { body: "Danke, gesehen", clientKey: randomUUID() }); }
     }
     await sleep(rnd(3000, 6000));
   }
@@ -286,9 +286,9 @@ async function marketer(p) {
       const mine = leads?.items ?? [];
       if (mine.length && chance(0.7)) {
         const l = any(mine);
-        await p.post(`/api/v1/crm/leads/${l.id}/calls`, { direction: "outgoing", durationSeconds: Math.round(rnd(0, 240)), outcome: any(["noAnswer", "interested", "later", "rejected"]), note: "تماس از تست جمعی" }, [200, 201, 404, 409, 422]);
+        await p.post(`/api/v1/crm/leads/${l.id}/calls`, { direction: "outgoing", durationSeconds: Math.round(rnd(0, 240)), outcome: any(["noAnswer", "interested", "later", "rejected"]), note: "Anruf aus dem Massentest" }, [200, 201, 404, 409, 422]);
       } else if (chance(0.5)) {
-        await p.post("/api/v1/crm/leads", { name: `سرنخ جمعی ${p.phone.slice(-2)}-${n++}`, phone: `0937${p.phone.slice(-3)}${String(Math.floor(rnd(1000, 9999)))}`, business: "فروشگاه", city: "شیراز", sourceId: null, tags: ["QA-crowd"], budget: null }, [200, 201, 409]);
+        await p.post("/api/v1/crm/leads", { name: `Massen-Lead ${p.phone.slice(-2)}-${n++}`, phone: `0937${p.phone.slice(-3)}${String(Math.floor(rnd(1000, 9999)))}`, business: "Shop", city: "Stuttgart", sourceId: null, tags: ["QA-crowd"], budget: null }, [200, 201, 409]);
       }
       if (chance(0.2)) await p.get("/api/v1/notifications");
     }
@@ -306,9 +306,9 @@ async function blogWriter(p) {
     if (p.state.in) {
       await p.get("/api/v1/blog/posts", [200, 403]);
       if (wrote < 2 && chance(0.15)) {
-        const body = Array.from({ length: 40 }, (_, i) => `واژه${i}`).join(" ");
-        const r = await p.post("/api/v1/blog/posts", { title: `نوشته‌ی جمعی ${p.phone.slice(-2)}-${wrote}`, contentJson: JSON.stringify({ type: "doc", content: [para(body), para(body)] }), categoryId: null, tags: ["qa"], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: null }, [200, 201, 403]);
-        if (r.status === 403 && !p.state.noted) { notes.push(`${p.name}: نقش «عکاس و متن‌نویس» اجازه‌ی نوشتن بلاگ ندارد (403) — نویسنده‌ی بلاگ باید نقش جدا داشته باشد`); p.state.noted = true; }
+        const body = Array.from({ length: 40 }, (_, i) => `Begriff${i}`).join(" ");
+        const r = await p.post("/api/v1/blog/posts", { title: `Massenbeitrag ${p.phone.slice(-2)}-${wrote}`, contentJson: JSON.stringify({ type: "doc", content: [para(body), para(body)] }), categoryId: null, tags: ["qa"], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: null }, [200, 201, 403]);
+        if (r.status === 403 && !p.state.noted) { notes.push(`${p.name}: Die Rolle „Fotograf & Texter“ darf keine Blogbeiträge schreiben (403) – Blog-Autoren brauchen eine eigene Rolle`); p.state.noted = true; }
         wrote++;
       }
       if (chance(0.2)) await p.get("/api/v1/help");
@@ -328,8 +328,8 @@ async function client(p, i) {
   while (!dayOver) {
     const home = (await p.get("/api/v1/portal/home")).data;
     for (const a of (home?.approvals ?? []).slice(0, 2)) {
-      if (chance(0.8)) await p.post(`/api/v1/portal/approvals/${a.workItemId}`, { approve: true, note: "عالیه", stars: 5 }, [200, 204, 409]);
-      else await p.post(`/api/v1/portal/approvals/${a.workItemId}`, { approve: false, note: "رنگ پس‌زمینه را عوض کنید" }, [200, 204, 409]);
+      if (chance(0.8)) await p.post(`/api/v1/portal/approvals/${a.workItemId}`, { approve: true, note: "Super", stars: 5 }, [200, 204, 409]);
+      else await p.post(`/api/v1/portal/approvals/${a.workItemId}`, { approve: false, note: "Hintergrundfarbe ändern" }, [200, 204, 409]);
     }
     if (ordered < 2 && chance(0.18)) {
       const svc = any(await services(p));
@@ -338,17 +338,17 @@ async function client(p, i) {
         const form = (await p.get(`/api/v1/services/${svc.id}/form`)).data;
         const answers = {};
         for (const f of form?.fields ?? []) {
-          if (f.type === "text" || f.type === "textarea") answers[f.key] = "معرفی محصول جدید";
+          if (f.type === "text" || f.type === "textarea") answers[f.key] = "Vorstellung des neuen Produkts";
           else if (f.type === "select" && f.options?.length) answers[f.key] = f.options[0].value ?? f.options[0];
           else if (f.type === "datetime" || f.type === "date") answers[f.key] = new Date(clockNow.getTime() + 3 * 86400_000).toISOString();
         }
-        const r = await p.post("/api/v1/portal/orders", { serviceTypeId: svc.id, title: `${svc.name} برای ${p.name}`, priority: "normal", autoAccept: false, answers }, [200, 201, 409, 422]);
+        const r = await p.post("/api/v1/portal/orders", { serviceTypeId: svc.id, title: `${svc.name} für ${p.name}`, priority: "normal", autoAccept: false, answers }, [200, 201, 409, 422]);
         if (r.status === 201 || r.status === 200) ordered++;
-        if (r.status === 409) notes.push(`${p.name}: سفارش «${svc.name}» → 409 ${r.data?.code}`);
-        if (r.status === 422) notes.push(`${p.name}: فرم سفارش «${svc.name}» 422: ${JSON.stringify(r.data).slice(0, 160)}`);
+        if (r.status === 409) notes.push(`${p.name}: Auftrag „${svc.name}» → 409 ${r.data?.code}`);
+        if (r.status === 422) notes.push(`${p.name}: Auftragsformular „${svc.name}» 422: ${JSON.stringify(r.data).slice(0, 160)}`);
       }
     }
-    if (nearEnd && !p.state.renew && chance(0.2)) { await p.post("/api/v1/portal/renew", { note: "لطفاً تمدید کنید" }, [200, 201, 202, 204, 409, 429]); p.state.renew = true; }
+    if (nearEnd && !p.state.renew && chance(0.2)) { await p.post("/api/v1/portal/renew", { note: "Bitte verlängern" }, [200, 201, 202, 204, 409, 429]); p.state.renew = true; }
     if (chance(0.15)) await p.get("/api/v1/portal/publishing");
     if (chance(0.2)) await p.get("/api/v1/notifications");
     await sleep(rnd(8000, 20_000));
@@ -364,7 +364,7 @@ async function visitor(n) {
     await pub("/api/v1/public/site/packages");
     if (chance(0.15)) {
       const t0 = performance.now();
-      const r = await fetch(`${API}/api/v1/public/site/leads`, { method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": `5.122.0.${n}` }, body: JSON.stringify({ name: `بازدیدکننده ${n}`, phone: `0938${String(Math.floor(rnd(1e6, 9999999)))}`, business: "کافه", message: "برای پکیج اینستاگرام مشاوره می‌خواهم", source: null, website: null }) });
+      const r = await fetch(`${API}/api/v1/public/site/leads`, { method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": `5.122.0.${n}` }, body: JSON.stringify({ name: `Besucher ${n}`, phone: `0938${String(Math.floor(rnd(1e6, 9999999)))}`, business: "Café", message: "Ich möchte eine Beratung zum Instagram-Paket", source: null, website: null }) });
       record("POST", "/api/v1/public/site/leads", r.status, performance.now() - t0);
       if (r.status !== 202) problem(`visitor ${n}`, `POST consult → ${r.status}`, await r.text());
     }
@@ -400,7 +400,7 @@ async function browserSession(browser, [who, device, kind, pages]) {
     userAgent: kind === "app" ? "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36 KarnamaApp" : undefined });
   await ctx.addInitScript(() => { try { localStorage.setItem("karnama.tour.off", "1"); } catch { /* ignore */ } });
   const page = await ctx.newPage();
-  const label = who ? `${who.name} [${device}/${kind}]` : `بازدیدکننده [${device}]`;
+  const label = who ? `${who.name} [${device}/${kind}]` : `Besucher [${device}]`;
   const errors = [];
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
   // A 401 in the console is the normal "access token aged → refresh → retry" path (the QA clock jumps 20 minutes at a time);
@@ -451,7 +451,7 @@ async function browsers() {
   });
   await Promise.all(lanes);
   const left = queue.length;
-  if (left) notes.push(`${left} از ${sessions.length} نشست مرورگر به پایان روز نرسید (ظرفیت ${BROWSERS} مرورگر همزمان)`);
+  if (left) notes.push(`${left} von ${sessions.length} Die Browsersitzung hat das Tagesende nicht erreicht (Kapazität ${BROWSERS} gleichzeitige Browser)`);
   await browser.close();
 }
 

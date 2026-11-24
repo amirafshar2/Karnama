@@ -25,26 +25,26 @@ public sealed record HomeContent(
     public static readonly System.Text.RegularExpressions.Regex ImageId = new("^(site|cases)/[0-9a-f]{32}\\.(png|jpg|webp)$");
 
     public static HomeContent Default { get; } = new(
-        "مدیریت پیج اینستاگرام و تولید محتوا در شیراز",
-        "مدیریت پیج اینستاگرام، تولید محتوا، ریلز و تبلیغات برای کسب‌وکارهای شیراز؛ با برنامه‌ی انتشار، گزارش ماهانه و پنل پیگیری برای هر مشتری.",
-        "پیج شما، هر روز سر وقت و با کیفیت",
-        "از ایده و عکاسی تا ریلز، کپشن و انتشار؛ همه را برایتان انجام می‌دهیم و شما در پنل خودتان پیشرفت کار را می‌بینید.",
-        "مشاوره‌ی رایگان",
-        "خدمات", "نمونه‌کارها", "پکیج‌ها", "روند همکاری",
+        "Instagram-Betreuung und Content-Produktion in Stuttgart",
+        "Instagram-Betreuung, Content-Produktion, Reels und Werbung für Unternehmen in Stuttgart – mit Plan, Monatsbericht und eigenem Panel.",
+        "Ihre Seite – jeden Tag pünktlich und in Top-Qualität",
+        "Von der Idee und dem Fotoshooting bis zu Reels, Captions und Veröffentlichung; wir erledigen alles für Sie, und Sie sehen den Fortschritt in Ihrem eigenen Panel.",
+        "Kostenlose Beratung",
+        "Leistungen", "Referenzen", "Pakete", "Ablauf der Zusammenarbeit",
         [
-            new("گفتگوی اول", "هدف، مخاطب و وضعیت فعلی پیج شما را می‌شنویم."),
-            new("برنامه‌ی محتوا", "تقویم انتشار ماهانه با ایده‌ها و زمان‌ها آماده می‌شود."),
-            new("تولید و تأیید", "محتوا ساخته می‌شود و شما در پنل تأیید یا اصلاح می‌خواهید."),
-            new("انتشار و گزارش", "سر وقت منتشر می‌کنیم و آخر ماه گزارش می‌دهیم."),
+            new("Erster Chat", "Wir hören uns Ziel, Zielgruppe und aktuellen Stand Ihrer Seite an."),
+            new("Content-Plan", "Ein monatlicher Veröffentlichungskalender mit Ideen und Terminen wird erstellt."),
+            new("Produktion und Freigabe", "Inhalte werden erstellt, und Sie geben sie im Panel frei oder fordern eine Überarbeitung an."),
+            new("Veröffentlichung und Bericht", "Wir veröffentlichen pünktlich und berichten am Monatsende."),
         ],
-        "نظر مشتری‌ها", "آخرین مطالب", "پرسش‌های متداول",
+        "Kundenstimmen", "Neueste Beiträge", "Häufige Fragen",
         [
-            new("قرارداد حداقل چند ماهه است؟", "پکیج‌ها ماهانه‌اند و می‌توانید هر ماه تمدید کنید."),
-            new("پیج دست ما می‌ماند یا شما؟", "هر دو حالت ممکن است؛ اگر پیج دست خودتان بماند، فایل و کپشن و زمان انتشار را برایتان می‌فرستیم."),
-            new("چطور پیشرفت کار را ببینیم؟", "هر مشتری پنل خودش را دارد: سفارش‌ها، محتوای منتظر تأیید و مانده‌ی پکیج همیشه جلوی چشمتان است."),
+            new("Wie viele Monate läuft der Vertrag mindestens?", "Die Pakete sind monatlich und lassen sich jeden Monat verlängern."),
+            new("Bleibt die Seite bei uns oder bei Ihnen?", "Beides ist möglich; bleibt die Seite in Ihrer Hand, schicken wir Ihnen Datei, Caption und Veröffentlichungszeit."),
+            new("Wie sehen wir den Arbeitsfortschritt?", "Jeder Kunde hat sein eigenes Panel: Aufträge, Inhalte zur Freigabe und Restkontingent des Pakets sind immer im Blick."),
         ],
-        "مشاوره‌ی رایگان", "شماره‌تان را بگذارید؛ در ساعات کاری تماس می‌گیریم.",
-        new ContactInfo(null, null, "شیراز", "شنبه تا چهارشنبه ۹ تا ۱۷", null, null, null, null, null, null, null, null),
+        "Kostenlose Beratung", "Hinterlassen Sie Ihre Nummer; wir rufen während der Geschäftszeiten an.",
+        new ContactInfo(null, null, "Stuttgart", "Montag bis Freitag 9 bis 17 Uhr", null, null, null, null, null, null, null, null),
         true, true, true);
 }
 
@@ -52,21 +52,21 @@ public sealed class HomeContentValidator : AbstractValidator<HomeContent>
 {
     public HomeContentValidator()
     {
-        RuleFor(x => x.SeoTitle).NotEmpty().MaximumLength(60).WithMessage("عنوان سئو الزامی است و حداکثر ۶۰ نویسه.");
-        RuleFor(x => x.SeoDescription).NotEmpty().Length(50, 160).WithMessage("توضیح سئو الزامی است، بین ۵۰ تا ۱۶۰ نویسه.");
-        RuleFor(x => x.HeroTitle).NotEmpty().MaximumLength(90).WithMessage("تیتر اصلی الزامی است (حداکثر ۹۰ نویسه).");
+        RuleFor(x => x.SeoTitle).NotEmpty().MaximumLength(60).WithMessage("Der SEO-Titel ist Pflicht und darf höchstens 60 Zeichen haben.");
+        RuleFor(x => x.SeoDescription).NotEmpty().Length(50, 160).WithMessage("Die SEO-Beschreibung ist Pflicht, zwischen 50 und 160 Zeichen.");
+        RuleFor(x => x.HeroTitle).NotEmpty().MaximumLength(90).WithMessage("Die Hauptüberschrift ist Pflicht (höchstens 90 Zeichen).");
         RuleFor(x => x.HeroSubtitle).MaximumLength(300);
         RuleFor(x => x.CtaLabel).NotEmpty().MaximumLength(30);
-        RuleFor(x => x.Process).Must(p => p is null || p.Count <= 8).WithMessage("حداکثر ۸ مرحله.");
-        RuleFor(x => x.Faq).Must(p => p is null || p.Count <= 20).WithMessage("حداکثر ۲۰ پرسش.");
+        RuleFor(x => x.Process).Must(p => p is null || p.Count <= 8).WithMessage("Höchstens 8 Schritte.");
+        RuleFor(x => x.Faq).Must(p => p is null || p.Count <= 20).WithMessage("Höchstens 20 Fragen.");
         RuleForEach(x => x.Faq).Must(f => !string.IsNullOrWhiteSpace(f.Question) && f.Question.Length <= 200 && !string.IsNullOrWhiteSpace(f.Answer) && f.Answer.Length <= 1000)
-            .WithMessage("هر پرسش و پاسخ باید پر باشد (پرسش تا ۲۰۰ و پاسخ تا ۱۰۰۰ نویسه).");
-        RuleFor(x => x.Contact.NeshanUrl).Must(Https).WithMessage("لینک نشان باید با https:// شروع شود.");
-        RuleFor(x => x.Contact.BaladUrl).Must(Https).WithMessage("لینک بلد باید با https:// شروع شود.");
-        RuleFor(x => x.HeroVideo).Must(v => v is null || HomeContent.VideoId.IsMatch(v)).WithMessage("ویدیوی سربرگ باید از همین پنل بارگذاری شده باشد.");
-        RuleFor(x => x.HeroPoster).Must(v => v is null || HomeContent.ImageId.IsMatch(v)).WithMessage("عکس پیش‌نمایش ویدیو باید از همین پنل بارگذاری شده باشد.");
+            .WithMessage("Jede Frage und Antwort muss ausgefüllt sein (Frage bis 200, Antwort bis 1000 Zeichen).");
+        RuleFor(x => x.Contact.NeshanUrl).Must(Https).WithMessage("Der Google-Maps-Link muss mit https:// beginnen.");
+        RuleFor(x => x.Contact.BaladUrl).Must(Https).WithMessage("Der Apple-Maps-Link muss mit https:// beginnen.");
+        RuleFor(x => x.HeroVideo).Must(v => v is null || HomeContent.VideoId.IsMatch(v)).WithMessage("Das Header-Video muss über dieses Panel hochgeladen sein.");
+        RuleFor(x => x.HeroPoster).Must(v => v is null || HomeContent.ImageId.IsMatch(v)).WithMessage("Das Vorschaubild des Videos muss über dieses Panel hochgeladen sein.");
         RuleFor(x => x.HeroImages).Must(v => v is null || (v.Count <= 6 && v.All(HomeContent.ImageId.IsMatch)))
-            .WithMessage("حداکثر ۶ عکس سربرگ، همه بارگذاری‌شده از همین پنل.");
+            .WithMessage("Höchstens 6 Header-Fotos, alle aus diesem Panel hochgeladen.");
         RuleFor(x => x.Contact.Latitude).InclusiveBetween(-90, 90);
         RuleFor(x => x.Contact.Longitude).InclusiveBetween(-180, 180);
     }

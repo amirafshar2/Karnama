@@ -26,7 +26,7 @@ public sealed class LeadStage : Entity
     public Result Update(string name, int sortOrder, bool isActive)
     {
         var n = (name ?? "").Trim();
-        if (n.Length is 0 or > 40) return Error.Validation("crm.stageName", "نام مرحله الزامی است (حداکثر ۴۰ کاراکتر).");
+        if (n.Length is 0 or > 40) return Error.Validation("crm.stageName", "Der Name des Schritts ist Pflicht (höchstens 40 Zeichen).");
         Name = n;
         SortOrder = sortOrder;
         IsActive = isActive;
@@ -54,7 +54,7 @@ public sealed class LeadSource : Entity
     public Result Update(string name, int sortOrder, bool isActive)
     {
         var n = (name ?? "").Trim();
-        if (n.Length is 0 or > 40) return Error.Validation("crm.sourceName", "نام منبع الزامی است (حداکثر ۴۰ کاراکتر).");
+        if (n.Length is 0 or > 40) return Error.Validation("crm.sourceName", "Der Name der Quelle ist Pflicht (höchstens 40 Zeichen).");
         Name = n;
         SortOrder = sortOrder;
         IsActive = isActive;
@@ -113,15 +113,15 @@ public sealed class Lead : Entity
     public Result Update(LeadSpec s, DateTimeOffset now, bool allowNoPhone = false)
     {
         var name = (s.Name ?? "").Trim();
-        if (name.Length is < 2 or > 80) return Error.Validation("leads.name", "نام را بنویسید.");
+        if (name.Length is < 2 or > 80) return Error.Validation("leads.name", "Geben Sie den Namen ein.");
         string? phone = null;
         if (!string.IsNullOrWhiteSpace(s.Phone))
         {
-            if (!PhoneNumber.TryNormalize(s.Phone, out var normalized)) return Error.Validation("leads.phone", "شماره‌ی موبایل درست نیست (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
+            if (!PhoneNumber.TryNormalize(s.Phone, out var normalized)) return Error.Validation("leads.phone", "Die Handynummer ist ungültig (z. B. 01512 3456789).");
             phone = normalized;
         }
-        else if (!allowNoPhone && MessengerChatId is null) return Error.Validation("leads.phone", "شماره‌ی موبایل الزامی است.");
-        if (s.Budget is < 0) return Error.Validation("leads.budget", "بودجه نمی‌تواند منفی باشد.");
+        else if (!allowNoPhone && MessengerChatId is null) return Error.Validation("leads.phone", "Die Handynummer ist Pflicht.");
+        if (s.Budget is < 0) return Error.Validation("leads.budget", "Das Budget darf nicht negativ sein.");
         var tags = (s.Tags ?? []).Select(t => t.Trim().TrimStart('#')).Where(t => t.Length is > 0 and <= 30).Distinct().Take(10).ToList();
         Name = name;
         Phone = phone;
@@ -144,7 +144,7 @@ public sealed class Lead : Entity
     public Result Move(LeadStage stage, string? lostReason, DateTimeOffset now)
     {
         if (stage.Kind == StageKind.Lost && string.IsNullOrWhiteSpace(lostReason))
-            return Error.Validation("crm.lostReason", "دلیل از دست رفتن را بنویسید.");
+            return Error.Validation("crm.lostReason", "Geben Sie den Grund für den Verlust an.");
         StageId = stage.Id;
         LostReason = stage.Kind == StageKind.Lost ? Cut(lostReason, 300) : null;
         ClosedAt = stage.Kind == StageKind.Open ? null : now;
@@ -210,7 +210,7 @@ public sealed class LeadActivity
 
     public static Result<LeadActivity> Call(Guid leadId, Guid actor, CallDirection direction, int? seconds, CallOutcome outcome, string? note, DateTimeOffset at)
     {
-        if (seconds is < 0 or > 6 * 3600) return Error.Validation("crm.duration", "مدت تماس درست نیست.");
+        if (seconds is < 0 or > 6 * 3600) return Error.Validation("crm.duration", "Die Gesprächsdauer ist ungültig.");
         return new LeadActivity { LeadId = leadId, ActorId = actor, Kind = ActivityKind.Call, Direction = direction, DurationSeconds = seconds, Outcome = outcome, Note = Cut(note), At = at };
     }
 

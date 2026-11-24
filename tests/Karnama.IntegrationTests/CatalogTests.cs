@@ -19,13 +19,13 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
         {
             using var scope = _f.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<Karnama.Infrastructure.Persistence.AppDbContext>();
-            var user = User.Create("0919" + Random.Shared.Next(1_000_000, 9_999_999), "توکن تست", UserKind.Staff).Value;
+            var user = User.Create("0159" + Random.Shared.Next(1_000_000, 9_999_999), "Test-Token", UserKind.Staff).Value;
             db.Users.Add(user);
             db.SaveChanges();
             userId = user.Id;
         }
         var tokens = _f.Services.GetRequiredService<ITokenService>();
-        var token = tokens.CreateAccessToken(new TokenSubject(userId.Value, UserKind.Staff, false, "fa", perms), Guid.NewGuid(), out _);
+        var token = tokens.CreateAccessToken(new TokenSubject(userId.Value, UserKind.Staff, false, "de", perms), Guid.NewGuid(), out _);
         return _f.CreateClient().WithToken(token);
     }
 
@@ -41,7 +41,7 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
 
         var admin = await Admin();
         var full = await (await admin.GetAsync("/api/v1/clients?limit=50")).JsonAsync();
-        full.GetProperty("items").EnumerateArray().Should().OnlyContain(c => c.GetProperty("mobile").GetString()!.StartsWith("09"));
+        full.GetProperty("items").EnumerateArray().Should().OnlyContain(c => c.GetProperty("mobile").GetString()!.StartsWith("01"));
 
         var worker = _f.CreateClient().WithToken(await _f.DemoTokenAsync("editor"));
         (await worker.GetAsync("/api/v1/clients")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -56,14 +56,14 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
 
         var created = await admin.PostAsJsonAsync("/api/v1/clients", new
         {
-            businessName = "نانوایی تست", industry = "نان", contactName = "آقای تست", mobile = "۰۹۱۷۰۰۰۰۰۰۱", city = "شیراز",
-            internalNote = "یادداشت", status = "active", accounts = new[] { new { platformId = insta, handle = "@nan_test", management = "clientManaged" } },
+            businessName = "Test-Bäckerei", industry = "Brot", contactName = "Herr Test", mobile = "+49 151 70000001", city = "Stuttgart",
+            internalNote = "Notiz", status = "active", accounts = new[] { new { platformId = insta, handle = "@nan_test", management = "clientManaged" } },
         }, Http.Json);
         created.StatusCode.Should().Be(HttpStatusCode.Created);
         var c = await created.JsonAsync();
         var id = c.GetProperty("id").GetGuid();
         c.GetProperty("accounts")[0].GetProperty("handle").GetString().Should().Be("nan_test");
-        c.GetProperty("mobile").GetString().Should().Be("09170000001");
+        c.GetProperty("mobile").GetString().Should().Be("015170000001");
 
         var bad = await admin.PostAsJsonAsync("/api/v1/clients", new { businessName = "x", mobile = "123", status = "active" }, Http.Json);
         bad.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -99,7 +99,7 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
 
         object Body(string sku, string slug, int? capacity = null, string? md = null) => new
         {
-            name = new Dictionary<string, string> { ["fa"] = "پکیج تست " + sku }, slug, sku, category = "تست",
+            name = new Dictionary<string, string> { ["de"] = "Test-Paket " + sku }, slug, sku, category = "Test",
             descriptionMarkdown = md, price = 10_000_000L, period = "monthly", validityDays = 30, capacity,
             defaultManagement = "agencyManaged", access = "usernameOnly", consultSessions = 0, revisionsPerItem = 1, deliveryHours = 24,
             status = "active", showOnSite = false, sortOrder = 0, badge = "none",
@@ -108,13 +108,13 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
 
         (await admin.PostAsJsonAsync("/api/v1/packages", Body("bad sku", "x"), Http.Json)).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
-        var ok = await admin.PostAsJsonAsync("/api/v1/packages", Body("PKG-T1", "پکیج-تست-یک", 1, "## عنوان\n\n<script>alert(1)</script> [x](javascript:alert(1)) **پررنگ**"), Http.Json);
+        var ok = await admin.PostAsJsonAsync("/api/v1/packages", Body("PKG-T1", "test-paket-eins", 1, "## Titel\n\n<script>alert(1)</script> [x](javascript:alert(1)) **Fett**"), Http.Json);
         ok.StatusCode.Should().Be(HttpStatusCode.Created);
         var p = await ok.JsonAsync();
         var html = p.GetProperty("descriptionHtml").GetString()!;
-        html.Should().Contain("<h2").And.Contain("<strong>پررنگ</strong>").And.NotContain("<script").And.NotContain("javascript:");
+        html.Should().Contain("<h2").And.Contain("<strong>Fett</strong>").And.NotContain("<script").And.NotContain("javascript:");
 
-        (await admin.PostAsJsonAsync("/api/v1/packages", Body("PKG-T1", "پکیج-تست-دو"), Http.Json)).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await admin.PostAsJsonAsync("/api/v1/packages", Body("PKG-T1", "test-paket-zwei"), Http.Json)).StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         // The assign picker asks for active packages with the camelCase enum the API itself writes.
         var active = await (await admin.GetAsync("/api/v1/packages?status=active&limit=100")).JsonAsync();
@@ -141,7 +141,7 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
         var serviceId = (await (await admin.GetAsync("/api/v1/services/options")).JsonAsync())[0].GetProperty("id").GetGuid();
         object Body(long price, uint? version = null) => new
         {
-            name = new Dictionary<string, string> { ["fa"] = "پکیج کش" }, slug = "pkg-cache-test", sku = "PKG-CACHE", category = "تست",
+            name = new Dictionary<string, string> { ["de"] = "Cache-Paket" }, slug = "pkg-cache-test", sku = "PKG-CACHE", category = "Test",
             price, period = "monthly", validityDays = 30, defaultManagement = "agencyManaged", access = "usernameOnly",
             consultSessions = 0, revisionsPerItem = 1, deliveryHours = 24, status = "active", showOnSite = true, sortOrder = 0, badge = "none",
             quotas = new[] { new { serviceTypeId = serviceId, count = 2 } }, version,
@@ -176,9 +176,9 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
         var admin = await Admin();
         object Body(string fieldKey, uint? version = null) => new
         {
-            name = new Dictionary<string, string> { ["fa"] = "خدمت تست" }, consumesQuota = true, weight = 1, sortOrder = 0, isActive = true,
-            form = new[] { new { key = fieldKey, type = "text", label = new Dictionary<string, string> { ["fa"] = "موضوع" }, required = true } },
-            stages = new[] { new { name = new Dictionary<string, string> { ["fa"] = "انجام" }, estimatedMinutes = 60, needsAdminReview = true, needsClientApproval = false } },
+            name = new Dictionary<string, string> { ["de"] = "Test-Leistung" }, consumesQuota = true, weight = 1, sortOrder = 0, isActive = true,
+            form = new[] { new { key = fieldKey, type = "text", label = new Dictionary<string, string> { ["de"] = "Thema" }, required = true } },
+            stages = new[] { new { name = new Dictionary<string, string> { ["de"] = "Erledigen" }, estimatedMinutes = 60, needsAdminReview = true, needsClientApproval = false } },
             version,
         };
         (await admin.PostAsJsonAsync("/api/v1/services", Body("bad key"), Http.Json)).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -204,14 +204,14 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
         var admin = await Admin(); // demo admin: has users.manage but is not an Owner
         var roles = await (await admin.GetAsync("/api/v1/roles?limit=100")).JsonAsync();
         var ownerRole = roles.GetProperty("items").EnumerateArray().First(r => r.GetProperty("systemKey").GetString() == "owner").GetProperty("id").GetGuid();
-        var editorRole = roles.GetProperty("items").EnumerateArray().First(r => r.GetProperty("name").GetString() == "تدوینگر").GetProperty("id").GetGuid();
+        var editorRole = roles.GetProperty("items").EnumerateArray().First(r => r.GetProperty("name").GetString() == "Cutter").GetProperty("id").GetGuid();
 
-        var r1 = await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "کارگر تست", phone = "09127771111", roleIds = new[] { ownerRole }, isActive = true });
+        var r1 = await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "Test-Mitarbeiter", phone = "015127771111", roleIds = new[] { ownerRole }, isActive = true });
         r1.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var r2 = await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "کارگر تست", phone = "09127771111", roleIds = new[] { editorRole }, isActive = true });
+        var r2 = await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "Test-Mitarbeiter", phone = "015127771111", roleIds = new[] { editorRole }, isActive = true });
         r2.StatusCode.Should().Be(HttpStatusCode.Created);
-        (await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "تکراری", phone = "09127771111", roleIds = Array.Empty<Guid>(), isActive = true }))
+        (await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "Doppelt", phone = "015127771111", roleIds = Array.Empty<Guid>(), isActive = true }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
@@ -224,7 +224,7 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
 
         // Only users.manage: can't hand out a role stronger than itself.
         var limited = As(new() { [Permissions.UsersManage] = PermissionScope.All });
-        (await limited.PostAsJsonAsync("/api/v1/users", new { displayName = "ارتقا", phone = "09127772222", roleIds = new[] { RoleId("ادمین نمایشی") }, isActive = true }))
+        (await limited.PostAsJsonAsync("/api/v1/users", new { displayName = "Upgrade", phone = "015127772222", roleIds = new[] { RoleId("Demo-Admin") }, isActive = true }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
         // Holding the role's permissions is enough.
         var withWork = As(new()
@@ -233,7 +233,7 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
             [Permissions.OrdersView] = PermissionScope.All, [Permissions.AttendanceSelf] = PermissionScope.Own, [Permissions.AttendanceView] = PermissionScope.All,
             [Permissions.ReportsView] = PermissionScope.All, [Permissions.ChatUse] = PermissionScope.Own, [Permissions.ScoresView] = PermissionScope.Own, [Permissions.AssetsView] = PermissionScope.Own,
         });
-        (await withWork.PostAsJsonAsync("/api/v1/users", new { displayName = "تدوینگر دوم", phone = "09127772223", roleIds = new[] { RoleId("تدوینگر") }, isActive = true }))
+        (await withWork.PostAsJsonAsync("/api/v1/users", new { displayName = "Zweiter Cutter", phone = "015127772223", roleIds = new[] { RoleId("Cutter") }, isActive = true }))
             .StatusCode.Should().Be(HttpStatusCode.Created);
 
         // A full non-owner admin can't deactivate or delete an owner.
@@ -246,6 +246,6 @@ public sealed class CatalogTests(DemoAppFixture app) : IClassFixture<DemoAppFixt
 
         // Client logins never show up on the staff page.
         var clients = (await (await admin.GetAsync("/api/v1/users?kind=client&limit=100")).JsonAsync()).GetProperty("items").EnumerateArray();
-        clients.Should().NotContain(u => u.GetProperty("phone").GetString() == "09000000004");
+        clients.Should().NotContain(u => u.GetProperty("phone").GetString() == "015100000004");
     }
 }

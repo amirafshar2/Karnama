@@ -42,8 +42,8 @@ function Sheet({ callSeconds, stages, canAssign, onClose, onChanged, onCalling, 
   const [d, setD] = useState<LeadDetail | null>(initial);
   const l = d?.lead;
   const [form, setForm] = useState({
-    name: l?.name ?? "", phone: l?.phone ?? "", business: l?.business ?? "", industry: d?.industry ?? "", city: l?.city ?? "شیراز", instagram: l?.instagram ?? "",
-    sourceId: l?.sourceId ?? "", tags: (l?.tags ?? []).join("، "), budget: l?.budget != null ? Math.round(l.budget / 10) : null as number | null, note: d?.note ?? "",
+    name: l?.name ?? "", phone: l?.phone ?? "", business: l?.business ?? "", industry: d?.industry ?? "", city: l?.city ?? "Stuttgart", instagram: l?.instagram ?? "",
+    sourceId: l?.sourceId ?? "", tags: (l?.tags ?? []).join(", "), budget: l?.budget != null ? Math.round(l.budget) : null as number | null, note: d?.note ?? "",
     ownerId: l?.ownerId ?? "",
   });
   const [busy, setBusy] = useState(false);
@@ -62,7 +62,7 @@ function Sheet({ callSeconds, stages, canAssign, onClose, onChanged, onCalling, 
     try {
       const body = {
         name: form.name, phone: form.phone || null, business: form.business || null, industry: form.industry || null, city: form.city || null,
-        instagram: form.instagram || null, sourceId: form.sourceId || null, tags: form.tags.split(/[,،\s]+/).filter(Boolean), budget: form.budget != null ? form.budget * 10 : null,
+        instagram: form.instagram || null, sourceId: form.sourceId || null, tags: form.tags.split(/[,،\s]+/).filter(Boolean), budget: form.budget != null ? form.budget : null,
         note: form.note || null, stageId: null, ownerId: form.ownerId || null, nextFollowUpAt: l?.nextFollowUpAt ?? null, version: l?.version ?? null,
       };
       const r = await api<LeadDetail>(l ? `/api/v1/crm/leads/${l.id}` : "/api/v1/crm/leads", { method: l ? "PUT" : "POST", body });
@@ -189,10 +189,10 @@ function FollowUpPicker({ value, onPick }: { value: string | null; onPick: (iso:
   const [now] = useState(() => new Date());
   const tomorrow = new Date(now.getTime() + 24 * 3600_000).toISOString();
   const quick: [string, string][] = [
-    ["+۱ ساعت", new Date(now.getTime() + 3600_000).toISOString()],
-    ["فردا ۱۰ صبح", tehran(tomorrow, "10:00")],
-    ["۳ روز بعد", tehran(new Date(now.getTime() + 3 * 24 * 3600_000).toISOString(), "10:00")],
-    ["یک هفته بعد", tehran(new Date(now.getTime() + 7 * 24 * 3600_000).toISOString(), "10:00")],
+    ["+1 Stunde", new Date(now.getTime() + 3600_000).toISOString()],
+    ["Morgen 10 Uhr", tehran(tomorrow, "10:00")],
+    ["3 Tage später", tehran(new Date(now.getTime() + 3 * 24 * 3600_000).toISOString(), "10:00")],
+    ["Eine Woche später", tehran(new Date(now.getTime() + 7 * 24 * 3600_000).toISOString(), "10:00")],
   ];
   return (
     <div className="space-y-3">

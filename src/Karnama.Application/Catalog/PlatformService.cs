@@ -21,7 +21,7 @@ public sealed class PlatformService(IAppDbContext db, ICurrentUser me, IAuditWri
     public async Task<Result<PlatformDto>> CreateAsync(UpsertPlatformRequest r, CancellationToken ct)
     {
         if (await db.Platforms.AnyAsync(p => p.Key == r.Key.Trim().ToLowerInvariant(), ct))
-            return Error.Conflict("platforms.duplicate", "شبکه‌ای با این شناسه وجود دارد.");
+            return Error.Conflict("platforms.duplicate", "Ein Netzwerk mit dieser ID gibt es bereits.");
         var created = Platform.Create(r.Key, new LocalizedText(r.Name), r.UrlTemplate, r.SortOrder);
         if (created.IsFailure) return created.Error!;
         db.Platforms.Add(created.Value);
@@ -33,12 +33,12 @@ public sealed class PlatformService(IAppDbContext db, ICurrentUser me, IAuditWri
     public async Task<Result<PlatformDto>> UpdateAsync(Guid id, UpsertPlatformRequest r, CancellationToken ct)
     {
         var p = await db.Platforms.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("platforms.notFound", "شبکه پیدا نشد.");
-        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        if (p is null) return Error.NotFound("platforms.notFound", "Netzwerk nicht gefunden.");
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "Die Datensatzversion fehlt; laden Sie die Seite neu.");
         db.SetOriginalVersion(p, v);
         var key = r.Key.Trim().ToLowerInvariant();
         if (key != p.Key && await db.Platforms.AnyAsync(x => x.Key == key && x.Id != id, ct))
-            return Error.Conflict("platforms.duplicate", "شبکه‌ای با این شناسه وجود دارد.");
+            return Error.Conflict("platforms.duplicate", "Ein Netzwerk mit dieser ID gibt es bereits.");
         var u = p.Update(r.Key, new LocalizedText(r.Name), r.UrlTemplate, r.SortOrder, r.IsActive);
         if (u.IsFailure) return u.Error!;
         audit.Add("platforms.updated", nameof(Platform), id.ToString(), r);
@@ -49,7 +49,7 @@ public sealed class PlatformService(IAppDbContext db, ICurrentUser me, IAuditWri
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
     {
         var p = await db.Platforms.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("platforms.notFound", "شبکه پیدا نشد.");
+        if (p is null) return Error.NotFound("platforms.notFound", "Netzwerk nicht gefunden.");
         p.Delete(me.UserId, clock.GetUtcNow());
         audit.Add("platforms.deleted", nameof(Platform), id.ToString());
         await db.SaveChangesAsync(ct);
@@ -59,8 +59,8 @@ public sealed class PlatformService(IAppDbContext db, ICurrentUser me, IAuditWri
     public async Task<Result<PlatformDto>> RestoreAsync(Guid id, CancellationToken ct)
     {
         var p = await db.Platforms.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("platforms.notFound", "شبکه پیدا نشد.");
-        if (await db.Platforms.AnyAsync(x => x.Key == p.Key, ct)) return Error.Conflict("platforms.duplicate", "شبکه‌ای با این شناسه وجود دارد.");
+        if (p is null) return Error.NotFound("platforms.notFound", "Netzwerk nicht gefunden.");
+        if (await db.Platforms.AnyAsync(x => x.Key == p.Key, ct)) return Error.Conflict("platforms.duplicate", "Ein Netzwerk mit dieser ID gibt es bereits.");
         p.Restore();
         audit.Add("platforms.restored", nameof(Platform), id.ToString());
         await db.SaveChangesAsync(ct);

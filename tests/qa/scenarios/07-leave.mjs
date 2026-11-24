@@ -3,7 +3,7 @@
 import { qa, pick, check, eq } from "../lib.mjs";
 
 export const id = "S07";
-export const title = "مرخصی — روزانه و ساعتی، تأیید/رد/لغو، ماموریت، مانده";
+export const title = "Urlaub – tage- und stundenweise, genehmigen/ablehnen/stornieren, Außentermin, Resturlaub";
 
 const userId = (actor) => JSON.parse(Buffer.from(actor.token.split(".")[1], "base64url").toString()).sub;
 const tehranDay = (offset = 0) => qa.tehran(12, 0, offset).slice(0, 10);
@@ -38,7 +38,7 @@ export async function run(rec, { crowd }) {
   });
 
   // Daily leave: two whole days, from Tehran midnight of day+2 to day+4.
-  const daily = { leaveTypeId: null, hourly: false, from: qa.tehran(0, 0, 2), to: qa.tehran(0, 0, 4), reason: "سفر خانوادگی" };
+  const daily = { leaveTypeId: null, hourly: false, from: qa.tehran(0, 0, 2), to: qa.tehran(0, 0, 4), reason: "Familienreise" };
   let dailyReq, hourlyReq, cancelReq;
   await rec.step("2.7.c", "worker asks for a 2-day annual leave → pending, managers notified live", async () => {
     dailyReq = await (await as(m0)).post("/api/v1/leave/requests", { ...daily, leaveTypeId: T.annual.id });
@@ -54,7 +54,7 @@ export async function run(rec, { crowd }) {
   });
 
   await rec.step("2.7.d", "manager approves → approved, worker notified, balance 2 used / 24 left", async () => {
-    const r = await (await as(managerP)).post(`/api/v1/leave/requests/${dailyReq.id}/decide`, { approve: true, note: "خوش بگذرد" });
+    const r = await (await as(managerP)).post(`/api/v1/leave/requests/${dailyReq.id}/decide`, { approve: true, note: "Viel Spaß" });
     eq(r.leave.status, "approved", "status");
     check(Array.isArray(r.workToReassign), "reassignment suggestions returned");
     const inbox = await (await as(m0)).get("/api/v1/notifications");
@@ -66,19 +66,19 @@ export async function run(rec, { crowd }) {
 
   await rec.step("2.7.e", "hourly leave (tomorrow 10–12) → manager rejects with a note; balance unchanged", async () => {
     hourlyReq = await (await as(m1)).post("/api/v1/leave/requests", {
-      leaveTypeId: T.annual.id, hourly: true, from: qa.tehran(10, 0, 1), to: qa.tehran(12, 0, 1), reason: "کار بانکی",
+      leaveTypeId: T.annual.id, hourly: true, from: qa.tehran(10, 0, 1), to: qa.tehran(12, 0, 1), reason: "Bankangelegenheit",
     });
     eq(hourlyReq.status, "pending", "status");
     eq(hourlyReq.minutes, 120, "minutes");
-    const r = await (await as(managerP)).post(`/api/v1/leave/requests/${hourlyReq.id}/decide`, { approve: false, note: "فردا جلسه داریم" });
+    const r = await (await as(managerP)).post(`/api/v1/leave/requests/${hourlyReq.id}/decide`, { approve: false, note: "Morgen haben wir einen Termin" });
     eq(r.leave.status, "rejected", "status");
-    eq(r.leave.decisionNote, "فردا جلسه داریم", "note kept");
+    eq(r.leave.decisionNote, "Morgen haben wir einen Termin", "note kept");
     eq((await balance(m1)).usedDays, 0, "rejected does not count");
   });
 
   await rec.step("2.7.f", "an approved hourly leave counts as hours/workday in the balance", async () => {
     const h = await (await as(m1)).post("/api/v1/leave/requests", {
-      leaveTypeId: T.annual.id, hourly: true, from: qa.tehran(14, 0, 1), to: qa.tehran(16, 0, 1), reason: "کار اداری",
+      leaveTypeId: T.annual.id, hourly: true, from: qa.tehran(14, 0, 1), to: qa.tehran(16, 0, 1), reason: "Bürotätigkeit",
     });
     await (await as(managerP)).post(`/api/v1/leave/requests/${h.id}/decide`, { approve: true });
     const b = await balance(m1);
@@ -88,7 +88,7 @@ export async function run(rec, { crowd }) {
 
   await rec.step("2.7.g", "requester cancels a pending request; cancelling again → 409; someone else can't cancel (403)", async () => {
     cancelReq = await (await as(m2)).post("/api/v1/leave/requests", {
-      leaveTypeId: T.annual.id, hourly: false, from: qa.tehran(0, 0, 5), to: qa.tehran(0, 0, 6), reason: "کار شخصی",
+      leaveTypeId: T.annual.id, hourly: false, from: qa.tehran(0, 0, 5), to: qa.tehran(0, 0, 6), reason: "Private Angelegenheit",
     });
     eq(await (await as(m1)).refused("POST", `/api/v1/leave/requests/${cancelReq.id}/cancel`, {}, [403, 404]) >= 403, true, "other worker cancel");
     await (await as(m2)).post(`/api/v1/leave/requests/${cancelReq.id}/cancel`, {});
@@ -102,7 +102,7 @@ export async function run(rec, { crowd }) {
     const mgr = await as(managerP);
     const fieldUid = userId(await as(field3));
     const m = await mgr.post("/api/v1/leave/requests", {
-      leaveTypeId: T.mission.id, hourly: false, from: qa.tehran(0, 0, 1), to: qa.tehran(0, 0, 2), reason: "فیلمبرداری در محل مشتری", forUserId: fieldUid,
+      leaveTypeId: T.mission.id, hourly: false, from: qa.tehran(0, 0, 1), to: qa.tehran(0, 0, 2), reason: "Dreh beim Kunden vor Ort", forUserId: fieldUid,
     });
     eq(m.status, "approved", "status");
     eq(m.byManager, true, "byManager");
@@ -114,7 +114,7 @@ export async function run(rec, { crowd }) {
 
   await rec.step("2.7.i", "overlapping request (inside the approved 2-day leave) → 409", async () => {
     eq(await (await as(m0)).refused("POST", "/api/v1/leave/requests", {
-      leaveTypeId: T.annual.id, hourly: true, from: qa.tehran(10, 0, 3), to: qa.tehran(11, 0, 3), reason: "همپوشانی",
+      leaveTypeId: T.annual.id, hourly: true, from: qa.tehran(10, 0, 3), to: qa.tehran(11, 0, 3), reason: "Überschneidung",
     }, [409]), 409, "status");
   });
 
@@ -122,16 +122,16 @@ export async function run(rec, { crowd }) {
     const w = await as(m2);
     const base = { leaveTypeId: T.annual.id, hourly: false, from: qa.tehran(0, 0, 10), to: qa.tehran(0, 0, 11) };
     check(INVALID.includes(await w.refused("POST", "/api/v1/leave/requests", { ...base, reason: "x" }, INVALID)), "short reason");
-    check(INVALID.includes(await w.refused("POST", "/api/v1/leave/requests", { ...base, from: base.to, to: base.from, reason: "برعکس" }, INVALID)), "end before start");
+    check(INVALID.includes(await w.refused("POST", "/api/v1/leave/requests", { ...base, from: base.to, to: base.from, reason: "Umgekehrt" }, INVALID)), "end before start");
     check(INVALID.includes(await w.refused("POST", "/api/v1/leave/requests",
-      { ...base, hourly: true, from: qa.tehran(6, 0, 10), to: qa.tehran(20, 0, 10), reason: "ساعتی طولانی" }, INVALID)), "hourly > 12h");
+      { ...base, hourly: true, from: qa.tehran(6, 0, 10), to: qa.tehran(20, 0, 10), reason: "Lange stundenweise" }, INVALID)), "hourly > 12h");
   });
 
   let pastReq;
   await rec.step("2.7.k", "leave entirely in the past: documented behaviour (accepted as pending, never auto-approved)", async () => {
     const w = await as(m2);
     const r = await w.call("POST", "/api/v1/leave/requests", {
-      leaveTypeId: T.annual.id, hourly: false, from: qa.tehran(0, 0, -7), to: qa.tehran(0, 0, -6), reason: "مرخصی هفته‌ی قبل",
+      leaveTypeId: T.annual.id, hourly: false, from: qa.tehran(0, 0, -7), to: qa.tehran(0, 0, -6), reason: "Urlaub letzte Woche",
     }, { expect: [200, 201, 400, 409, 422] });
     if (r && r.id) { pastReq = r; eq(r.status, "pending", "a past request is at most pending"); }
   });
@@ -140,7 +140,7 @@ export async function run(rec, { crowd }) {
     const w = await as(m1);
     eq(await w.refused("POST", `/api/v1/leave/requests/${dailyReq.id}/decide`, { approve: false }, [403]), 403, "worker decides");
     eq(await w.refused("POST", "/api/v1/leave/requests", {
-      leaveTypeId: T.annual.id, hourly: false, from: qa.tehran(0, 0, 12), to: qa.tehran(0, 0, 13), reason: "برای همکار", forUserId: userId(await as(m2)),
+      leaveTypeId: T.annual.id, hourly: false, from: qa.tehran(0, 0, 12), to: qa.tehran(0, 0, 13), reason: "Für einen Mitarbeiter", forUserId: userId(await as(m2)),
     }, [403]), 403, "worker registers for another");
     // A worker only lists their own requests.
     const list = await w.get("/api/v1/leave/requests");
@@ -151,7 +151,7 @@ export async function run(rec, { crowd }) {
   await rec.step("2.7.m", "a manager can't approve their own request (403); another lead can; deciding twice → 409", async () => {
     const mgr = await as(managerP);
     const own = await mgr.post("/api/v1/leave/requests", {
-      leaveTypeId: T.annual.id, hourly: true, from: qa.tehran(9, 0, 8), to: qa.tehran(11, 0, 8), reason: "دندانپزشکی",
+      leaveTypeId: T.annual.id, hourly: true, from: qa.tehran(9, 0, 8), to: qa.tehran(11, 0, 8), reason: "Zahnarztpraxis",
     });
     eq(await mgr.refused("POST", `/api/v1/leave/requests/${own.id}/decide`, { approve: true }, [403]), 403, "self approval");
     const r = await (await as(ownerP)).post(`/api/v1/leave/requests/${own.id}/decide`, { approve: true });
@@ -182,7 +182,7 @@ export async function run(rec, { crowd }) {
 
   await rec.step("2.7.q", "sick leave without the required document is accepted but marked missingDocument (manager decides)", async () => {
     const r = await (await as(m2)).post("/api/v1/leave/requests", {
-      leaveTypeId: T.sick.id, hourly: false, from: qa.tehran(0, 0, 14), to: qa.tehran(0, 0, 15), reason: "سرماخوردگی",
+      leaveTypeId: T.sick.id, hourly: false, from: qa.tehran(0, 0, 14), to: qa.tehran(0, 0, 15), reason: "Erkältung",
     });
     eq(r.status, "pending", "status");
     eq(r.missingDocument, true, "missingDocument flag");
@@ -208,7 +208,7 @@ export async function run(rec, { crowd }) {
     const before = (await (await as(managerP)).get("/api/v1/leave/absences")).find((a) => a.userId === m2Uid && a.day === day);
     check(before?.status === "detected", `absence detected first (${JSON.stringify(before?.status)})`);
     await (await as(managerP)).post("/api/v1/leave/requests", {
-      leaveTypeId: T.sick.id, hourly: false, from: qa.tehran(0, 0, 0), to: qa.tehran(0, 0, 1), reason: "تلفنی خبر داد که مریض است", forUserId: m2Uid,
+      leaveTypeId: T.sick.id, hourly: false, from: qa.tehran(0, 0, 0), to: qa.tehran(0, 0, 1), reason: "Hat telefonisch gemeldet, dass er krank ist", forUserId: m2Uid,
     });
     // Two days later (+2 h margin) the 48 h reason deadline has passed and the job runs again.
     await qa.setClock(qa.tehran(12, 0, 2));

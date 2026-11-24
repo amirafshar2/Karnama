@@ -29,7 +29,7 @@ public class VaultTests
     public void Seals_and_opens_only_for_the_same_record()
     {
         var vault = Make(new() { ["Vault:MasterKey"] = Key() });
-        var plain = Encoding.UTF8.GetBytes("رمز-Secret!");
+        var plain = Encoding.UTF8.GetBytes("Passwort-Secret!");
         var s = vault.Seal(plain, "record-a");
         Encoding.UTF8.GetString(s.Cipher).Should().NotContain("Secret");
         vault.Open(s, "record-a").Should().Equal(plain);

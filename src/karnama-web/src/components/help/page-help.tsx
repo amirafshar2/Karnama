@@ -16,7 +16,7 @@ registerTexts(faN12);
 
 type Item = { slug: string; title: string; excerpt: string };
 
-/** The "؟" in the header: what this page is for, in two sentences, and the full article behind it. */
+/** The "?" in the header: what this page is for, in two sentences, and the full article behind it. */
 export function PageHelp() {
   const { t, dir } = useI18n();
   const isMobile = useIsMobile();

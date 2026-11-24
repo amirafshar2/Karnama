@@ -54,7 +54,7 @@ public sealed class HandOverValidator : AbstractValidator<HandOverRequest>
     {
         RuleFor(x => x.UserId).NotEmpty();
         RuleFor(x => x.Condition).MaximumLength(500);
-        RuleFor(x => x.Accessories).Must(a => a is null || a.Count <= 20).WithMessage("حداکثر ۲۰ لوازم همراه.");
+        RuleFor(x => x.Accessories).Must(a => a is null || a.Count <= 20).WithMessage("Höchstens 20 Zubehörteile.");
     }
 }
 
@@ -67,7 +67,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
 {
     public const long MaxPhotoBytes = 5 * 1024 * 1024;
     private static readonly string[] ImageKinds = ["jpg", "png", "webp"];
-    private static Error NotFound => Error.NotFound("assets.notFound", "تجهیز پیدا نشد.");
+    private static Error NotFound => Error.NotFound("assets.notFound", "Gerät nicht gefunden.");
     private Guid Me => me.UserId ?? Guid.Empty;
     private bool IsStaff => me.Kind == UserKind.Staff;
     private bool CanView => IsStaff && me.Has(Permissions.AssetsView, PermissionScope.Own);
@@ -94,12 +94,12 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
     {
         if (!CanManage) return Error.Forbidden();
         var name = (r.Name ?? "").Trim();
-        if (await db.AssetCategories.AnyAsync(c => c.Name == name && c.Id != id, ct)) return Error.Conflict("assets.categoryExists", "دسته‌ای با این نام هست.");
+        if (await db.AssetCategories.AnyAsync(c => c.Name == name && c.Id != id, ct)) return Error.Conflict("assets.categoryExists", "Eine Kategorie mit diesem Namen gibt es bereits.");
         AssetCategory c;
         if (id is { } given)
         {
             var found = await db.AssetCategories.FirstOrDefaultAsync(x => x.Id == given, ct);
-            if (found is null) return Error.NotFound("assets.categoryNotFound", "دسته پیدا نشد.");
+            if (found is null) return Error.NotFound("assets.categoryNotFound", "Kategorie nicht gefunden.");
             var u = found.Update(name, r.SortOrder, r.IsActive);
             if (u.IsFailure) return u.Error!;
             c = found;
@@ -134,7 +134,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         return await ItemsAsync(await q.OrderBy(a => a.Name).Take(500).ToListAsync(ct), ct);
     }
 
-    /// <summary>"پیش من": what I hold (incl. waiting for my acceptance) and what colleagues are handing me.</summary>
+    /// <summary>"Bei mir": what I hold (incl. waiting for my acceptance) and what colleagues are handing me.</summary>
     public async Task<Result<MineDto>> MineAsync(CancellationToken ct)
     {
         if (!CanView && !SeesAll) return Error.Forbidden();
@@ -225,9 +225,9 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
     public async Task<Result<AssetDetailDto>> CreateAsync(SaveAssetRequest r, CancellationToken ct)
     {
         if (!CanManage) return Error.Forbidden();
-        if (!await db.AssetCategories.AnyAsync(c => c.Id == r.CategoryId, ct)) return Error.Validation("assets.category", "دسته را انتخاب کنید.");
+        if (!await db.AssetCategories.AnyAsync(c => c.Id == r.CategoryId, ct)) return Error.Validation("assets.category", "Wählen Sie eine Kategorie.");
         var tag = string.IsNullOrWhiteSpace(r.Tag) ? await NextTagAsync(ct) : r.Tag.Trim();
-        if (await db.Assets.AnyAsync(a => a.Tag == tag, ct)) return Error.Conflict("assets.tagExists", "این کد اموال قبلاً ثبت شده.");
+        if (await db.Assets.AnyAsync(a => a.Tag == tag, ct)) return Error.Conflict("assets.tagExists", "Diese Inventarnummer ist bereits erfasst.");
         var created = Asset.Create(Spec(r), tag);
         if (created.IsFailure) return created.Error!;
         var a = created.Value!;
@@ -244,9 +244,9 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         var a = await db.Assets.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (a is null) return NotFound;
         if (r.Version is { } v) db.SetOriginalVersion(a, v);
-        if (!await db.AssetCategories.AnyAsync(c => c.Id == r.CategoryId, ct)) return Error.Validation("assets.category", "دسته را انتخاب کنید.");
+        if (!await db.AssetCategories.AnyAsync(c => c.Id == r.CategoryId, ct)) return Error.Validation("assets.category", "Wählen Sie eine Kategorie.");
         var tag = string.IsNullOrWhiteSpace(r.Tag) ? a.Tag : r.Tag.Trim();
-        if (tag != a.Tag && await db.Assets.AnyAsync(x => x.Tag == tag && x.Id != id, ct)) return Error.Conflict("assets.tagExists", "این کد اموال قبلاً ثبت شده.");
+        if (tag != a.Tag && await db.Assets.AnyAsync(x => x.Tag == tag && x.Id != id, ct)) return Error.Conflict("assets.tagExists", "Diese Inventarnummer ist bereits erfasst.");
         var before = new { a.Name, a.Tag, a.Serial, a.PurchasePrice, a.WarrantyUntil };
         var u = a.Update(Spec(r) with { Tag = tag });
         if (u.IsFailure) return u.Error!;
@@ -261,7 +261,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         if (!CanManage) return Error.Forbidden();
         var a = await db.Assets.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (a is null) return NotFound;
-        if (a.HolderId is not null) return Error.Conflict("assets.held", "این تجهیز دست کسی است؛ اول برگشت را ثبت کنید.");
+        if (a.HolderId is not null) return Error.Conflict("assets.held", "Dieses Gerät ist ausgegeben; erfassen Sie zuerst die Rückgabe.");
         var now = clock.GetUtcNow();
         a.Delete(Me, now);
         db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.Deleted, now));
@@ -293,7 +293,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         if (a is null) return NotFound;
         db.SetOriginalVersion(a, r.Version);
         var person = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == r.UserId && u.Kind == UserKind.Staff && u.IsActive, ct);
-        if (person is null) return Error.Validation("assets.user", "گیرنده باید یکی از همکاران فعال باشد.");
+        if (person is null) return Error.Validation("assets.user", "Der Empfänger muss ein aktiver Mitarbeiter sein.");
         var now = clock.GetUtcNow();
         var h = AssetAssignment.HandOver(a, r.UserId, Me, r.ExpectedReturn, r.Condition, r.Accessories, now);
         if (h.IsFailure) return h.Error!;
@@ -301,7 +301,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         db.AssetAssignments.Add(x);
         db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.HandedOver, now, x.Id, r.UserId, Describe(x)));
         audit.Add("assets.handedOver", nameof(Asset), a.Id.ToString(), new { to = r.UserId, r.ExpectedReturn });
-        await notifier.NotifyAsync([r.UserId], "assets.handover", $"تجهیز به شما تحویل شد: {a.Name}", "در اپ «تحویل گرفتم» را بزنید.", $"/assets?id={a.Id}", false,
+        await notifier.NotifyAsync([r.UserId], "assets.handover", $"Ein Gerät wurde Ihnen übergeben: {a.Name}", "Tippen Sie in der App auf „Ich habe es übernommen“.", $"/assets?id={a.Id}", false,
             $"asset-handover:{x.Id:N}", ct);
         var saved = await SaveAsync(a.Id, ct);
         if (saved.IsFailure) return saved.Error!;
@@ -314,7 +314,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
             var r = x.Accept(Me, now);
             if (r.IsFailure) return r;
             db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.Accepted, now, x.Id, Me));
-            await notifier.NotifyAsync([x.HandedBy], "assets.accepted", $"تحویل تأیید شد: {a.Name}", null, $"/assets?id={a.Id}", false, $"asset-accepted:{x.Id:N}", ct);
+            await notifier.NotifyAsync([x.HandedBy], "assets.accepted", $"Übergabe bestätigt: {a.Name}", null, $"/assets?id={a.Id}", false, $"asset-accepted:{x.Id:N}", ct);
             return Result.Success();
         }, ct);
 
@@ -324,7 +324,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
             var r = x.Decline(Me, a);
             if (r.IsFailure) return r;
             db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.Declined, now, x.Id, Me, note));
-            await notifier.NotifyAsync([x.HandedBy], "assets.declined", $"تحویل رد شد: {a.Name}", note, $"/assets?id={a.Id}", true, $"asset-declined:{x.Id:N}", ct);
+            await notifier.NotifyAsync([x.HandedBy], "assets.declined", $"Übergabe abgelehnt: {a.Name}", note, $"/assets?id={a.Id}", true, $"asset-declined:{x.Id:N}", ct);
             return Result.Success();
         }, ct);
 
@@ -344,7 +344,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
             if (r.IsFailure) return r;
             db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.ReturnSubmitted, now, x.Id, Me, Join(req.Condition, req.Damage)));
             await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.AssetsAssign, PermissionScope.All, ct), "assets.return",
-                $"برگشت تجهیز منتظر تأیید: {a.Name}", req.Damage is { Length: > 0 } ? $"خرابی/کمبود: {req.Damage}" : null, $"/assets?id={a.Id}", req.Damage is { Length: > 0 },
+                $"Geräterückgabe wartet auf Bestätigung: {a.Name}", req.Damage is { Length: > 0 } ? $"Schaden/Fehlteile: {req.Damage}" : null, $"/assets?id={a.Id}", req.Damage is { Length: > 0 },
                 $"asset-return:{x.Id:N}", ct);
             return Result.Success();
         }, ct);
@@ -354,12 +354,12 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         {
             if (!CanAssign) return Error.Forbidden();
             // The return of your own equipment is confirmed by someone else (a manager can, an assigner can't self-approve).
-            if (x.UserId == Me && !CanManage) return Error.Forbidden("assets.selfReturn", "برگشت تجهیزی که دست خودتان است را همکار دیگری تأیید می‌کند.");
+            if (x.UserId == Me && !CanManage) return Error.Forbidden("assets.selfReturn", "Die Rückgabe eines Geräts, das Sie selbst haben, bestätigt ein anderer Kollege.");
             var r = x.ConfirmReturn(a, Me, req.Status, req.Condition, req.Damage, now);
             if (r.IsFailure) return r;
             db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.Returned, now, x.Id, x.UserId, Join(x.ConditionIn, x.Damage, req.Status == AssetStatus.Available ? null : StatusName(req.Status))));
             audit.Add("assets.returned", nameof(Asset), a.Id.ToString(), new { from = x.UserId, status = req.Status, x.Damage });
-            await notifier.NotifyAsync([x.UserId], "assets.returned", $"برگشت ثبت شد: {a.Name}", null, $"/assets?id={a.Id}", false, $"asset-returned:{x.Id:N}", ct);
+            await notifier.NotifyAsync([x.UserId], "assets.returned", $"Rückgabe erfasst: {a.Name}", null, $"/assets?id={a.Id}", false, $"asset-returned:{x.Id:N}", ct);
             return Result.Success();
         }, ct);
 
@@ -368,11 +368,11 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         {
             if (x.UserId != Me && !CanAssign) return Error.Forbidden();
             if (!await db.Users.AnyAsync(u => u.Id == req.UserId && u.Kind == UserKind.Staff && u.IsActive, ct))
-                return Error.Validation("assets.user", "گیرنده باید یکی از همکاران فعال باشد.");
+                return Error.Validation("assets.user", "Der Empfänger muss ein aktiver Mitarbeiter sein.");
             var r = x.OfferTransfer(req.UserId);
             if (r.IsFailure) return r;
             db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.TransferOffered, now, x.Id, req.UserId));
-            await notifier.NotifyAsync([req.UserId], "assets.transfer", $"تجهیز برای شما فرستاده شد: {a.Name}", "وقتی گرفتید «تحویل گرفتم» را بزنید.", $"/assets?id={a.Id}", false,
+            await notifier.NotifyAsync([req.UserId], "assets.transfer", $"Ein Gerät wurde Ihnen geschickt: {a.Name}", "Sobald Sie es haben, tippen Sie auf „Ich habe es übernommen“.", $"/assets?id={a.Id}", false,
                 $"asset-transfer:{x.Id:N}:{req.UserId:N}", ct);
             return Result.Success();
         }, ct);
@@ -401,7 +401,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
             newId = r.Value!.Id;
             db.AssetEvents.Add(AssetEvent.Log(a.Id, Me, AssetEventKind.Transferred, now, r.Value!.Id, Me, req.Condition));
             audit.Add("assets.transferred", nameof(Asset), a.Id.ToString(), new { from, to = Me });
-            await notifier.NotifyAsync([from], "assets.transferred", $"انتقال انجام شد: {a.Name}", null, $"/assets?id={a.Id}", false, $"asset-transferred:{x.Id:N}", ct);
+            await notifier.NotifyAsync([from], "assets.transferred", $"Übergabe erledigt: {a.Name}", null, $"/assets?id={a.Id}", false, $"asset-transferred:{x.Id:N}", ct);
             return Result.Success();
         }, ct, transactional: true);
         return res;
@@ -443,12 +443,12 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         else
         {
             var x = assignmentId is { } aid ? await db.AssetAssignments.AsNoTracking().FirstOrDefaultAsync(z => z.Id == aid && z.AssetId == assetId, ct) : null;
-            if (x is null) return Error.Validation("assets.photoAssignment", "عکس وضعیت باید به یک تحویل مشخص وصل باشد.");
+            if (x is null) return Error.Validation("assets.photoAssignment", "Das Zustandsfoto muss zu einer bestimmten Übergabe gehören.");
             if (!CanAssign && x.UserId != Me) return Error.Forbidden();
-            if (!x.IsOpen) return Error.Conflict("assets.closed", "این تحویل بسته شده است.");
+            if (!x.IsOpen) return Error.Conflict("assets.closed", "Diese Übergabe ist geschlossen.");
         }
-        if (length <= 0 || length > MaxPhotoBytes) return Error.Validation("assets.photoSize", "عکس حداکثر ۵ مگابایت است (اپ خودش عکس را کوچک می‌کند).");
-        if (await db.AssetPhotos.CountAsync(p => p.AssetId == assetId, ct) >= 200) return Error.Validation("assets.photoCount", "برای این تجهیز عکس کافی ثبت شده.");
+        if (length <= 0 || length > MaxPhotoBytes) return Error.Validation("assets.photoSize", "Das Foto darf höchstens 5 MB haben (die App verkleinert es selbst).");
+        if (await db.AssetPhotos.CountAsync(p => p.AssetId == assetId, ct) >= 200) return Error.Validation("assets.photoCount", "Für dieses Gerät sind genug Fotos erfasst.");
         var now = clock.GetUtcNow();
         var key = $"{now:yyyy}/{now:MM}/{Guid.NewGuid():N}";
         await files.AppendAsync(key, 0, content, length, ct);
@@ -456,13 +456,13 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         if (kind is null || !ImageKinds.Contains(kind))
         {
             await files.DeleteAsync(key, ct);
-            return Error.Validation("assets.photoType", "فقط عکس (JPG، PNG یا WebP) قبول می‌شود.");
+            return Error.Validation("assets.photoType", "Es werden nur Bilder (JPG, PNG oder WebP) akzeptiert.");
         }
         var p = AssetPhoto.Create(assetId, assignmentId, stage, key, kind switch { "png" => "image/png", "webp" => "image/webp", _ => "image/jpeg" }, length, Me, now);
         db.AssetPhotos.Add(p);
         db.AssetEvents.Add(AssetEvent.Log(assetId, Me, AssetEventKind.PhotoAdded, now, assignmentId, note: stage switch
         {
-            AssetPhotoStage.HandOver => "عکس هنگام تحویل", AssetPhotoStage.Return => "عکس هنگام برگشت", _ => "عکس تجهیز",
+            AssetPhotoStage.HandOver => "Foto bei der Übergabe", AssetPhotoStage.Return => "Foto bei der Rückgabe", _ => "Gerätefoto",
         }));
         await db.SaveChangesAsync(ct);
         return new PhotoDto(p.Id, p.Stage, p.AssignmentId, p.At);
@@ -498,9 +498,9 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
             var a = await db.Assets.AsNoTracking().FirstOrDefaultAsync(z => z.Id == x.AssetId, ct);
             if (a is null) continue;
             var who = await db.Users.AsNoTracking().Where(u => u.Id == x.UserId).Select(u => u.DisplayName).FirstOrDefaultAsync(ct) ?? "—";
-            await notifier.NotifyAsync([x.UserId], "assets.overdue", $"وقت برگرداندن {a.Name} گذشته", "لطفاً برگردانید یا با مدیر هماهنگ کنید.", $"/assets?id={a.Id}", true,
+            await notifier.NotifyAsync([x.UserId], "assets.overdue", $"Die Rückgabezeit für {a.Name} ist überschritten", "Bitte zurückgeben oder mit dem Manager absprechen.", $"/assets?id={a.Id}", true,
                 $"asset-overdue:{x.Id:N}:{today:yyyyMMdd}", ct);
-            await notifier.NotifyAsync(assigners, "assets.overdue", $"برگشت دیر شده: {a.Name}", $"دست {who}", $"/assets?id={a.Id}", false, $"asset-overdue-m:{x.Id:N}:{today:yyyyMMdd}", ct);
+            await notifier.NotifyAsync(assigners, "assets.overdue", $"Rückgabe überfällig: {a.Name}", $"Bei {who}", $"/assets?id={a.Id}", false, $"asset-overdue-m:{x.Id:N}:{today:yyyyMMdd}", ct);
             x.OverdueAnnounced(now);
             sent++;
         }
@@ -512,8 +512,8 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
             var left = a.WarrantyUntil!.Value.DayNumber - today.DayNumber;
             var threshold = left < 0 ? 0 : left <= 7 ? 7 : 30;
             if (a.WarrantyNoticeDays is { } done && done <= threshold) continue;
-            await notifier.NotifyAsync(managers, "assets.warranty", left < 0 ? $"گارانتی {a.Name} تمام شد" : $"گارانتی {a.Name} {left} روز دیگر تمام می‌شود",
-                $"کد اموال {a.Tag}", $"/assets?id={a.Id}", false, $"asset-warranty:{a.Id:N}:{threshold}", ct);
+            await notifier.NotifyAsync(managers, "assets.warranty", left < 0 ? $"Die Garantie für {a.Name} ist abgelaufen" : $"Die Garantie für {a.Name} endet in {left} Tagen",
+                $"Inventarnummer {a.Tag}", $"/assets?id={a.Id}", false, $"asset-warranty:{a.Id:N}:{threshold}", ct);
             a.WarrantyAnnounced(threshold);
             sent++;
         }
@@ -521,7 +521,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         var orphaned = await db.Assets.AsNoTracking().Where(a => a.HolderId != null && db.Users.Any(u => u.Id == a.HolderId && !u.IsActive)).Take(200).ToListAsync(ct);
         foreach (var a in orphaned)
         {
-            await notifier.NotifyAsync(assigners, "assets.orphaned", $"تجهیز دست همکار غیرفعال: {a.Name}", "برگشت را پیگیری کنید.", $"/assets?id={a.Id}", true,
+            await notifier.NotifyAsync(assigners, "assets.orphaned", $"Gerät bei inaktivem Mitarbeiter: {a.Name}", "Verfolgen Sie die Rückgabe.", $"/assets?id={a.Id}", true,
                 $"asset-orphan:{a.Id:N}:{today:yyyyMMdd}", ct);
             sent++;
         }
@@ -539,7 +539,7 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
         }
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("ux_asset_assignments_open") == true)
         {
-            return Error.Conflict("assets.held", "همین الان این تجهیز به کس دیگری تحویل شد.");
+            return Error.Conflict("assets.held", "Dieses Gerät wurde gerade jemand anderem übergeben.");
         }
         changes.Record("asset", assetId, null, null, null, "changed");
         await changes.PublishAsync(ct);
@@ -557,8 +557,8 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
     private static AssetSpec Spec(SaveAssetRequest r) => new(r.Name, r.CategoryId, r.Brand, r.Model, r.Serial, r.Tag, r.PurchasedOn, r.PurchasePrice, r.WarrantyUntil, r.Note);
 
     private static string Describe(AssetAssignment x) =>
-        Join(x.ConditionOut, x.Accessories.Count > 0 ? "همراه: " + string.Join("، ", x.Accessories) : null,
-            x.ExpectedReturn is { } e ? $"برگشت تا {Iran.Jalali(e)}" : null) ?? "";
+        Join(x.ConditionOut, x.Accessories.Count > 0 ? "Zubehör: " + string.Join(", ", x.Accessories) : null,
+            x.ExpectedReturn is { } e ? $"Rückgabe bis {Iran.Jalali(e)}" : null) ?? "";
 
     private static string? Join(params string?[] parts)
     {
@@ -568,6 +568,6 @@ public sealed class AssetService(IAppDbContext db, ICurrentUser me, TimeProvider
 
     public static string StatusName(AssetStatus s) => s switch
     {
-        AssetStatus.Available => "در انبار", AssetStatus.Assigned => "دست کارگر", AssetStatus.InRepair => "در تعمیر", AssetStatus.Lost => "گم‌شده", _ => "کنار گذاشته",
+        AssetStatus.Available => "Im Lager", AssetStatus.Assigned => "Beim Mitarbeiter", AssetStatus.InRepair => "In Reparatur", AssetStatus.Lost => "Verloren", _ => "Ausgemustert",
     };
 }

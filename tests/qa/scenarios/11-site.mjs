@@ -26,7 +26,7 @@ function png() {
 }
 
 const para = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
-const words = (n, w = "محتوا") => Array.from({ length: n }, (_, i) => `${w}${i % 7 === 0 ? " اینستاگرام" : ""}`).join(" ");
+const words = (n, w = "Inhalt") => Array.from({ length: n }, (_, i) => `${w}${i % 7 === 0 ? " Instagram" : ""}`).join(" ");
 
 export async function run(rec, { crowd }) {
   // Tomorrow 10:00 Tehran: always ahead of real time; tokens follow the QA clock, so sign in after every jump.
@@ -65,23 +65,23 @@ export async function run(rec, { crowd }) {
 
   await rec.step("2.11.c", "consultation form validation: no name / bad phone / too long message → 422; honeypot → 202 and nothing stored", async () => {
     eq((await qa.anon("POST", "/api/v1/public/site/leads", { name: "", phone, business: null, message: null, source: null, website: null })).status, 422, "empty name");
-    eq((await qa.anon("POST", "/api/v1/public/site/leads", { name: "علی", phone: "12345", business: null, message: null, source: null, website: null })).status, 422, "bad phone");
-    eq((await qa.anon("POST", "/api/v1/public/site/leads", { name: "علی", phone, business: null, message: "x".repeat(1001), source: null, website: null })).status, 422, "message too long");
-    eq((await qa.anon("POST", "/api/v1/public/site/leads", { name: "ربات", phone: "09350000000", business: null, message: null, source: null, website: "http://spam" })).status, 202, "honeypot answers like success");
+    eq((await qa.anon("POST", "/api/v1/public/site/leads", { name: "Lukas", phone: "12345", business: null, message: null, source: null, website: null })).status, 422, "bad phone");
+    eq((await qa.anon("POST", "/api/v1/public/site/leads", { name: "Lukas", phone, business: null, message: "x".repeat(1001), source: null, website: null })).status, 422, "message too long");
+    eq((await qa.anon("POST", "/api/v1/public/site/leads", { name: "Bot", phone: "09350000000", business: null, message: null, source: null, website: "http://spam" })).status, 202, "honeypot answers like success");
     const bot = await admin.get(`/api/v1/crm/leads?q=09350000000`);
     eq(bot.items.length, 0, "honeypot lead not stored");
   });
 
   await rec.step("2.11.d", "consultation form → lead appears in the CRM once (double submit is one lead)", async () => {
-    const body = { name: `بازدیدکننده QA ${sfx}`, phone, business: "کافه آزمایشی", message: "برای پیج کافه مشاوره می‌خواهم", source: "/packages", website: "" };
+    const body = { name: `Besucher QA ${sfx}`, phone, business: "Test-Café", message: "Ich möchte eine Beratung für die Café-Seite", source: "/packages", website: "" };
     eq((await qa.anon("POST", "/api/v1/public/site/leads", body)).status, 202, "submitted");
     eq((await qa.anon("POST", "/api/v1/public/site/leads", body)).status, 202, "double tap");
     const leads = await admin.get(`/api/v1/crm/leads?q=${phone}`);
     eq(leads.items.length, 1, "exactly one lead");
     eq(leads.items[0].name, body.name, "lead name");
     const detail = await admin.get(`/api/v1/crm/leads/${leads.items[0].id}`);
-    check((detail.message ?? "").includes("مشاوره"), "message kept");
-    check(JSON.stringify(detail).includes("فرم سایت"), "origin = website form");
+    check((detail.message ?? "").includes("Beratung"), "message kept");
+    check(JSON.stringify(detail).includes("Website-Formular"), "origin = website form");
   });
 
   let image, post, post2;
@@ -97,23 +97,23 @@ export async function run(rec, { crowd }) {
   });
 
   await rec.step("2.11.f", "Markdown is converted to safe HTML (script and javascript: links removed)", async () => {
-    const r = await writer.post("/api/v1/blog/markdown", { markdown: "## تیتر\n\n**پررنگ** و [لینک](https://example.com) و [بد](javascript:alert(1))\n\n<script>alert(1)</script>" });
-    check(r.html.includes("<h2") && r.html.includes("<strong>پررنگ</strong>"), `markdown rendered: ${r.html}`);
+    const r = await writer.post("/api/v1/blog/markdown", { markdown: "## Überschrift\n\n**Fett** und [Link](https://example.com) und [böse](javascript:alert(1))\n\n<script>alert(1)</script>" });
+    check(r.html.includes("<h2") && r.html.includes("<strong>Fett</strong>"), `markdown rendered: ${r.html}`);
     check(!/<script|javascript:/i.test(r.html), `unsafe parts stripped: ${r.html}`);
   });
 
   const content = () => JSON.stringify({
     type: "doc", content: [
-      para(`این یک مطلب آزمایشی QA ${sfx} است. ${words(25)}`),
-      { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "عکس وسط متن" }] },
-      { type: "image", attrs: { src: need(image, "image").url, alt: "عکس آزمایشی", title: "زیرنویس عکس" } },
-      para(`ادامه‌ی متن بعد از عکس. ${words(25, "فروش")}`),
+      para(`Dies ist ein QA-Testbeitrag ${sfx} ist. ${words(25)}`),
+      { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Bild im Text" }] },
+      { type: "image", attrs: { src: need(image, "image").url, alt: "Testfoto", title: "Bildunterschrift" } },
+      para(`Text nach dem Bild. ${words(25, "Umsatz")}`),
       { type: "image", attrs: { src: "https://evil.example/x.png", alt: "external" } },
     ],
   });
 
   post = await rec.step("2.11.g", "writer saves a draft with the image in the middle and submits it for review", async () => {
-    const p = await writer.post("/api/v1/blog/posts", { title: `مطلب آزمایشی QA ${sfx}`, contentJson: content(), categoryId: null, tags: ["qa"], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: null });
+    const p = await writer.post("/api/v1/blog/posts", { title: `QA-Testbeitrag ${sfx}`, contentJson: content(), categoryId: null, tags: ["qa"], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: null });
     eq(p.status, "draft", "draft");
     check(p.wordCount >= 30, `word count ${p.wordCount}`);
     check(p.seoTitle && p.metaDescription && p.slug, "automatic SEO filled");
@@ -140,14 +140,14 @@ export async function run(rec, { crowd }) {
   });
 
   post2 = await rec.step("2.11.j", "cancel: a second scheduled post is unpublished before its time and never goes live", async () => {
-    const p = await writer.post("/api/v1/blog/posts", { title: `مطلب لغوشده QA ${sfx}`, contentJson: JSON.stringify({ type: "doc", content: [para(words(40, "لغو"))] }), categoryId: null, tags: [], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: null });
+    const p = await writer.post("/api/v1/blog/posts", { title: `Abgebrochener QA-Beitrag ${sfx}`, contentJson: JSON.stringify({ type: "doc", content: [para(words(40, "Abbrechen"))] }), categoryId: null, tags: [], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: null });
     const at = new Date(new Date((await qa.clock()).now).getTime() + 60 * 60_000).toISOString();
     const s = await editor.post(`/api/v1/blog/posts/${p.id}/publish`, { at, version: p.version });
     eq(s.status, "scheduled", "scheduled");
     const u = await editor.post(`/api/v1/blog/posts/${p.id}/unpublish`);
     eq(u.status, "draft", "back to draft");
     // A post that is too short can't be published at all.
-    const short = await writer.post("/api/v1/blog/posts", { title: `کوتاه QA ${sfx}`, contentJson: JSON.stringify({ type: "doc", content: [para("فقط چند کلمه")] }), categoryId: null, tags: [], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: null });
+    const short = await writer.post("/api/v1/blog/posts", { title: `Kurz QA ${sfx}`, contentJson: JSON.stringify({ type: "doc", content: [para("Nur ein paar Worte")] }), categoryId: null, tags: [], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: null });
     await editor.refused("POST", `/api/v1/blog/posts/${short.id}/publish`, { at: null, version: short.version }, [422]);
     await writer.del(`/api/v1/blog/posts/${short.id}`); // writer may archive their own draft
     return u;
@@ -164,7 +164,7 @@ export async function run(rec, { crowd }) {
     const html = r.data.html;
     const imgAt = html.indexOf(`src="${image.url}"`);
     check(imgAt > 0, "uploaded image rendered");
-    check(html.indexOf("ادامه‌ی متن") > imgAt && html.indexOf("مطلب آزمایشی") < imgAt, "image sits between the two paragraphs");
+    check(html.indexOf("Weiterlesen") > imgAt && html.indexOf("Testbeitrag") < imgAt, "image sits between the two paragraphs");
     check(!html.includes("evil.example"), "foreign image dropped");
     const list = await qa.anon("GET", "/api/v1/public/blog");
     check(list.data.items.some((i) => i.slug === post.slug), "listed on the blog page");
@@ -177,6 +177,6 @@ export async function run(rec, { crowd }) {
     need(post, "post");
     const cur = await writer.get(`/api/v1/blog/posts/${post.id}`);
     eq(cur.status, "published", "published");
-    await writer.refused("PUT", `/api/v1/blog/posts/${post.id}`, { title: "تغییر", contentJson: cur.contentJson, categoryId: null, tags: [], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: cur.version }, [403]);
+    await writer.refused("PUT", `/api/v1/blog/posts/${post.id}`, { title: "Ändern", contentJson: cur.contentJson, categoryId: null, tags: [], coverImage: null, coverAlt: null, seoTitle: null, metaDescription: null, focusKeyword: null, slug: null, version: cur.version }, [403]);
   });
 }

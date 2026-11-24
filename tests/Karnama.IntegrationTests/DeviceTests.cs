@@ -120,7 +120,7 @@ public sealed class DeviceTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         unknown.EnumerateArray().Should().Contain(u => u.GetProperty("pin").GetString() == "77");
 
         // A brand-new colleague gets PIN 77: the waiting record becomes their clock-in.
-        var created = await (await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "همکار دستگاه", phone = "09127770077", roleIds = Array.Empty<Guid>(), isActive = true })).JsonAsync();
+        var created = await (await admin.PostAsJsonAsync("/api/v1/users", new { displayName = "Mitarbeiter am Gerät", phone = "015127770077", roleIds = Array.Empty<Guid>(), isActive = true })).JsonAsync();
         var newUser = created.GetProperty("id").GetGuid();
         (await admin.PostAsJsonAsync("/api/v1/devices/pins", new { pin = "0077", userId = newUser })).StatusCode.Should().Be(HttpStatusCode.OK);
         (await Db(db => db.Shifts.CountAsync(s => s.UserId == newUser && s.Status == ShiftStatus.Open))).Should().Be(1);
@@ -139,10 +139,9 @@ public sealed class DeviceTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         var admin = await As("admin");
         var userId = await FreshPersonAsync("4");
         var fileDevice = await Db(db => db.BiometricDevices.Where(d => d.Kind == DeviceKind.FileImport).Select(d => d.Id).FirstAsync());
-        var pc = new PersianCalendar();
         var day = Iran.Local(_f.Clock.GetUtcNow()).DateTime.Date.AddDays(-3);
-        var jalali = $"{pc.GetYear(day)}/{pc.GetMonth(day):00}/{pc.GetDayOfMonth(day):00}";
-        var csv = $"کد پرسنلی,تاریخ,ساعت\n۴,{jalali},08:05\n4,{jalali},12:30\n4,{jalali},17:10\n99,{jalali},08:00\nxx,bad,\n";
+        var jalali = day.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture);
+        var csv = $"Personalnummer,Datum,Uhrzeit\n4,{jalali},08:05\n4,{jalali},12:30\n4,{jalali},17:10\n99,{jalali},08:00\nxx,bad,\n";
         MultipartFormDataContent Form()
         {
             var f = new MultipartFormDataContent();
@@ -188,7 +187,8 @@ public sealed class DeviceTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
     {
         DeviceService.ParseDate("۱۴۰۵/۰۸/۰۳ ۰۸:۰۱").Should().Be(Iran.At(new DateOnly(2026, 10, 25), new TimeOnly(8, 1)));
         DeviceService.ParseDate("2026-10-25 08:01:00").Should().Be(Iran.At(new DateOnly(2026, 10, 25), new TimeOnly(8, 1)));
-        DeviceService.ParseDate("25/10/2026").Should().BeNull();
+        DeviceService.ParseDate("25.10.2026 08:01").Should().Be(Iran.At(new DateOnly(2026, 10, 25), new TimeOnly(8, 1)));
+        DeviceService.ParseDate("10/25/2026").Should().BeNull();
         DeviceService.ZkTime(new DateTime(2000, 1, 1, 0, 0, 1)).Should().Be(1);
         DeviceService.ZkTime(new DateTime(2000, 2, 1)).Should().Be(31 * 86400);
     }

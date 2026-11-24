@@ -38,7 +38,7 @@ public sealed class MediaService(
     IOptions<NotifyOptions> options, IMediaStore store)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private static Error NotFound => Error.NotFound("media.notFound", "فایل پیدا نشد.");
+    private static Error NotFound => Error.NotFound("media.notFound", "Datei nicht gefunden.");
 
     // ===================== bot side =====================
 
@@ -55,13 +55,13 @@ public sealed class MediaService(
         if (link is null)
         {
             // §8.3 step 2: unknown sender → one line back, nothing recorded.
-            Reply(m, u.ChatId, "اول حساب کارنمای خودتان را وصل کنید: پروفایل ← «اتصال تلگرام». بعد فایل را دوباره بفرستید.", $"unlinked:{u.UpdateId}");
+            Reply(m, u.ChatId, "Verbinden Sie zuerst Ihr Karnama-Konto: Profil → „Telegram verbinden“. Schicken Sie die Datei danach erneut.", $"unlinked:{u.UpdateId}");
             await db.SaveChangesAsync(ct);
             return true;
         }
         if (!FilesEnabled(m))
         {
-            Reply(m, u.ChatId, "فعلاً فایل را از تلگرام یا داخل اپ کارنما بفرستید.", $"nofiles:{u.UpdateId}");
+            Reply(m, u.ChatId, "Schicken Sie die Datei vorerst über Telegram oder in der Karnama-App.", $"nofiles:{u.UpdateId}");
             await db.SaveChangesAsync(ct);
             return true;
         }
@@ -69,7 +69,7 @@ public sealed class MediaService(
         var duplicate = await db.MediaAssets.AsNoTracking().FirstOrDefaultAsync(x => x.Messenger == m && x.FileUniqueId == media.FileUniqueId, ct);
         if (duplicate is not null)
         {
-            Reply(m, u.ChatId, $"این فایل قبلاً در {Clock(duplicate.ReceivedAt)} ثبت شده است؛ دوباره ثبت نشد.", $"dup:{u.UpdateId}");
+            Reply(m, u.ChatId, $"Diese Datei wurde bereits um {Clock(duplicate.ReceivedAt)} erfasst; sie wurde nicht erneut erfasst.", $"dup:{u.UpdateId}");
             await db.SaveChangesAsync(ct);
             return true;
         }
@@ -102,15 +102,15 @@ public sealed class MediaService(
         var rows = new JsonArray();
         foreach (var w in open)
             rows.Add(new JsonArray(Button($"{Short(w.Title, 40)} (#{Fa(w.OrderNumber)})", $"w|{ShortId(asset.Id)}|{ShortId(w.Id)}")));
-        rows.Add(new JsonArray(Button("بعداً در کارنما", $"l|{ShortId(asset.Id)}")));
+        rows.Add(new JsonArray(Button("Später in Karnama", $"l|{ShortId(asset.Id)}")));
         var text = timerWork is null
-            ? "✅ فایل دریافت شد. این فایل برای کدام کار است؟"
-            : $"✅ فایل دریافت شد و به کار «{timerWork.Title}» (تایمر روشن) وصل شد. اگر برای کار دیگری است، انتخاب کنید:";
+            ? "✅ Datei erhalten. Für welche Aufgabe ist diese Datei?"
+            : $"✅ Datei erhalten und der Aufgabe „{timerWork.Title}“ (Timer läuft) zugeordnet. Falls sie zu einer anderen Aufgabe gehört, wählen Sie aus:";
         Queue(m, "sendMessage", new JsonObject { ["chat_id"] = u.ChatId, ["text"] = text, ["reply_to_message_id"] = u.MessageId, ["reply_markup"] = new JsonObject { ["inline_keyboard"] = rows } },
             "reply", asset.Id, $"ask:{asset.Id:N}");
 
         var inbox = await notifier.StaffWithAsync(Permissions.MediaInbox, PermissionScope.All, ct);
-        await notifier.NotifyAsync(inbox.Where(x => x != sender.Id), "media.received", $"فایل تازه از {sender.DisplayName}", asset.Caption, "/media", false, $"media:{asset.Id:N}", ct);
+        await notifier.NotifyAsync(inbox.Where(x => x != sender.Id), "media.received", $"Neue Datei von {sender.DisplayName}", asset.Caption, "/media", false, $"media:{asset.Id:N}", ct);
         changes.Record("media", asset.Id, null, sender.Id, null, "new");
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
@@ -122,14 +122,14 @@ public sealed class MediaService(
         var link = await db.MessengerLinks.AsNoTracking().FirstOrDefaultAsync(l => l.Messenger == m && l.ChatId == chatId, ct);
         var parts = cb.Data.Split('|');
         string answer;
-        if (link is null || parts.Length < 2 || FromShort(parts[1]) is not { } mediaId) answer = "این دکمه دیگر معتبر نیست.";
+        if (link is null || parts.Length < 2 || FromShort(parts[1]) is not { } mediaId) answer = "Dieser Button ist nicht mehr gültig.";
         else answer = parts[0] switch
         {
             "w" when parts.Length == 3 && FromShort(parts[2]) is { } workId => await SenderPicksWorkAsync(link.UserId, mediaId, workId, ct),
-            "l" => "باشد؛ بعداً در کارنما کار را انتخاب کنید.",
+            "l" => "sein; wählen Sie die Aufgabe später in Karnama.",
             "a" => await OfferTargetsAsync(m, chatId, link.UserId, mediaId, ct),
             "g" when parts.Length == 3 && FromShort(parts[2]) is { } to => await AssignFromBotAsync(link.UserId, mediaId, to, ct),
-            _ => "این دکمه دیگر معتبر نیست.",
+            _ => "Dieser Button ist nicht mehr gültig.",
         };
         Queue(m, "answerCallbackQuery", new JsonObject { ["callback_query_id"] = cb.Id, ["text"] = answer }, "reply", null, $"cb:{cb.Id}");
         await db.SaveChangesAsync(ct);
@@ -140,16 +140,16 @@ public sealed class MediaService(
     {
         var asset = await db.MediaAssets.FirstOrDefaultAsync(x => x.Id == mediaId && x.SenderId == userId, ct);
         var work = await db.WorkItems.AsNoTracking().FirstOrDefaultAsync(w => w.Id == workId && w.AssigneeId == userId, ct);
-        if (asset is null || work is null) return "این دکمه دیگر معتبر نیست.";
+        if (asset is null || work is null) return "Dieser Button ist nicht mehr gültig.";
         asset.LinkWork(work.Id, work.ClientId);
         changes.Record("media", asset.Id, null, userId, null, "work");
-        return $"ثبت شد: «{Short(work.Title, 60)}»";
+        return $"Erfasst: „{Short(work.Title, 60)}“";
     }
 
     private async Task<string> OfferTargetsAsync(Messenger m, long chatId, Guid userId, Guid mediaId, CancellationToken ct)
     {
-        if (!await HasAsync(userId, Permissions.MediaAssign, ct)) return "اجازه‌ی سپردن فایل را ندارید.";
-        if (!await db.MediaAssets.AnyAsync(x => x.Id == mediaId, ct)) return "فایل پیدا نشد.";
+        if (!await HasAsync(userId, Permissions.MediaAssign, ct)) return "Sie dürfen keine Dateien übergeben.";
+        if (!await db.MediaAssets.AnyAsync(x => x.Id == mediaId, ct)) return "Datei nicht gefunden.";
         var linked = await (from l in db.MessengerLinks
                             join u in db.Users on l.UserId equals u.Id
                             where l.Messenger == m && u.IsActive && u.Kind == UserKind.Staff
@@ -157,18 +157,18 @@ public sealed class MediaService(
                             select new { u.Id, u.DisplayName }).Take(12).ToListAsync(ct);
         var rows = new JsonArray();
         foreach (var u in linked) rows.Add(new JsonArray(Button(u.DisplayName, $"g|{ShortId(mediaId)}|{ShortId(u.Id)}")));
-        Queue(m, "sendMessage", new JsonObject { ["chat_id"] = chatId, ["text"] = linked.Count == 0 ? "هیچ کارگری ربات را وصل نکرده است." : "به چه کسی سپرده شود؟", ["reply_markup"] = new JsonObject { ["inline_keyboard"] = rows } },
+        Queue(m, "sendMessage", new JsonObject { ["chat_id"] = chatId, ["text"] = linked.Count == 0 ? "Kein Mitarbeiter hat den Bot verbunden." : "Wem soll es zugewiesen werden?", ["reply_markup"] = new JsonObject { ["inline_keyboard"] = rows } },
             "reply", mediaId, $"targets:{mediaId:N}:{userId:N}:{clock.GetUtcNow().ToUnixTimeSeconds()}");
-        return "یک نفر را انتخاب کنید.";
+        return "Wählen Sie eine Person.";
     }
 
     private async Task<string> AssignFromBotAsync(Guid adminId, Guid mediaId, Guid to, CancellationToken ct)
     {
-        if (!await HasAsync(adminId, Permissions.MediaAssign, ct)) return "اجازه‌ی سپردن فایل را ندارید.";
+        if (!await HasAsync(adminId, Permissions.MediaAssign, ct)) return "Sie dürfen keine Dateien übergeben.";
         var asset = await db.MediaAssets.FirstOrDefaultAsync(x => x.Id == mediaId, ct);
-        if (asset is null) return "فایل پیدا نشد.";
+        if (asset is null) return "Datei nicht gefunden.";
         var r = await AssignCoreAsync(asset, adminId, to, ct);
-        return r.IsSuccess ? "سپرده شد؛ فایل برایش فرستاده می‌شود." : r.Error!.Message;
+        return r.IsSuccess ? "Zugewiesen; die Datei wird an die Person geschickt." : r.Error!.Message;
     }
 
     // ===================== panel =====================
@@ -230,15 +230,15 @@ public sealed class MediaService(
         if (r.WorkItemId is { } wid)
         {
             var work = await db.WorkItems.AsNoTracking().FirstOrDefaultAsync(w => w.Id == wid, ct);
-            if (work is null) return Error.NotFound("work.notFound", "کار پیدا نشد.");
+            if (work is null) return Error.NotFound("work.notFound", "Aufgabe nicht gefunden.");
             asset.LinkWork(work.Id, work.ClientId);
         }
         Guid target;
         if (r.ToClient)
         {
-            if (asset.ClientId is not { } clientId) return Error.Validation("media.noWork", "اول کار را انتخاب کنید تا مشتری معلوم شود.");
+            if (asset.ClientId is not { } clientId) return Error.Validation("media.noWork", "Wählen Sie zuerst die Aufgabe, damit der Kunde feststeht.");
             var portal = await db.Clients.AsNoTracking().Where(c => c.Id == clientId).Select(c => c.PortalUserId).FirstOrDefaultAsync(ct);
-            if (portal is not { } p) return Error.Validation("media.clientNoPortal", "این مشتری پنل ندارد.");
+            if (portal is not { } p) return Error.Validation("media.clientNoPortal", "Dieser Kunde hat kein Panel.");
             target = p;
         }
         else if (r.ToUserId is { } to)
@@ -246,10 +246,10 @@ public sealed class MediaService(
             // A person is staff only: a client receives through toClient, which resolves the client of this file's work
             // (never someone else's client by a mis-click).
             if (!await db.Users.AsNoTracking().AnyAsync(u => u.Id == to && u.Kind == UserKind.Staff, ct))
-                return Error.Validation("media.staffOnly", "فایل را فقط به همکاران یا به مشتری همان کار می‌شود فرستاد.");
+                return Error.Validation("media.staffOnly", "Die Datei kann nur an Kollegen oder an den Kunden dieser Aufgabe geschickt werden.");
             target = to;
         }
-        else return Error.Validation("media.noTarget", "گیرنده را انتخاب کنید.");
+        else return Error.Validation("media.noTarget", "Wählen Sie den Empfänger.");
 
         var result = await AssignCoreAsync(asset, uid, target, ct);
         if (result.IsFailure) return result.Error!;
@@ -261,9 +261,9 @@ public sealed class MediaService(
     private async Task<Result> AssignCoreAsync(MediaAsset asset, Guid by, Guid to, CancellationToken ct)
     {
         var target = await db.Users.AsNoTracking().Where(u => u.Id == to && u.IsActive).Select(u => new { u.Id, u.DisplayName, u.Kind }).FirstOrDefaultAsync(ct);
-        if (target is null) return Error.NotFound("users.notFound", "کاربر پیدا نشد.");
+        if (target is null) return Error.NotFound("users.notFound", "Benutzer nicht gefunden.");
         var link = await db.MessengerLinks.AsNoTracking().FirstOrDefaultAsync(l => l.UserId == to && l.Messenger == asset.Messenger, ct);
-        if (link is null) return Error.Validation("media.notLinked", $"{target.DisplayName} ربات {(asset.Messenger == Messenger.Telegram ? "تلگرام" : "بله")} را وصل نکرده است.");
+        if (link is null) return Error.Validation("media.notLinked", $"{target.DisplayName} hat den Bot {(asset.Messenger == Messenger.Telegram ? "Telegram" : "Ja")} nicht verbunden.");
         var now = clock.GetUtcNow();
         var assigned = asset.Assign(to, by, now);
         if (assigned.IsFailure) return assigned;
@@ -271,15 +271,15 @@ public sealed class MediaService(
         WorkItem? work = asset.WorkItemId is { } wid ? await db.WorkItems.AsNoTracking().FirstOrDefaultAsync(w => w.Id == wid, ct) : null;
         var assigner = await db.Users.AsNoTracking().Where(u => u.Id == by).Select(u => u.DisplayName).FirstOrDefaultAsync(ct) ?? "";
         // Captions never carry the client's phone number (§8.4).
-        var caption = work is null ? $"📎 فایل از طرف {assigner}" : $"📎 برای کار «{Short(work.Title, 80)}» (سفارش #{Fa(work.OrderNumber)})"
-            + (work.Deadline is { } dl ? $"، ددلاین {JalaliDate(dl)}" : "") + $"\nاز طرف {assigner}";
+        var caption = work is null ? $"📎 Datei von {assigner}" : $"📎 Für die Aufgabe „{Short(work.Title, 80)}“ (Auftrag #{Fa(work.OrderNumber)})"
+            + (work.Deadline is { } dl ? $", Deadline {JalaliDate(dl)}" : "") + $"\nvon {assigner}";
         var (fromChat, fromMessage) = asset.CopySource;
         Queue(asset.Messenger, "copyMessage", new JsonObject { ["chat_id"] = link.ChatId, ["from_chat_id"] = fromChat, ["message_id"] = fromMessage, ["caption"] = caption },
             "deliver", asset.Id, $"deliver:{asset.Id:N}:{to:N}:{now.ToUnixTimeSeconds()}");
         audit.Add("media.assigned", nameof(MediaAsset), asset.Id.ToString(), new { to, work = asset.WorkItemId }, actorOverride: by);
         if (target.Kind == UserKind.Staff)
-            await notifier.NotifyAsync([to], "media.assigned", work is null ? "یک فایل برایتان فرستاده شد" : $"فایل کار «{work.Title}» برایتان فرستاده شد",
-                "در ربات پیام‌رسان ببینید.", "/work", false, $"media-assigned:{asset.Id:N}:{to:N}:{now.ToUnixTimeSeconds()}", ct);
+            await notifier.NotifyAsync([to], "media.assigned", work is null ? "Ihnen wurde eine Datei geschickt" : $"Die Datei der Aufgabe „{work.Title}“ wurde Ihnen geschickt",
+                "Im Messenger-Bot ansehen.", "/work", false, $"media-assigned:{asset.Id:N}:{to:N}:{now.ToUnixTimeSeconds()}", ct);
         changes.Record("media", asset.Id, null, asset.SenderId, to, "status");
         return Result.Success();
     }
@@ -324,7 +324,7 @@ public sealed class MediaService(
                 {
                     asset.Failed(error ?? "send failed");
                     if (asset.AssignedById is { } by)
-                        await notifier.NotifyAsync([by], "media.failed", "فایل به گیرنده نرسید", "احتمالاً ربات را بلاک کرده یا Start نکرده است. از صندوق فایل‌ها دوباره بسپارید.",
+                        await notifier.NotifyAsync([by], "media.failed", "Die Datei hat den Empfänger nicht erreicht", "Wahrscheinlich wurde der Bot blockiert oder nicht gestartet. Übergeben Sie die Datei erneut aus dem Dateieingang.",
                             "/media", true, $"media-failed:{asset.Id:N}:{now.ToUnixTimeSeconds()}", ct);
                 }
                 break;
@@ -357,13 +357,13 @@ public sealed class MediaService(
         var admins = await notifier.StaffWithAsync(Permissions.MediaInbox, PermissionScope.All, ct);
         var links = await db.MessengerLinks.AsNoTracking().Where(l => l.Messenger == asset.Messenger && admins.Contains(l.UserId) && l.UserId != asset.SenderId).ToListAsync(ct);
         var (fromChat, fromMessage) = asset.CopySource;
-        var caption = $"📥 از {senderName} — {KindName(asset.Kind)}{(asset.FileSize is { } size ? $"، {Size(size)}" : "")}{(asset.DurationSeconds is { } d ? $"، {Fa(d / 60)}:{(d % 60).ToString("00", CultureInfo.InvariantCulture)}" : "")}\n"
-                      + $"ساعت ارسال: {Clock(asset.SentAt)}\nکار: {workTitle ?? "هنوز انتخاب نشده"}";
-        var rows = new JsonArray { new JsonArray(Button("سپردن به…", $"a|{ShortId(asset.Id)}")) };
+        var caption = $"📥 Von {senderName} – {KindName(asset.Kind)}{(asset.FileSize is { } size ? $", {Size(size)}" : "")}{(asset.DurationSeconds is { } d ? $", {Fa(d / 60)}:{(d % 60).ToString("00", CultureInfo.InvariantCulture)}" : "")}\n"
+                      + $"Sendezeit: {Clock(asset.SentAt)}\nAufgabe: {workTitle ?? "Noch nicht gewählt"}";
+        var rows = new JsonArray { new JsonArray(Button("Zuweisen an…", $"a|{ShortId(asset.Id)}")) };
         var baseUrl = options.Value.PublicBaseUrl.TrimEnd('/');
         // Telegram accepts only public https links on buttons.
         if (baseUrl.StartsWith("https://", StringComparison.Ordinal))
-            rows.Add(new JsonArray(new JsonObject { ["text"] = "باز کردن در کارنما", ["url"] = $"{baseUrl}/media?id={asset.Id}" }));
+            rows.Add(new JsonArray(new JsonObject { ["text"] = "In Karnama öffnen", ["url"] = $"{baseUrl}/media?id={asset.Id}" }));
         foreach (var l in links)
             Queue(asset.Messenger, "copyMessage", new JsonObject
             {
@@ -430,11 +430,11 @@ public sealed class MediaService(
 
     private static string Short(string s, int max) => s.Length <= max ? s : s[..(max - 1)] + "…";
 
-    private static string Fa(long n) => string.Concat(n.ToString(CultureInfo.InvariantCulture).Select(c => char.IsAsciiDigit(c) ? (char)('۰' + (c - '0')) : c));
+    private static string Fa(long n) => string.Concat(n.ToString(CultureInfo.InvariantCulture).Select(c => c));
 
     private static string Size(long bytes) => bytes >= 1024 * 1024
-        ? $"{Fa((long)Math.Round(bytes / 1048576.0))} مگابایت"
-        : $"{Fa(Math.Max(1, bytes / 1024))} کیلوبایت";
+        ? $"{Fa((long)Math.Round(bytes / 1048576.0))} MB"
+        : $"{Fa(Math.Max(1, bytes / 1024))} KB";
 
     private static string Clock(DateTimeOffset at)
     {
@@ -444,19 +444,18 @@ public sealed class MediaService(
 
     private static string JalaliDate(DateTimeOffset at)
     {
-        var cal = new PersianCalendar();
         var local = Iran.Local(at).DateTime;
-        return $"{Fa(cal.GetYear(local))}/{Fa(cal.GetMonth(local))}/{Fa(cal.GetDayOfMonth(local))}";
+        return local.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
     }
 
     private static string KindName(MediaKind k) => k switch
     {
-        MediaKind.Video => "ویدیو",
-        MediaKind.Photo => "عکس",
-        MediaKind.Audio => "صدا",
-        MediaKind.Voice => "پیام صوتی",
-        MediaKind.Animation => "گیف",
-        MediaKind.VideoNote => "ویدیوی دایره‌ای",
-        _ => "فایل",
+        MediaKind.Video => "Video",
+        MediaKind.Photo => "Foto",
+        MediaKind.Audio => "Ton",
+        MediaKind.Voice => "Sprachnachricht",
+        MediaKind.Animation => "GIF",
+        MediaKind.VideoNote => "Rundvideo",
+        _ => "Datei",
     };
 }

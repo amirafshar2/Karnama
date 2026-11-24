@@ -43,7 +43,7 @@ export default function UsersPage() {
       ),
     },
     { header: t("users.colPhone"), cell: (u) => <span dir="ltr">{u.phone}</span> },
-    { header: t("users.colRoles"), cell: (u) => u.roles.map((r) => r.name).join("، ") },
+    { header: t("users.colRoles"), cell: (u) => u.roles.map((r) => r.name).join(", ") },
   ];
 
   return (
@@ -70,7 +70,7 @@ export default function UsersPage() {
             <p className="mt-1 text-sm text-muted-foreground" dir="ltr">
               {u.phone}
             </p>
-            <p className="mt-1 text-sm">{u.roles.map((r) => r.name).join("، ")}</p>
+            <p className="mt-1 text-sm">{u.roles.map((r) => r.name).join(", ")}</p>
           </>
         )}
       />

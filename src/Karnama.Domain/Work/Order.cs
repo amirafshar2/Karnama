@@ -19,7 +19,7 @@ public sealed class Order : AuditableEntity
 
     private Order() { ServiceName = new LocalizedText(); FormDataJson = "{}"; Title = string.Empty; }
 
-    /// <summary>Human number shown everywhere ("سفارش ۱۲۴"), from a database sequence.</summary>
+    /// <summary>Human number shown everywhere ("Auftrag 124"), from a database sequence.</summary>
     public long Number { get; private set; }
     public Guid ClientId { get; private set; }
     public Guid ServiceTypeId { get; private set; }
@@ -49,10 +49,10 @@ public sealed class Order : AuditableEntity
         string? title, string? note, OrderSource source, OrderPriority priority, DateTimeOffset? deadline, DateTimeOffset now)
     {
         title = title?.Trim();
-        if (string.IsNullOrEmpty(title)) title = serviceName.Get("fa");
-        if (title.Length > MaxTitle) return Error.Validation("orders.title", "عنوان حداکثر ۱۵۰ کاراکتر است.");
-        if (note is { Length: > MaxNote }) return Error.Validation("orders.note", "توضیح حداکثر ۴۰۰۰ کاراکتر است.");
-        if (deadline is { } d && d < now.AddMinutes(-5)) return Error.Validation("orders.deadlinePast", "ددلاین نمی‌تواند در گذشته باشد.");
+        if (string.IsNullOrEmpty(title)) title = serviceName.Get("de");
+        if (title.Length > MaxTitle) return Error.Validation("orders.title", "Der Titel darf höchstens 150 Zeichen haben.");
+        if (note is { Length: > MaxNote }) return Error.Validation("orders.note", "Die Beschreibung darf höchstens 4000 Zeichen haben.");
+        if (deadline is { } d && d < now.AddMinutes(-5)) return Error.Validation("orders.deadlinePast", "Die Deadline darf nicht in der Vergangenheit liegen.");
         return new Order
         {
             Number = number,
@@ -72,7 +72,7 @@ public sealed class Order : AuditableEntity
 
     public Result Accept(Guid? clientPackageId, bool outsidePackage, long? price, DateTimeOffset now)
     {
-        if (Status != OrderStatus.Submitted) return Error.Conflict("orders.notSubmitted", "این سفارش قبلاً بررسی شده است.");
+        if (Status != OrderStatus.Submitted) return Error.Conflict("orders.notSubmitted", "Dieser Auftrag wurde bereits geprüft.");
         Status = OrderStatus.InProgress;
         ClientPackageId = clientPackageId;
         OutsidePackage = outsidePackage;
@@ -83,8 +83,8 @@ public sealed class Order : AuditableEntity
 
     public Result Reject(string reason)
     {
-        if (Status != OrderStatus.Submitted) return Error.Conflict("orders.notSubmitted", "فقط سفارش در انتظار بررسی رد می‌شود.");
-        if (string.IsNullOrWhiteSpace(reason)) return Error.Validation("orders.rejectReason", "دلیل رد را بنویسید؛ مشتری آن را می‌بیند.");
+        if (Status != OrderStatus.Submitted) return Error.Conflict("orders.notSubmitted", "Nur ein Auftrag, der auf Prüfung wartet, kann abgelehnt werden.");
+        if (string.IsNullOrWhiteSpace(reason)) return Error.Validation("orders.rejectReason", "Geben Sie den Ablehnungsgrund an; der Kunde sieht ihn.");
         Status = OrderStatus.Rejected;
         RejectReason = reason.Trim()[..Math.Min(reason.Trim().Length, 1000)];
         return Result.Success();
@@ -97,9 +97,9 @@ public sealed class Order : AuditableEntity
     public Result CancelByClient()
     {
         if (Status is OrderStatus.Completed or OrderStatus.Rejected or OrderStatus.Cancelled)
-            return Error.Conflict("orders.closed", "این سفارش بسته شده است.");
+            return Error.Conflict("orders.closed", "Dieser Auftrag ist geschlossen.");
         if (Status != OrderStatus.Submitted)
-            return Error.Conflict("orders.alreadyAccepted", "آژانس این سفارش را پذیرفته و کار شروع شده است؛ برای لغو به آژانس پیام بدهید.");
+            return Error.Conflict("orders.alreadyAccepted", "Die Agentur hat diesen Auftrag angenommen und die Arbeit hat begonnen; schreiben Sie der Agentur, wenn Sie stornieren möchten.");
         Status = OrderStatus.Cancelled;
         return Result.Success();
     }
@@ -107,7 +107,7 @@ public sealed class Order : AuditableEntity
     public Result Cancel()
     {
         if (Status is OrderStatus.Completed or OrderStatus.Rejected or OrderStatus.Cancelled)
-            return Error.Conflict("orders.closed", "این سفارش بسته شده است.");
+            return Error.Conflict("orders.closed", "Dieser Auftrag ist geschlossen.");
         Status = OrderStatus.Cancelled;
         return Result.Success();
     }
@@ -128,8 +128,8 @@ public sealed class Order : AuditableEntity
     public Result UpdateDetails(string title, string? note, OrderPriority priority, DateTimeOffset? deadline)
     {
         title = title.Trim();
-        if (title.Length is 0 or > MaxTitle) return Error.Validation("orders.title", "عنوان باید بین ۱ تا ۱۵۰ کاراکتر باشد.");
-        if (note is { Length: > MaxNote }) return Error.Validation("orders.note", "توضیح حداکثر ۴۰۰۰ کاراکتر است.");
+        if (title.Length is 0 or > MaxTitle) return Error.Validation("orders.title", "Der Titel muss zwischen 1 und 150 Zeichen haben.");
+        if (note is { Length: > MaxNote }) return Error.Validation("orders.note", "Die Beschreibung darf höchstens 4000 Zeichen haben.");
         Title = title;
         Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         Priority = priority;

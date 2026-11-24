@@ -5,7 +5,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { qa, pick, check, eq, DEMO } from "../lib.mjs";
 
 export const id = "S08";
-export const title = "گفتگو — مدیر ↔ کارگرها، گروه تدوین، صوت و عکس، «درباره‌ی این کار»، مشتری ↔ ادمین، بی‌صدا";
+export const title = "Chat – Manager ↔ Mitarbeiter, Schnitt-Gruppe, Sprache und Foto, „Über diese Aufgabe“, Kunde ↔ Admin, stumm";
 
 const userId = (actor) => JSON.parse(Buffer.from(actor.token.split(".")[1], "base64url").toString()).sub;
 const ANY = Array.from({ length: 500 }, (_, i) => i + 100);
@@ -38,7 +38,7 @@ export async function run(rec, { crowd }) {
       eq(c.kind, "direct", "kind");
       directs[k] = c.id;
       const was = (await convIn(a, c.id))?.unread ?? 0;
-      await send(manager, c.id, `سلام، برنامه‌ی امروز ${run0}`);
+      await send(manager, c.id, `Hallo, Plan für heute ${run0}`);
       eq(await unread(a), before + 1, `${k} unread +1`);
       const listed = await convIn(a, c.id);
       eq(listed?.unread, was + 1, `${k} sees one more unread in the list`);
@@ -55,8 +55,8 @@ export async function run(rec, { crowd }) {
     eq((await convIn(e1, directs.e1)).unread, 0, "unread cleared");
     eq((await manager.get(`/api/v1/chat/${directs.e1}/messages`)).othersReadUpTo, last.id, "manager sees it was read");
     const key = randomUUID();
-    const m1 = await e1.post(`/api/v1/chat/${directs.e1}/messages`, { body: "چشم، ساعت ۲ تحویل می‌دهم", clientKey: key });
-    const m2 = await e1.post(`/api/v1/chat/${directs.e1}/messages`, { body: "چشم، ساعت ۲ تحویل می‌دهم", clientKey: key });
+    const m1 = await e1.post(`/api/v1/chat/${directs.e1}/messages`, { body: "Klar, ich liefere um 14 Uhr", clientKey: key });
+    const m2 = await e1.post(`/api/v1/chat/${directs.e1}/messages`, { body: "Klar, ich liefere um 14 Uhr", clientKey: key });
     eq(m2.id, m1.id, "same message (double tap)");
     check((await convIn(manager, directs.e1)).unread >= 1, "manager has the reply unread");
     const after = await e1.get(`/api/v1/chat/${directs.e1}/messages?after=${last.id}`);
@@ -75,20 +75,20 @@ export async function run(rec, { crowd }) {
   });
 
   let group;
-  await rec.step("2.8.b", "manager creates «تیم تدوین» (a client id in the list is dropped); members get the message, an outsider gets 404; a worker cannot create groups", async () => {
-    group = await manager.post("/api/v1/chat/groups", { title: `تیم تدوین ${run0}`, members: [ids.e1, ids.e2, ids.e3, ids.c1] });
+  await rec.step("2.8.b", "manager creates «Schnitt-Team» (a client id in the list is dropped); members get the message, an outsider gets 404; a worker cannot create groups", async () => {
+    group = await manager.post("/api/v1/chat/groups", { title: `Schnitt-Team ${run0}`, members: [ids.e1, ids.e2, ids.e3, ids.c1] });
     eq(group.kind, "group", "kind");
     const members = group.members.map((m) => m.id);
     for (const k of ["manager", "e1", "e2", "e3"]) check(members.includes(ids[k]), `${k} is a member`);
     check(!members.includes(ids.c1), "client silently dropped from the group");
     const before = await Promise.all([e1, e2, e3].map(unread));
-    await send(manager, group.id, "ریلز کافه تا ساعت ۵ — هر کس بخشی را بردارد");
+    await send(manager, group.id, "Café-Reel bis 17 Uhr – jeder übernimmt einen Teil");
     const after = await Promise.all([e1, e2, e3].map(unread));
     after.forEach((n, i) => eq(n, before[i] + 1, `member ${i + 1} unread +1`));
-    await send(e2, group.id, "من تدوین قسمت اول");
+    await send(e2, group.id, "Ich schneide den ersten Teil");
     eq(await field.refused("GET", `/api/v1/chat/${group.id}/messages`, undefined, [404]), 404, "non-member read");
     eq(await field.refused("POST", `/api/v1/chat/${group.id}/messages`, { body: "x", clientKey: randomUUID() }, [404]), 404, "non-member write");
-    eq(await e1.refused("POST", "/api/v1/chat/groups", { title: "گروه من", members: [ids.e2] }, [403]), 403, "worker cannot create a group");
+    eq(await e1.refused("POST", "/api/v1/chat/groups", { title: "Meine Gruppe", members: [ids.e2] }, [403]), 403, "worker cannot create a group");
   });
 
   let voice, photo;
@@ -96,7 +96,7 @@ export async function run(rec, { crowd }) {
     voice = await e3.post(`/api/v1/chat/${group.id}/files?voice=true&duration=12&clientKey=${randomUUID()}`, undefined, { form: form(OGG, "voice.ogg", "audio/ogg") });
     eq(voice.kind, "voice", "voice kind");
     eq(voice.durationSeconds, 12, "duration");
-    photo = await manager.post(`/api/v1/chat/${group.id}/files?caption=${encodeURIComponent("کاور پیشنهادی")}&clientKey=${randomUUID()}`, undefined, { form: form(PNG, "cover.png", "image/png") });
+    photo = await manager.post(`/api/v1/chat/${group.id}/files?caption=${encodeURIComponent("Vorgeschlagenes Titelbild")}&clientKey=${randomUUID()}`, undefined, { form: form(PNG, "cover.png", "image/png") });
     eq(photo.kind, "image", "image kind");
     const r = await fetch(`${process.env.QA_API ?? "http://localhost:5090"}/api/v1/chat/files/${voice.id}`, { headers: { Authorization: `Bearer ${e1.token}` } });
     eq(r.status, 200, "member downloads the voice");
@@ -115,7 +115,7 @@ export async function run(rec, { crowd }) {
   });
 
   let orderConv, assignee, order;
-  await rec.step("2.8.d", "«درباره‌ی این کار»: manager opens the order's chat (assignees are members); assignee writes there; an unassigned worker 404; a client 403", async () => {
+  await rec.step("2.8.d", "«Über diese Aufgabe»: manager opens the order's chat (assignees are members); assignee writes there; an unassigned worker 404; a client 403", async () => {
     // A demo work item with a demo assignee we can sign in as.
     const demoPhones = [DEMO.editor, DEMO.writer, "09000000005", "09000000006"];
     const demo = await Promise.all(demoPhones.map((p) => qa.login(p)));
@@ -131,10 +131,10 @@ export async function run(rec, { crowd }) {
     check(orderConv.title.includes(String(item.orderNumber)), `title carries the order number (${orderConv.title})`);
     check(orderConv.members.some((m) => m.id === item.assigneeId), "assignee is a member");
     eq((await manager.post(`/api/v1/chat/orders/${order}`)).id, orderConv.id, "same conversation the second time");
-    await send(manager, orderConv.id, `درباره‌ی این کار: رنگ‌ها را با برند هماهنگ کن ${run0}`);
+    await send(manager, orderConv.id, `Über diese Aufgabe: Farben an die Marke anpassen ${run0}`);
     const listed = await convIn(assignee, orderConv.id);
     check(listed && listed.unread >= 1, "assignee sees it with unread");
-    await send(assignee, orderConv.id, "باشه، اصلاح می‌کنم");
+    await send(assignee, orderConv.id, "Okay, ich überarbeite es");
     eq((await assignee.post(`/api/v1/chat/orders/${order}`)).id, orderConv.id, "assignee opens the same chat from the work item");
     eq(await field.refused("POST", `/api/v1/chat/orders/${order}`, undefined, [404]), 404, "unassigned worker");
     eq(await field.refused("GET", `/api/v1/chat/${orderConv.id}/messages`, undefined, [404]), 404, "unassigned worker cannot read");
@@ -149,11 +149,11 @@ export async function run(rec, { crowd }) {
     check(!contacts.some((c) => [ids.e1, ids.e2, ids.e3, ids.field, ids.c2].includes(c.id)), "no workers or other clients");
     clientConv = await c1.post("/api/v1/chat/direct", { userId: ids.manager });
     const before = await unread(manager);
-    await send(c1, clientConv.id, "سلام، پکیجم کی تمام می‌شود؟");
+    await send(c1, clientConv.id, "Hallo, wann endet mein Paket?");
     eq(await unread(manager), before + 1, "manager unread +1");
     const seen = await convIn(manager, clientConv.id);
     eq(seen?.otherIsClient, true, "marked as a client chat");
-    await send(manager, clientConv.id, "سلام، ۱۲ روز دیگر. تمدید را از پنل بزنید.");
+    await send(manager, clientConv.id, "Hallo, in 12 Tagen. Die Verlängerung können Sie im Panel anfragen.");
     check((await convIn(c1, clientConv.id)).unread >= 1, "client sees the answer as unread");
   });
 
@@ -184,7 +184,7 @@ export async function run(rec, { crowd }) {
     await qa.advance(61 + 60 * (run0 % 24));
     await login();
     const u0 = await unread(field);
-    const quiet = `پیام در حالت بی‌صدا ${run0}`;
+    const quiet = `Nachricht im Stumm-Modus ${run0}`;
     await send(manager, directs.field, quiet);
     eq(await unread(field), u0 + 1, "unread still counts");
     eq(await bell(quiet), false, "no bell while muted");
@@ -192,20 +192,20 @@ export async function run(rec, { crowd }) {
     eq((await convIn(field, directs.field)).muted, false, "unmuted");
     await qa.advance(61);
     await login();
-    const loud = `پیام بعد از برداشتن بی‌صدا ${run0}`;
+    const loud = `Nachricht nach Aufheben der Stummschaltung ${run0}`;
     await send(manager, directs.field, loud);
     eq(await bell(loud), true, "bell after unmute");
     eq(await e2.refused("POST", `/api/v1/chat/${directs.field}/mute`, { muted: true }, [404]), 404, "cannot mute someone else's chat");
   });
 
   await rec.step("2.8.h", "edit within 15 minutes, not after; soft delete hides the text for everyone", async () => {
-    const m = await send(e1, directs.e1, "متن با غلط تایپی");
-    const ed = await e1.put(`/api/v1/chat/messages/${m.id}`, { body: "متن درست" });
+    const m = await send(e1, directs.e1, "Text mit Tippfehler");
+    const ed = await e1.put(`/api/v1/chat/messages/${m.id}`, { body: "Richtiger Text" });
     check(ed.editedAt, "edited");
-    eq(await manager.refused("PUT", `/api/v1/chat/messages/${m.id}`, { body: "دستکاری" }, [403, 409, 422]) > 0, true, "manager cannot edit the worker's message");
+    eq(await manager.refused("PUT", `/api/v1/chat/messages/${m.id}`, { body: "Manipuliert" }, [403, 409, 422]) > 0, true, "manager cannot edit the worker's message");
     await qa.advance(16);
     await login();
-    const late = await e1.call("PUT", `/api/v1/chat/messages/${m.id}`, { body: "خیلی دیر" }, { expect: ANY });
+    const late = await e1.call("PUT", `/api/v1/chat/messages/${m.id}`, { body: "Sehr spät" }, { expect: ANY });
     check([409, 422].includes(late.status), `edit after 15 min refused (${late.status})`);
     await e1.del(`/api/v1/chat/messages/${m.id}`);
     const seen = (await manager.get(`/api/v1/chat/${directs.e1}/messages`)).items.find((x) => x.id === m.id);
@@ -221,7 +221,7 @@ export async function run(rec, { crowd }) {
       check(!(await manager.get("/api/v1/chat/contacts")).some((c) => c.isClient), "managers no longer see clients as contacts");
       const contacts = await c2.get("/api/v1/chat/contacts");
       const start = await c2.call("POST", "/api/v1/chat/direct", { userId: ids.manager }, { expect: ANY });
-      const cont = await c1.call("POST", `/api/v1/chat/${clientConv.id}/messages`, { body: "هنوز می‌توانم بنویسم؟", clientKey: randomUUID() }, { expect: ANY });
+      const cont = await c1.call("POST", `/api/v1/chat/${clientConv.id}/messages`, { body: "Kann ich noch schreiben?", clientKey: randomUUID() }, { expect: ANY });
       eq(contacts.length, 0, "client has no contacts");
       eq(start.status, 403, "client cannot start a chat");
       check([403, 404].includes(cont.status), `client cannot keep writing in the old chat (${cont.status ?? 200})`);

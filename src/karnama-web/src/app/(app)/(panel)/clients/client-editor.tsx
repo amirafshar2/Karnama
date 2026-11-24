@@ -40,7 +40,7 @@ type Client = {
   version: number;
 };
 
-const EMPTY: Client = { id: "", businessName: "", industry: null, contactName: null, mobile: "", city: "شیراز", internalNote: null, status: "active", accounts: [], hasPortal: false, activePackage: null, packageHistory: [], version: 0 };
+const EMPTY: Client = { id: "", businessName: "", industry: null, contactName: null, mobile: "", city: "Stuttgart", internalNote: null, status: "active", accounts: [], hasPortal: false, activePackage: null, packageHistory: [], version: 0 };
 
 type Props = { id: string; onClose: () => void; onSaved: (created: boolean) => void; onChanged: () => void };
 

@@ -24,18 +24,18 @@ public sealed class PortalTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
     {
         var client = await As("client");   // the demo café
         var home = await Ok(await client.GetAsync("/api/v1/portal/home"));
-        home.GetProperty("clientName").GetString().Should().Be("کافه نمونه");
+        home.GetProperty("clientName").GetString().Should().Be("Café Beispiel");
         home.GetProperty("package").GetProperty("quotas").GetArrayLength().Should().BeGreaterThan(0);
         var orders = home.GetProperty("orders").EnumerateArray().ToList();
         orders.Should().NotBeEmpty();
 
         var all = await Ok(await client.GetAsync("/api/v1/orders?limit=100"));
-        all.GetProperty("items").EnumerateArray().Should().OnlyContain(o => o.GetProperty("clientName").GetString() == "کافه نمونه");
+        all.GetProperty("items").EnumerateArray().Should().OnlyContain(o => o.GetProperty("clientName").GetString() == "Café Beispiel");
 
         // Another client's order: not found. Staff endpoints: forbidden.
         var admin = await As("admin");
         var other = (await Ok(await admin.GetAsync("/api/v1/orders?limit=100"))).GetProperty("items").EnumerateArray()
-            .First(o => o.GetProperty("clientName").GetString() != "کافه نمونه").GetProperty("id").GetGuid();
+            .First(o => o.GetProperty("clientName").GetString() != "Café Beispiel").GetProperty("id").GetGuid();
         (await client.GetAsync($"/api/v1/orders/{other}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await client.GetAsync($"/api/v1/portal/orders/{other}/messages")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await client.GetAsync("/api/v1/work/board")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -59,14 +59,14 @@ public sealed class PortalTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         var orderId = approval.GetProperty("orderId").GetGuid();
 
         // Staff: an internal note and a client message.
-        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/comments", new { body = "یادداشت داخلی", visibility = "internal" }));
-        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/comments", new { body = "طرح آماده‌ی تأیید شماست", visibility = "client" }));
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/comments", new { body = "Interne Notiz", visibility = "internal" }));
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/work/{itemId}/comments", new { body = "Der Entwurf wartet auf Ihre Freigabe", visibility = "client" }));
         var msgs = await Ok(await client.GetAsync($"/api/v1/portal/orders/{orderId}/messages"));
-        msgs.EnumerateArray().Select(m => m.GetProperty("body").GetString()).Should().Contain("طرح آماده‌ی تأیید شماست").And.NotContain("یادداشت داخلی");
-        msgs.EnumerateArray().Should().OnlyContain(m => m.GetProperty("author").GetString() == "آژانس" || m.GetProperty("fromMe").GetBoolean());
+        msgs.EnumerateArray().Select(m => m.GetProperty("body").GetString()).Should().Contain("Der Entwurf wartet auf Ihre Freigabe").And.NotContain("Interne Notiz");
+        msgs.EnumerateArray().Should().OnlyContain(m => m.GetProperty("author").GetString() == "Agentur" || m.GetProperty("fromMe").GetBoolean());
 
         (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{itemId}", new { approve = false })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{itemId}", new { approve = false, note = "رنگ قرمز کمتر" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{itemId}", new { approve = false, note = "Weniger Rot" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
         var card = (await Ok(await admin.GetAsync($"/api/v1/work/{itemId}"))).GetProperty("card");
         card.GetProperty("status").GetString().Should().Be("changesRequested");
         (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{itemId}", new { approve = true })).StatusCode.Should().Be(HttpStatusCode.Forbidden); // not in review anymore
@@ -82,12 +82,12 @@ public sealed class PortalTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
     {
         var client = await As("client");
         var admin = await As("admin");
-        var cafe = (await Ok(await admin.GetAsync("/api/v1/clients?q=" + Uri.EscapeDataString("کافه نمونه")))).GetProperty("items")[0].GetProperty("id").GetGuid();
+        var cafe = (await Ok(await admin.GetAsync("/api/v1/clients?q=" + Uri.EscapeDataString("Café Beispiel")))).GetProperty("items")[0].GetProperty("id").GetGuid();
         var services = await Ok(await admin.GetAsync("/api/v1/services/options"));
-        var campaign = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "کمپین اینفلوئنسر").GetProperty("id").GetGuid();
+        var campaign = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "Influencer-Kampagne").GetProperty("id").GetGuid();
         var o = await Ok(await admin.PostAsJsonAsync("/api/v1/orders", new
         {
-            clientId = cafe, serviceTypeId = campaign, title = "کمپین پاییز", answers = new Dictionary<string, object> { ["topic"] = "پاییز" }, autoAccept = true,
+            clientId = cafe, serviceTypeId = campaign, title = "Herbstkampagne", answers = new Dictionary<string, object> { ["topic"] = "Herbst" }, autoAccept = true,
         }));
         var orderId = o.GetProperty("id").GetGuid();
         var ids = o.GetProperty("stages").EnumerateArray().Select(s => s.GetProperty("id").GetGuid()).ToList();
@@ -110,7 +110,7 @@ public sealed class PortalTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         // Deciding again is refused and the stars stay (QA B2).
         var again = await client.PostAsJsonAsync($"/api/v1/portal/approvals/{ids[0]}", new { approve = true, stars = 1 });
         again.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{ids[0]}", new { approve = false, note = "دوباره" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await client.PostAsJsonAsync($"/api/v1/portal/approvals/{ids[0]}", new { approve = false, note = "Erneut" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await Ok(await admin.GetAsync($"/api/v1/work/{ids[0]}"))).GetProperty("clientStars").GetInt32().Should().Be(5);
     }
 
@@ -120,14 +120,14 @@ public sealed class PortalTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         var client = await As("client");
         var admin = await As("admin");
         var services = await Ok(await client.GetAsync("/api/v1/services/options"));
-        var post = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "پست تکی").GetProperty("id").GetGuid();
-        object Body(string title) => new { serviceTypeId = post, title, answers = new Dictionary<string, string> { ["topic"] = "تخفیف" } };
-        var pending = await Ok(await client.PostAsJsonAsync("/api/v1/portal/orders", Body("سفارش برای لغو")));
+        var post = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "Einzelpost").GetProperty("id").GetGuid();
+        object Body(string title) => new { serviceTypeId = post, title, answers = new Dictionary<string, string> { ["topic"] = "Rabatt" } };
+        var pending = await Ok(await client.PostAsJsonAsync("/api/v1/portal/orders", Body("Auftrag zum Stornieren")));
         var pendingId = pending.GetProperty("id").GetGuid();
 
         // Another client's order: not found. Staff route: still forbidden for the client.
         var other = (await Ok(await admin.GetAsync("/api/v1/orders?limit=100"))).GetProperty("items").EnumerateArray()
-            .First(x => x.GetProperty("clientName").GetString() != "کافه نمونه").GetProperty("id").GetGuid();
+            .First(x => x.GetProperty("clientName").GetString() != "Café Beispiel").GetProperty("id").GetGuid();
         (await client.PostAsync($"/api/v1/portal/orders/{other}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await client.PostAsync($"/api/v1/orders/{pendingId}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await admin.PostAsync($"/api/v1/portal/orders/{pendingId}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -143,11 +143,11 @@ public sealed class PortalTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         (await admin.PostAsync($"/api/v1/orders/{pendingId}/accept?version={cv}", null)).StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         // Accepted → the client can't cancel from the panel any more (clear Persian reason).
-        var accepted = await Ok(await client.PostAsJsonAsync("/api/v1/portal/orders", Body("سفارش پذیرفته")));
+        var accepted = await Ok(await client.PostAsJsonAsync("/api/v1/portal/orders", Body("Auftrag angenommen")));
         await Ok(await admin.PostAsync($"/api/v1/orders/{accepted.GetProperty("id").GetGuid()}/accept?version={accepted.GetProperty("version").GetUInt32()}", null));
         var late = await client.PostAsync($"/api/v1/portal/orders/{accepted.GetProperty("id").GetGuid()}/cancel", null);
         late.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await late.Content.ReadAsStringAsync()).Should().Contain("برای لغو به آژانس پیام بدهید");
+        (await late.Content.ReadAsStringAsync()).Should().Contain("schreiben Sie der Agentur");
     }
 
     [Fact]
@@ -156,15 +156,15 @@ public sealed class PortalTests(DemoAppFixture app) : IClassFixture<DemoAppFixtu
         var client = await As("client");
         var admin = await As("admin");
         var services = await Ok(await client.GetAsync("/api/v1/services/options"));
-        var post = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "پست تکی").GetProperty("id").GetGuid();
+        var post = services.EnumerateArray().First(s => s.GetProperty("name").GetString() == "Einzelpost").GetProperty("id").GetGuid();
         var other = (await Ok(await admin.GetAsync("/api/v1/clients?limit=10"))).GetProperty("items").EnumerateArray()
-            .First(c => c.GetProperty("businessName").GetString() != "کافه نمونه").GetProperty("id").GetGuid();
+            .First(c => c.GetProperty("businessName").GetString() != "Café Beispiel").GetProperty("id").GetGuid();
         var o = await Ok(await client.PostAsJsonAsync("/api/v1/portal/orders", new
         {
-            clientId = other, serviceTypeId = post, title = "پست تخفیف", answers = new Dictionary<string, string> { ["topic"] = "تخفیف یلدا" },
+            clientId = other, serviceTypeId = post, title = "Rabatt-Post", answers = new Dictionary<string, string> { ["topic"] = "Winter-Rabatt" },
             priority = "urgent", autoAccept = true,
         }));
-        o.GetProperty("clientName").GetString().Should().Be("کافه نمونه");   // the body's clientId is ignored
+        o.GetProperty("clientName").GetString().Should().Be("Café Beispiel");   // the body's clientId is ignored
         o.GetProperty("status").GetString().Should().Be("submitted");          // clients can't auto-accept
         o.GetProperty("priority").GetString().Should().Be("normal");
         (await client.PostAsJsonAsync("/api/v1/orders", new { clientId = other, serviceTypeId = post, answers = new { topic = "x" } })).StatusCode.Should().Be(HttpStatusCode.Forbidden);

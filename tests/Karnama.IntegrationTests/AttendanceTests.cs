@@ -43,7 +43,7 @@ public sealed class AttendanceTests(DemoAppFixture app) : IClassFixture<DemoAppF
         await Ok(await writer.PostAsJsonAsync("/api/v1/attendance/break/start", new { idempotencyKey = Key() }));
         (await Ok(await writer.GetAsync("/api/v1/attendance/me"))).GetProperty("shift").GetProperty("onBreak").GetBoolean().Should().BeTrue();
         await Ok(await writer.PostAsJsonAsync("/api/v1/attendance/break/end", new { idempotencyKey = Key() }));
-        var outResult = await Ok(await writer.PostAsJsonAsync("/api/v1/attendance/clock-out", new { idempotencyKey = Key(), evidence = Office, note = "دکتر" }));
+        var outResult = await Ok(await writer.PostAsJsonAsync("/api/v1/attendance/clock-out", new { idempotencyKey = Key(), evidence = Office, note = "Arzt" }));
         outResult.GetProperty("shift").ValueKind.Should().Be(JsonValueKind.Null);
         outResult.GetProperty("recentShifts").EnumerateArray().First(s => s.GetProperty("id").GetGuid() == shift.GetProperty("id").GetGuid())
             .GetProperty("clockOutAt").ValueKind.Should().NotBe(JsonValueKind.Null);
@@ -65,7 +65,7 @@ public sealed class AttendanceTests(DemoAppFixture app) : IClassFixture<DemoAppF
         var admin = await As("admin");
         var day = DateTime.UtcNow.ToString("yyyy-MM-dd");
         var review = await Ok(await admin.GetAsync($"/api/v1/attendance/shifts?from={DateTime.UtcNow.AddDays(-1):yyyy-MM-dd}&to={DateTime.UtcNow.AddDays(1):yyyy-MM-dd}&needsReview=true"));
-        review.EnumerateArray().Should().Contain(s => s.GetProperty("userName").GetString()!.StartsWith("علی"));
+        review.EnumerateArray().Should().Contain(s => s.GetProperty("userName").GetString()!.StartsWith("Lukas"));
         _ = day;
     }
 
@@ -80,7 +80,7 @@ public sealed class AttendanceTests(DemoAppFixture app) : IClassFixture<DemoAppF
         shift.GetProperty("offline").GetBoolean().Should().BeTrue();
         shift.GetProperty("clockInAt").GetDateTimeOffset().Should().BeCloseTo(before.AddMinutes(-30), TimeSpan.FromMinutes(1));
         shift.GetProperty("needsReview").GetBoolean().Should().BeTrue();
-        shift.GetProperty("reviewReason").GetString().Should().Contain("ساعت گوشی");
+        shift.GetProperty("reviewReason").GetString().Should().Contain("Handyuhr");
         await Ok(await writer.PostAsJsonAsync("/api/v1/attendance/clock-out", new { idempotencyKey = Key(), evidence = Office }));
     }
 
@@ -135,7 +135,7 @@ public sealed class AttendanceTests(DemoAppFixture app) : IClassFixture<DemoAppF
         var writer = await As("writer");
         var board = await Ok(await admin.GetAsync("/api/v1/work/board"));
         var users = await Ok(await admin.GetAsync("/api/v1/users?limit=100"));
-        var maryam = users.GetProperty("items").EnumerateArray().First(u => u.GetProperty("displayName").GetString()!.StartsWith("مریم")).GetProperty("id").GetGuid();
+        var maryam = users.GetProperty("items").EnumerateArray().First(u => u.GetProperty("displayName").GetString()!.StartsWith("Marie")).GetProperty("id").GetGuid();
         var mine = board.EnumerateArray().Where(c => c.TryGetProperty("assigneeId", out var a) && a.ValueKind == JsonValueKind.String && a.GetGuid() == maryam
                                                      && c.GetProperty("status").GetString() != "done").Take(2).ToList();
         mine.Should().HaveCount(2);
@@ -164,10 +164,10 @@ public sealed class AttendanceTests(DemoAppFixture app) : IClassFixture<DemoAppF
         var editor = await As("editor");
         var day = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2));
         var at = new DateTimeOffset(day.ToDateTime(new TimeOnly(5, 30)), TimeSpan.Zero);
-        var c = await Ok(await editor.PostAsJsonAsync("/api/v1/attendance/corrections", new { day, clockIn = at, clockOut = at.AddHours(8), reason = "اینترنت قطع بود، ساعت ۹ آمدم" }));
+        var c = await Ok(await editor.PostAsJsonAsync("/api/v1/attendance/corrections", new { day, clockIn = at, clockOut = at.AddHours(8), reason = "Das Internet war weg, ich war um 9 Uhr da" }));
         var id = c.GetProperty("id").GetGuid();
         (await editor.PostAsJsonAsync($"/api/v1/attendance/corrections/{id}/decide", new { approve = true })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        var decided = await Ok(await admin.PostAsJsonAsync($"/api/v1/attendance/corrections/{id}/decide", new { approve = true, note = "تأیید" }));
+        var decided = await Ok(await admin.PostAsJsonAsync($"/api/v1/attendance/corrections/{id}/decide", new { approve = true, note = "Bestätigen" }));
         decided.GetProperty("status").GetString().Should().Be("approved");
         (await admin.PostAsJsonAsync($"/api/v1/attendance/corrections/{id}/decide", new { approve = false })).StatusCode.Should().Be(HttpStatusCode.Conflict);
 

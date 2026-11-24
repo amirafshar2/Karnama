@@ -155,7 +155,7 @@ export function WorkSheet({ id, onClose }: { id: string; onClose: () => void }) 
                 {d.order.answers.map((a) => (
                   <div key={a.key} className="contents">
                     <dt className="text-muted-foreground">{a.label}</dt>
-                    <dd className="whitespace-pre-wrap">{Array.isArray(a.value) ? a.value.join("، ") : a.value === null || a.value === undefined ? "—" : String(a.value)}</dd>
+                    <dd className="whitespace-pre-wrap">{Array.isArray(a.value) ? a.value.join(", ") : a.value === null || a.value === undefined ? "—" : String(a.value)}</dd>
                   </div>
                 ))}
                 {d.order.note && (

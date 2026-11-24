@@ -69,7 +69,7 @@ public sealed class WorkItem : AuditableEntity
 
     public Result Assign(Guid? userId)
     {
-        if (!IsOpen) return Error.Conflict("work.closed", "این کار بسته شده است.");
+        if (!IsOpen) return Error.Conflict("work.closed", "Diese Aufgabe ist geschlossen.");
         AssigneeId = userId;
         return Result.Success();
     }
@@ -125,10 +125,10 @@ public sealed class WorkItem : AuditableEntity
     public Result CanMoveTo(WorkStatus target, WorkActor actor)
     {
         if (target == Status) return Result.Success();
-        if (!IsOpen && actor != WorkActor.Manager) return Error.Conflict("work.closed", "این کار بسته شده است.");
-        if (target is WorkStatus.Waiting or WorkStatus.Cancelled) return Error.Validation("work.badTarget", "به این ستون نمی‌شود منتقل کرد.");
+        if (!IsOpen && actor != WorkActor.Manager) return Error.Conflict("work.closed", "Diese Aufgabe ist geschlossen.");
+        if (target is WorkStatus.Waiting or WorkStatus.Cancelled) return Error.Validation("work.badTarget", "In diese Spalte kann nicht verschoben werden.");
         if (Status == WorkStatus.Waiting && actor != WorkActor.Manager)
-            return Error.Conflict("work.waiting", "مرحله‌ی قبل هنوز تمام نشده است.");
+            return Error.Conflict("work.waiting", "Der vorherige Schritt ist noch nicht abgeschlossen.");
 
         var allowed = (actor, Status, target) switch
         {
@@ -139,7 +139,7 @@ public sealed class WorkItem : AuditableEntity
             (WorkActor.Manager, _, _) => true,
             _ => false,
         };
-        return allowed ? Result.Success() : Error.Forbidden("work.transition", "این جابه‌جایی برای شما مجاز نیست.");
+        return allowed ? Result.Success() : Error.Forbidden("work.transition", "Diese Verschiebung ist für Sie nicht erlaubt.");
     }
 
     /// <summary>Where finished work goes: admin review, else client approval, else done.</summary>
@@ -152,15 +152,15 @@ public sealed class WorkItem : AuditableEntity
 
     public Result RateByManager(int stars)
     {
-        if (Status != WorkStatus.Done) return Error.Conflict("work.notDone", "فقط کار تمام‌شده امتیاز می‌گیرد.");
-        if (stars is < 1 or > 5) return Error.Validation("work.stars", "امتیاز ۱ تا ۵ ستاره است.");
+        if (Status != WorkStatus.Done) return Error.Conflict("work.notDone", "Nur erledigte Arbeit bekommt Punkte.");
+        if (stars is < 1 or > 5) return Error.Validation("work.stars", "Die Bewertung ist 1 bis 5 Sterne.");
         ManagerStars = (byte)stars;
         return Result.Success();
     }
 
     public Result RateByClient(int stars)
     {
-        if (stars is < 1 or > 5) return Error.Validation("work.stars", "امتیاز ۱ تا ۵ ستاره است.");
+        if (stars is < 1 or > 5) return Error.Validation("work.stars", "Die Bewertung ist 1 bis 5 Sterne.");
         ClientStars = (byte)stars;
         return Result.Success();
     }
@@ -189,7 +189,7 @@ public sealed class WorkComment : Entity
     public static Result<WorkComment> Create(WorkItem item, Guid? authorId, string authorName, bool fromClient, CommentVisibility visibility, string body, DateTimeOffset now)
     {
         body = body.Trim();
-        if (body.Length is 0 or > MaxBody) return Error.Validation("comments.body", "متن پیام باید بین ۱ تا ۴۰۰۰ کاراکتر باشد.");
+        if (body.Length is 0 or > MaxBody) return Error.Validation("comments.body", "Die Nachricht muss zwischen 1 und 4000 Zeichen haben.");
         return new WorkComment
         {
             WorkItemId = item.Id, OrderId = item.OrderId, ClientId = item.ClientId, AuthorId = authorId, AuthorName = authorName,

@@ -19,27 +19,27 @@ internal static class DemoWorkSeed
         var users = await db.Users.AsNoTracking().Where(u => u.IsDemo).ToListAsync(ct);
         if (services.Count == 0 || clients.Count == 0) return;
 
-        ServiceType S(string fa) => services.First(s => s.Name.Get("fa") == fa);
+        ServiceType S(string fa) => services.First(s => s.Name.Get("de") == fa);
         Guid C(string name) => clients.First(c => c.BusinessName == name).Id;
         Guid? U(string startsWith) => users.FirstOrDefault(u => u.DisplayName.StartsWith(startsWith, StringComparison.Ordinal))?.Id;
-        var ali = U("علی");
-        var maryam = U("مریم");
-        var reza = U("رضا");
-        var negar = U("نگار");
+        var ali = U("Lukas");
+        var maryam = U("Marie");
+        var reza = U("Jonas");
+        var negar = U("Lena");
 
         // (client, service, title, topic, stage index reached, status of that stage, assignees per stage, deadline in hours)
         (string Client, string Service, string Title, string Topic, int Stage, WorkStatus Status, Guid?[] People, int Hours, OrderPriority P)[] rows =
         [
-            ("کافه نمونه", "ریلز", "ریلز منوی پاییزه", "معرفی نوشیدنی‌های پاییزی", 3, WorkStatus.InProgress, [maryam, ali, ali], 20, OrderPriority.High),
-            ("کافه نمونه", "پست تکی", "پست تخفیف آخر هفته", "۲۰٪ تخفیف پنجشنبه و جمعه", 1, WorkStatus.ClientReview, [maryam], 30, OrderPriority.Normal),
-            ("کافه نمونه", "استوری", "استوری ساعت کاری جدید", "ساعت کاری زمستان", 1, WorkStatus.Done, [negar], 5, OrderPriority.Normal),
-            ("پوشاک نمونه", "ریلز", "ریلز کالکشن زمستانه", "کالکشن کاپشن و پالتو", 2, WorkStatus.Todo, [maryam, reza, reza], 44, OrderPriority.Normal),
-            ("پوشاک نمونه", "پست اسلایدی", "اسلاید راهنمای سایز", "جدول سایز مانتو و شلوار", 2, WorkStatus.InReview, [maryam, negar], 10, OrderPriority.High),
-            ("پوشاک نمونه", "کپشن", "کپشن‌های هفته", "۵ کپشن برای پست‌های هفته", 1, WorkStatus.ChangesRequested, [maryam], 8, OrderPriority.Normal),
-            ("کلینیک زیبایی نمونه", "ریلز", "ریلز قبل و بعد", "نتیجه‌ی لیزر موهای زائد", 1, WorkStatus.Todo, [null, null, null], 70, OrderPriority.Urgent),
-            ("کلینیک زیبایی نمونه", "پست تکی", "پست معرفی دکتر", "معرفی دکتر احمدی و تخصص‌ها", 1, WorkStatus.InProgress, [negar], -3, OrderPriority.High),
-            ("شیرینی‌فروشی نمونه", "پست تکی", "پست کیک تولد", "کیک‌های سفارشی تولد", 1, WorkStatus.Todo, [maryam], 50, OrderPriority.Normal),
-            ("گل‌فروشی نمونه", "استوری", "استوری دسته‌گل روز مادر", "پیش‌فروش دسته‌گل", 1, WorkStatus.InProgress, [negar], 26, OrderPriority.Normal),
+            ("Café Beispiel", "Reels", "Reel zur Herbstkarte", "Vorstellung der Herbstgetränke", 3, WorkStatus.InProgress, [maryam, ali, ali], 20, OrderPriority.High),
+            ("Café Beispiel", "Einzelpost", "Post zum Wochenend-Rabatt", "20 % Rabatt am Freitag und Samstag", 1, WorkStatus.ClientReview, [maryam], 30, OrderPriority.Normal),
+            ("Café Beispiel", "Story", "Story zu den neuen Öffnungszeiten", "Winter-Öffnungszeiten", 1, WorkStatus.Done, [negar], 5, OrderPriority.Normal),
+            ("Mode Beispiel", "Reels", "Reel zur Winterkollektion", "Kollektion Jacken und Mäntel", 2, WorkStatus.Todo, [maryam, reza, reza], 44, OrderPriority.Normal),
+            ("Mode Beispiel", "Karussell-Post", "Slide Größentabelle", "Größentabelle Mäntel und Hosen", 2, WorkStatus.InReview, [maryam, negar], 10, OrderPriority.High),
+            ("Mode Beispiel", "Caption", "Captions der Woche", "5 Captions für die Posts der Woche", 1, WorkStatus.ChangesRequested, [maryam], 8, OrderPriority.Normal),
+            ("Kosmetikstudio Beispiel", "Reels", "Vorher-Nachher-Reel", "Ergebnis der Laser-Haarentfernung", 1, WorkStatus.Todo, [null, null, null], 70, OrderPriority.Urgent),
+            ("Kosmetikstudio Beispiel", "Einzelpost", "Post zur Vorstellung der Ärztin", "Vorstellung von Dr. Albers und ihren Fachgebieten", 1, WorkStatus.InProgress, [negar], -3, OrderPriority.High),
+            ("Konditorei Beispiel", "Einzelpost", "Post Geburtstagstorte", "Individuelle Geburtstagstorten", 1, WorkStatus.Todo, [maryam], 50, OrderPriority.Normal),
+            ("Blumenladen Beispiel", "Story", "Story Blumenstrauß zum Muttertag", "Vorverkauf Blumensträuße", 1, WorkStatus.InProgress, [negar], 26, OrderPriority.Normal),
         ];
 
         var now = DateTimeOffset.UtcNow;
@@ -51,7 +51,7 @@ internal static class DemoWorkSeed
             var clientId = C(r.Client);
             var data = JsonSerializer.Serialize(new Dictionary<string, string> { ["topic"] = r.Topic, ["mood"] = "friendly" });
             number = await db.NextOrderNumberAsync(ct);
-            var order = Order.Create(number, clientId, svc.Id, svc.Name, svc.FormVersion, data, r.Title, "نمونه — سفارش آزمایشی", OrderSource.Admin, r.P,
+            var order = Order.Create(number, clientId, svc.Id, svc.Name, svc.FormVersion, data, r.Title, "Beispiel – Testauftrag", OrderSource.Admin, r.P,
                 now.AddHours(Math.Max(r.Hours, 1)), now.AddMinutes(-10)).Value!;
             var cp = packages.FirstOrDefault(p => p.ClientId == clientId);
             order.Accept(cp?.Id, cp is null, svc.BasePrice, now.AddHours(-30));
@@ -87,13 +87,13 @@ internal static class DemoWorkSeed
         var today = Karnama.Application.Attendance.Iran.Today(now);
         (string Client, int Day, int Hour, string Caption, string[] Tags, bool Own)[] rows =
         [
-            ("کافه نمونه", 0, -1, "منوی پاییزی ما رسید 🍂 دمنوش سیب و دارچین را امتحان کنید.", ["کافه", "شیراز", "پاییز"], true),
-            ("کافه نمونه", 1, 19, "پنجشنبه‌شب‌ها موسیقی زنده داریم 🎶", ["کافه", "موسیقی_زنده"], false),
-            ("کافه نمونه", 2, 12, "صبحانه‌ی آخر هفته از ساعت ۹ 🥐", ["صبحانه", "کافه"], true),
-            ("پوشاک نمونه", 0, 21, "کالکشن زمستانه — ۲۰٪ تخفیف تا آخر هفته", ["پوشاک", "تخفیف"], false),
-            ("پوشاک نمونه", 3, 20, "پشت صحنه‌ی عکاسی کالکشن جدید", ["پشت_صحنه"], false),
-            ("شیرینی‌فروشی نمونه", 2, 18, "کیک تولد سفارشی؛ از دو روز قبل سفارش دهید 🎂", ["کیک", "شیرینی"], false),
-            ("کلینیک زیبایی نمونه", 4, 17, "پاسخ به سؤال‌های پرتکرار درباره‌ی مراقبت پوست", ["پوست", "مراقبت"], false),
+            ("Café Beispiel", 0, -1, "Unsere Herbstkarte ist da 🍂 Probieren Sie den Apfel-Zimt-Tee.", ["Café", "Stuttgart", "Herbst"], true),
+            ("Café Beispiel", 1, 19, "Donnerstagabends gibt es Livemusik 🎶", ["Café", "Livemusik"], false),
+            ("Café Beispiel", 2, 12, "Wochenendfrühstück ab 9 Uhr 🥐", ["Frühstück", "Café"], true),
+            ("Mode Beispiel", 0, 21, "Winterkollektion – 20 % Rabatt bis zum Wochenende", ["Mode", "Rabatt"], false),
+            ("Mode Beispiel", 3, 20, "Hinter den Kulissen beim Shooting der neuen Kollektion", ["hinter_den_kulissen"], false),
+            ("Konditorei Beispiel", 2, 18, "Individuelle Geburtstagstorten; bitte zwei Tage vorher bestellen 🎂", ["Kuchen", "Konditorei"], false),
+            ("Kosmetikstudio Beispiel", 4, 17, "Antworten auf häufige Fragen zur Hautpflege", ["Haut", "Pflege"], false),
         ];
         foreach (var r in rows)
         {
@@ -118,21 +118,21 @@ internal static class DemoWorkSeed
         var annual = types.FirstOrDefault(t => t.Kind == Domain.Attendance.LeaveKind.Annual);
         var mission = types.FirstOrDefault(t => t.Kind == Domain.Attendance.LeaveKind.Mission);
         Guid? U(string p) => users.FirstOrDefault(u => u.Name.StartsWith(p, StringComparison.Ordinal)).Id is var id && id != Guid.Empty ? id : null;
-        var manager = U("سارا");
+        var manager = U("Sarah");
         if (annual is null || mission is null || manager is null) return;
         var today = Karnama.Application.Attendance.Iran.Today(now);
         DateTimeOffset At(int days, int h) => Karnama.Application.Attendance.Iran.At(today.AddDays(days), new TimeOnly(h, 0));
 
-        if (U("رضا") is { } reza)
-            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(reza, annual, false, At(2, 0), At(4, 0), "سفر خانوادگی (نمونه)", null, manager.Value, true, now).Value!);
-        if (U("نگار") is { } negar)
-            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(negar, annual, true, At(1, 10), At(1, 13), "کار اداری (نمونه)", null, negar, false, now).Value!);
-        if (U("علی") is { } ali)
-            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(ali, mission, false, At(3, 0), At(4, 0), "فیلمبرداری در محل مشتری (نمونه)", null, ali, false, now).Value!);
-        if (U("محمد") is { } mohammad)
+        if (U("Jonas") is { } reza)
+            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(reza, annual, false, At(2, 0), At(4, 0), "Familienreise (Beispiel)", null, manager.Value, true, now).Value!);
+        if (U("Lena") is { } negar)
+            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(negar, annual, true, At(1, 10), At(1, 13), "Bürotätigkeit (Beispiel)", null, negar, false, now).Value!);
+        if (U("Lukas") is { } ali)
+            db.LeaveRequests.Add(Domain.Attendance.LeaveRequest.Create(ali, mission, false, At(3, 0), At(4, 0), "Dreh beim Kunden vor Ort (Beispiel)", null, ali, false, now).Value!);
+        if (U("Daniel") is { } mohammad)
         {
             var a = Domain.Attendance.Absence.Detect(mohammad, today.AddDays(-1), At(-1, 9).AddMinutes(0), At(-1, 9).AddMinutes(15), 48);
-            a.SubmitReason("بیمار بودم؛ گواهی را فردا می‌آورم (نمونه)", At(-1, 9), At(-1, 17), null);
+            a.SubmitReason("Ich war krank; die Bescheinigung bringe ich morgen (Beispiel)", At(-1, 9), At(-1, 17), null);
             db.Absences.Add(a);
         }
         await db.SaveChangesAsync(ct);

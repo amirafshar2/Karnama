@@ -13,7 +13,7 @@ internal static class DemoMediaSeed
     {
         if (await db.MediaAssets.AnyAsync(ct)) return;
         var users = await db.Users.Where(u => u.IsDemo).ToDictionaryAsync(u => u.Phone, u => u.Id, ct);
-        if (!users.TryGetValue("09000000002", out var editor) || !users.TryGetValue("09000000003", out var writer) || !users.TryGetValue("09000000001", out var admin)) return;
+        if (!users.TryGetValue("015100000002", out var editor) || !users.TryGetValue("015100000003", out var writer) || !users.TryGetValue("015100000001", out var admin)) return;
         var now = DateTimeOffset.UtcNow;
 
         // Demo staff "linked" the bot (fake chat ids) so assigning can be shown.
@@ -32,20 +32,20 @@ internal static class DemoMediaSeed
             return a;
         }
 
-        var rush = Make(editor, MediaKind.Video, "rush-cafe", 186_000_000, 214, "راش‌های فیلم‌برداری منوی پاییزی کافه", 25, 1_000_000_002, 11);
+        var rush = Make(editor, MediaKind.Video, "rush-cafe", 186_000_000, 214, "Rohmaterial vom Dreh für die Herbstkarte des Cafés", 25, 1_000_000_002, 11);
         if (editorWork is not null) rush.LinkWork(editorWork.Id, editorWork.ClientId);
         rush.SentToAdmins();
 
-        var photos = Make(writer, MediaKind.Photo, "photo-shop", 3_400_000, null, "عکس‌های محصول پوشاک — انتخاب‌شده", 90, 1_000_000_003, 21);
+        var photos = Make(writer, MediaKind.Photo, "photo-shop", 3_400_000, null, "Produktfotos Mode – ausgewählt", 90, 1_000_000_003, 21);
         if (writerWork is not null) photos.LinkWork(writerWork.Id, writerWork.ClientId);
         photos.SentToAdmins();
         photos.Assign(editor, admin, now.AddMinutes(-80));
         photos.Delivered(now.AddMinutes(-79));
 
-        var brief = Make(writer, MediaKind.Document, "brief-clinic", 820_000, null, "بریف کمپین کلینیک", 180, 1_000_000_003, 22);
+        var brief = Make(writer, MediaKind.Document, "brief-clinic", 820_000, null, "Kampagnen-Briefing Klinik", 180, 1_000_000_003, 22);
         brief.SentToAdmins();
 
-        var voice = Make(editor, MediaKind.Voice, "voice-note", 240_000, 38, "توضیح صوتی درباره‌ی تدوین", 5, 1_000_000_002, 12);
+        var voice = Make(editor, MediaKind.Voice, "voice-note", 240_000, 38, "Sprachnotiz zum Schnitt", 5, 1_000_000_002, 12);
 
         db.MediaAssets.AddRange(rush, photos, brief, voice);
         await db.SaveChangesAsync(ct);

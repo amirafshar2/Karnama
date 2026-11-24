@@ -17,24 +17,24 @@ test.describe("N2: attendance devices", () => {
 
     await demoLogin(page, "admin");
     await navTo(page, mobile, "attendance/devices");
-    await expect(page.getByTestId("dev-list").getByText("وصل", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("dev-list").getByText("Verbunden", { exact: true })).toBeVisible();
     await shot(page, info, "n2-devices");
 
     await page.getByTestId("dev-tab-pins").click();
-    await expect(page.getByTestId("dev-unknown")).toContainText("ثبت");
-    await expect(page.getByTestId("dev-pins")).toContainText("علی");
+    await expect(page.getByTestId("dev-unknown")).toContainText("Erfassen");
+    await expect(page.getByTestId("dev-pins")).toContainText("Lukas");
     await shot(page, info, "n2-pins");
 
     await page.getByTestId("dev-tab-records").click();
-    await expect(page.getByTestId("dev-records")).toContainText("شماره‌ی ناشناس");
+    await expect(page.getByTestId("dev-records")).toContainText("Unbekannte Nummer");
 
     await page.getByTestId("dev-tab-import").click();
     const file = `test-results/export-${info.project.name}.csv`;
-    writeFileSync(file, `کد پرسنلی,تاریخ,ساعت\n${pin},1405/07/20,08:02\n${pin},1405/07/20,16:45\n`);
+    writeFileSync(file, `Personalnummer,Datum,Uhrzeit\n${pin},1405/07/20,08:02\n${pin},1405/07/20,16:45\n`);
     await page.getByTestId("dev-file").setInputFiles(file);
     await expect(page.getByTestId("dev-preview")).toContainText("1405/07/20");
     await shot(page, info, "n2-import-preview");
     await page.getByTestId("dev-import-run").click();
-    await expect(page.getByText(/ثبت تازه/)).toBeVisible();
+    await expect(page.getByText(/Neuer Eintrag/)).toBeVisible();
   });
 });

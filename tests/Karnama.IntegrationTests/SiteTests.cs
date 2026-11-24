@@ -31,12 +31,12 @@ public sealed class SiteTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var admin = await As("admin");
         var content = await Ok(await admin.GetAsync("/api/v1/site/home"));
         var edited = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(content.GetRawText())!;
-        edited["heroTitle"] = JsonSerializer.SerializeToElement("تیتر تازه‌ی آزمایشی");
-        edited["seoDescription"] = JsonSerializer.SerializeToElement("کوتاه");
+        edited["heroTitle"] = JsonSerializer.SerializeToElement("Neue Test-Überschrift");
+        edited["seoDescription"] = JsonSerializer.SerializeToElement("Kurz");
         (await admin.PutAsJsonAsync("/api/v1/site/home", edited)).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         edited["seoDescription"] = content.GetProperty("seoDescription");
         await Ok(await admin.PutAsJsonAsync("/api/v1/site/home", edited));
-        (await Ok(await anon.GetAsync("/api/v1/public/site/home"))).GetProperty("content").GetProperty("heroTitle").GetString().Should().Be("تیتر تازه‌ی آزمایشی");
+        (await Ok(await anon.GetAsync("/api/v1/public/site/home"))).GetProperty("content").GetProperty("heroTitle").GetString().Should().Be("Neue Test-Überschrift");
         (await (await As("editor")).PutAsJsonAsync("/api/v1/site/home", edited)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -85,7 +85,7 @@ public sealed class SiteTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var admin = await As("admin");
         var body = new Dictionary<string, object?>
         {
-            ["businessName"] = "نانوایی واقعی", ["industry"] = "نانوایی", ["city"] = "شیراز", ["services"] = new[] { "ریلز" },
+            ["businessName"] = "Echte Bäckerei", ["industry"] = "Bäckerei", ["city"] = "Stuttgart", ["services"] = new[] { "Reels" },
             ["followersBefore"] = 1000, ["followersAfter"] = 5000, ["revenueBefore"] = 100_000_000, ["revenueAfter"] = 150_000_000, ["revenueAsPercent"] = true,
             ["consentObtained"] = false, ["featured"] = false, ["sortOrder"] = 9,
         };
@@ -121,17 +121,17 @@ public sealed class SiteTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Consultation_form_creates_one_lead_and_notifies_managers()
     {
         var anon = _f.CreateClient();
-        (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "مهمان", phone = "123" })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "مهمان آزمایشی", phone = "09121112233", business = "شیرینی", message = "سلام", source = "/" }))
+        (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "Gast", phone = "123" })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "Test-Gast", phone = "015121112233", business = "Konditorei", message = "Hallo", source = "/" }))
             .StatusCode.Should().Be(HttpStatusCode.Accepted);
-        (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "مهمان آزمایشی", phone = "09121112233" })).StatusCode.Should().Be(HttpStatusCode.Accepted);
+        (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "Test-Gast", phone = "015121112233" })).StatusCode.Should().Be(HttpStatusCode.Accepted);
         // Honeypot: accepted but dropped.
-        (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "ربات", phone = "09121119999", website = "http://spam" })).StatusCode.Should().Be(HttpStatusCode.Accepted);
+        (await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "Bot", phone = "015121119999", website = "http://spam" })).StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         var admin = await As("admin");
         var leads = await Ok(await admin.GetAsync("/api/v1/crm/leads?limit=100"));
-        leads.GetProperty("items").EnumerateArray().Count(l => l.GetProperty("phone").GetString() == "09121112233").Should().Be(1);
-        leads.GetProperty("items").EnumerateArray().Should().NotContain(l => l.GetProperty("phone").GetString() == "09121119999");
+        leads.GetProperty("items").EnumerateArray().Count(l => l.GetProperty("phone").GetString() == "015121112233").Should().Be(1);
+        leads.GetProperty("items").EnumerateArray().Should().NotContain(l => l.GetProperty("phone").GetString() == "015121119999");
         (await Ok(await admin.GetAsync("/api/v1/notifications"))).GetProperty("items").EnumerateArray().Should().Contain(n => n.GetProperty("kind").GetString() == "crm.newLead");
         (await (await As("editor")).GetAsync("/api/v1/crm/leads")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

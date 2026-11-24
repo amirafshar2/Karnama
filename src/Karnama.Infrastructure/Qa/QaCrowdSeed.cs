@@ -19,7 +19,7 @@ internal sealed class QaCrowdSeed(AppDbContext db, TimeProvider clock) : IQaSeed
 
     public async Task<QaCrowd> SeedAsync(CancellationToken ct)
     {
-        if (!await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Phone == "09910000001", ct))
+        if (!await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Phone == "015110000001", ct))
             await CreateAsync(ct);
         return await DescribeAsync(ct);
     }
@@ -27,13 +27,13 @@ internal sealed class QaCrowdSeed(AppDbContext db, TimeProvider clock) : IQaSeed
     private async Task CreateAsync(CancellationToken ct)
     {
         var roles = await db.Roles.ToListAsync(ct);
-        Role ByName(string fa) => roles.First(r => r.Name.Get("fa") == fa);
+        Role ByName(string fa) => roles.First(r => r.Name.Get("de") == fa);
         var owner = roles.First(r => r.SystemKey == SystemRoles.Owner);
         var clientRole = roles.First(r => r.SystemKey == SystemRoles.Client);
-        var kiosk = roles.FirstOrDefault(r => r.Name.Get("fa") == "کیوسک QA");
+        var kiosk = roles.FirstOrDefault(r => r.Name.Get("de") == "Kiosk QA");
         if (kiosk is null)
         {
-            kiosk = Role.Create(new LocalizedText(new Dictionary<string, string> { ["fa"] = "کیوسک QA", ["en"] = "QA kiosk" }), "تبلت ورود دفتر (تست جمعیتی)",
+            kiosk = Role.Create(new LocalizedText(new Dictionary<string, string> { ["de"] = "Kiosk QA", ["en"] = "QA kiosk" }), "Check-in-Tablet im Büro (Massentest)",
                 [new PermissionGrant(Permissions.AttendanceKiosk, PermissionScope.All)]).Value!;
             db.Roles.Add(kiosk);
         }
@@ -47,16 +47,16 @@ internal sealed class QaCrowdSeed(AppDbContext db, TimeProvider clock) : IQaSeed
             return u;
         }
 
-        Add("0", "مالک خانم (QA)", UserKind.Staff, owner);
-        Add("0", "مالک آقا (QA)", UserKind.Staff, owner);
-        Add("0", "مدیر (QA)", UserKind.Staff, ByName("مدیر"));
-        for (var i = 1; i <= 8; i++) Add("1", $"تدوینگر {i} (QA)", UserKind.Staff, ByName("تدوینگر"));
-        for (var i = 1; i <= 5; i++) Add("1", $"عکاس و متن‌نویس {i} (QA)", UserKind.Staff, ByName("عکاس و متن‌نویس"));
-        for (var i = 1; i <= 3; i++) Add("1", $"هوش مصنوعی {i} (QA)", UserKind.Staff, ByName("کار با هوش مصنوعی"));
-        for (var i = 1; i <= 4; i++) Add("2", $"فیلمبردار بیرون {i} (QA)", UserKind.Staff, ByName("تدوینگر"));
-        for (var i = 1; i <= 5; i++) Add("3", $"بازاریاب {i} (QA)", UserKind.Staff, ByName("بازاریاب"));
-        for (var i = 1; i <= 2; i++) Add("4", $"نویسنده‌ی بلاگ {i} (QA)", UserKind.Staff, ByName("عکاس و متن‌نویس"));
-        Add("5", "کیوسک دفتر (QA)", UserKind.Staff, kiosk);
+        Add("0", "Inhaberin Frau (QA)", UserKind.Staff, owner);
+        Add("0", "Inhaber Herr (QA)", UserKind.Staff, owner);
+        Add("0", "Manager (QA)", UserKind.Staff, ByName("Manager"));
+        for (var i = 1; i <= 8; i++) Add("1", $"Cutter {i} (QA)", UserKind.Staff, ByName("Cutter"));
+        for (var i = 1; i <= 5; i++) Add("1", $"Fotograf & Texter {i} (QA)", UserKind.Staff, ByName("Fotograf & Texter"));
+        for (var i = 1; i <= 3; i++) Add("1", $"KI-Spezialist {i} (QA)", UserKind.Staff, ByName("KI-Spezialist"));
+        for (var i = 1; i <= 4; i++) Add("2", $"Kameramann außer Haus {i} (QA)", UserKind.Staff, ByName("Cutter"));
+        for (var i = 1; i <= 5; i++) Add("3", $"Vertrieb {i} (QA)", UserKind.Staff, ByName("Vertrieb"));
+        for (var i = 1; i <= 2; i++) Add("4", $"Blog-Autor {i} (QA)", UserKind.Staff, ByName("Fotograf & Texter"));
+        Add("5", "Büro-Kiosk (QA)", UserKind.Staff, kiosk);
         await db.SaveChangesAsync(ct);
 
         // 50 clients: 25 FullAccess, 25 UsernameOnly; 10 of them end within a week.
@@ -65,10 +65,10 @@ internal sealed class QaCrowdSeed(AppDbContext db, TimeProvider clock) : IQaSeed
         var packages = await db.Packages.Include(p => p.Quotas).ToListAsync(ct);
         var full = packages.Where(p => p.Access == PageAccess.FullAccess).OrderBy(p => p.Price).ToList();
         var userOnly = packages.Where(p => p.Access == PageAccess.UsernameOnly).OrderBy(p => p.Price).ToList();
-        var names = (await db.ServiceTypes.AsNoTracking().ToListAsync(ct)).ToDictionary(s => s.Id, s => s.Name.Get("fa"));
+        var names = (await db.ServiceTypes.AsNoTracking().ToListAsync(ct)).ToDictionary(s => s.Id, s => s.Name.Get("de"));
         var instagram = await db.Platforms.AsNoTracking().Where(p => p.Key == "instagram").Select(p => p.Id).FirstAsync(ct);
         var now = clock.GetUtcNow();
-        string[] trades = ["کافه", "پوشاک", "زیبایی", "شیرینی", "کتاب", "گل", "رستوران", "عینک", "کفش", "طلا"];
+        string[] trades = ["Café", "Mode", "Beauty", "Konditorei", "Bücher", "Blumen", "Restaurant", "Optiker", "Schuhe", "Gold"];
         for (var i = 1; i <= 50; i++)
         {
             var fullAccess = i <= 25;
@@ -78,7 +78,7 @@ internal sealed class QaCrowdSeed(AppDbContext db, TimeProvider clock) : IQaSeed
             var user = User.Create(phone, $"{trade} {i} (QA)", UserKind.Client, isDemo: true).Value!;
             user.AssignRole(clientRole.Id);
             db.Users.Add(user);
-            var client = Client.Create(new ClientSpec($"{trade} {i} (QA)", trade, $"مسئول {i}", phone, "شیراز", "مشتری تست جمعیتی", ClientStatus.Active,
+            var client = Client.Create(new ClientSpec($"{trade} {i} (QA)", trade, $"Verantwortlich {i}", phone, "Stuttgart", "Kunde Massentest", ClientStatus.Active,
                 [new ClientAccountSpec(instagram, $"qa_{i}", fullAccess ? PageManagement.AgencyManaged : PageManagement.ClientManaged)])).Value!;
             client.LinkPortalUser(user.Id);
             db.Clients.Add(client);

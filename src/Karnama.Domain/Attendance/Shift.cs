@@ -49,15 +49,15 @@ public sealed class Shift : Entity
 
     public Result StartBreak(DateTimeOffset at)
     {
-        if (Status != ShiftStatus.Open) return Error.Conflict("attendance.notOpen", "اول ورود بزنید.");
-        if (OnBreak) return Error.Conflict("attendance.onBreak", "استراحت از قبل شروع شده است.");
+        if (Status != ShiftStatus.Open) return Error.Conflict("attendance.notOpen", "Bitte zuerst „Kommen“ tippen.");
+        if (OnBreak) return Error.Conflict("attendance.onBreak", "Die Pause läuft bereits.");
         BreakStartedAt = at;
         return Result.Success();
     }
 
     public Result EndBreak(DateTimeOffset at)
     {
-        if (BreakStartedAt is not { } started) return Error.Conflict("attendance.noBreak", "استراحتی شروع نشده است.");
+        if (BreakStartedAt is not { } started) return Error.Conflict("attendance.noBreak", "Es läuft keine Pause.");
         BreakMinutes += Math.Max(0, (int)Math.Round((at - started).TotalMinutes));
         BreakStartedAt = null;
         return Result.Success();
@@ -65,8 +65,8 @@ public sealed class Shift : Entity
 
     public Result Close(DateTimeOffset at, IReadOnlyList<MethodResult> methods, Trust trust, bool needsReview, string? reason, bool offline, int earlyLeaveMinutes, string? earlyReason)
     {
-        if (Status != ShiftStatus.Open) return Error.Conflict("attendance.notOpen", "ورودی باز نیست.");
-        if (at < ClockInAt) return Error.Validation("attendance.beforeIn", "زمان خروج قبل از ورود است.");
+        if (Status != ShiftStatus.Open) return Error.Conflict("attendance.notOpen", "Es ist kein Kommen offen.");
+        if (at < ClockInAt) return Error.Validation("attendance.beforeIn", "Die Gehzeit liegt vor dem Kommen.");
         if (OnBreak) EndBreak(at);
         ClockOutAt = at;
         Status = ShiftStatus.Closed;
@@ -86,7 +86,7 @@ public sealed class Shift : Entity
         if (OnBreak) EndBreak(at);
         ClockOutAt = at < ClockInAt ? ClockInAt : at;
         Status = ShiftStatus.Closed;
-        Flag("خروج ثبت نشد؛ سیستم شیفت را بست. ساعت واقعی را با «درخواست اصلاح» ثبت کنید.");
+        Flag("Gehen nicht erfasst; das System hat die Schicht geschlossen. Tragen Sie die tatsächliche Zeit über „Korrektur beantragen“ ein.");
     }
 
     public void Flag(string? reason)
@@ -110,7 +110,7 @@ public sealed class Shift : Entity
     {
         var inAt = clockIn ?? ClockInAt;
         var outAt = clockOut ?? ClockOutAt;
-        if (outAt is { } o && o <= inAt) return Error.Validation("attendance.order", "زمان خروج باید بعد از ورود باشد.");
+        if (outAt is { } o && o <= inAt) return Error.Validation("attendance.order", "Die Gehzeit muss nach dem Kommen liegen.");
         ClockInAt = inAt;
         if (outAt is not null)
         {
@@ -204,17 +204,17 @@ public sealed class AttendanceCorrection : Entity
 
     public static Result<AttendanceCorrection> Request(Guid userId, Guid? shiftId, DateOnly day, DateTimeOffset? clockIn, DateTimeOffset? clockOut, string reason, DateTimeOffset now)
     {
-        if (clockIn is null && clockOut is null) return Error.Validation("corrections.empty", "ساعت ورود یا خروج را وارد کنید.");
-        if (clockIn is { } i && clockOut is { } o && o <= i) return Error.Validation("corrections.order", "ساعت خروج باید بعد از ورود باشد.");
-        if (clockIn > now || clockOut > now) return Error.Validation("corrections.future", "زمان آینده را نمی‌شود ثبت کرد.");
+        if (clockIn is null && clockOut is null) return Error.Validation("corrections.empty", "Geben Sie die Kommen- oder Gehzeit ein.");
+        if (clockIn is { } i && clockOut is { } o && o <= i) return Error.Validation("corrections.order", "Die Gehzeit muss nach dem Kommen liegen.");
+        if (clockIn > now || clockOut > now) return Error.Validation("corrections.future", "Zukünftige Zeiten können nicht erfasst werden.");
         reason = reason?.Trim() ?? "";
-        if (reason.Length is < 3 or > 1000) return Error.Validation("corrections.reason", "دلیل را بنویسید (حداقل ۳ حرف).");
+        if (reason.Length is < 3 or > 1000) return Error.Validation("corrections.reason", "Geben Sie den Grund an (mindestens 3 Zeichen).");
         return new AttendanceCorrection { UserId = userId, ShiftId = shiftId, Day = day, ClockIn = clockIn, ClockOut = clockOut, Reason = reason, Status = CorrectionStatus.Pending, CreatedAt = now };
     }
 
     public Result Decide(Guid by, bool approve, string? note, DateTimeOffset now)
     {
-        if (Status != CorrectionStatus.Pending) return Error.Conflict("corrections.decided", "این درخواست قبلاً بررسی شده است.");
+        if (Status != CorrectionStatus.Pending) return Error.Conflict("corrections.decided", "Diese Anfrage wurde bereits geprüft.");
         Status = approve ? CorrectionStatus.Approved : CorrectionStatus.Rejected;
         DecidedBy = by;
         DecisionNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();

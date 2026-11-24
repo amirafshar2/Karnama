@@ -45,11 +45,11 @@ public sealed class Role : AuditableEntity
     public Result Update(LocalizedText name, string? description, IEnumerable<PermissionGrant> grants)
     {
         if (name.IsEmpty)
-            return Error.Validation("roles.nameRequired", "نام نقش الزامی است.");
+            return Error.Validation("roles.nameRequired", "Der Rollenname ist Pflicht.");
         if (name.Values.Values.Any(v => v.Length > LocalizedText.MaxLength))
-            return Error.Validation("roles.nameTooLong", "نام نقش خیلی طولانی است.");
+            return Error.Validation("roles.nameTooLong", "Der Rollenname ist zu lang.");
         if (description is { Length: > MaxDescriptionLength })
-            return Error.Validation("roles.descriptionTooLong", "توضیح نقش خیلی طولانی است.");
+            return Error.Validation("roles.descriptionTooLong", "Die Rollenbeschreibung ist zu lang.");
 
         var list = grants.ToList();
         if (IsSystem)
@@ -64,12 +64,12 @@ public sealed class Role : AuditableEntity
         {
             var def = Identity.Permissions.Find(g.Code);
             if (def is null)
-                return Error.Validation("roles.unknownPermission", $"مجوز «{g.Code}» وجود ندارد.");
+                return Error.Validation("roles.unknownPermission", $"Die Berechtigung „{g.Code}“ existiert nicht.");
             if (!def.AllowedScopes.Contains(g.Scope))
-                return Error.Validation("roles.invalidScope", $"دامنه‌ی انتخاب‌شده برای «{g.Code}» مجاز نیست.");
+                return Error.Validation("roles.invalidScope", $"Der gewählte Umfang für „{g.Code}“ ist nicht erlaubt.");
         }
         if (list.GroupBy(g => g.Code).Any(g => g.Count() > 1))
-            return Error.Validation("roles.duplicatePermission", "یک مجوز دو بار انتخاب شده است.");
+            return Error.Validation("roles.duplicatePermission", "Eine Berechtigung wurde doppelt gewählt.");
 
         Name = name;
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
@@ -79,7 +79,7 @@ public sealed class Role : AuditableEntity
 
     public Result Delete(Guid? actorId, DateTimeOffset now)
     {
-        if (IsSystem) return Error.Conflict("roles.systemCannotDelete", "نقش‌های سیستمی حذف‌شدنی نیستند.");
+        if (IsSystem) return Error.Conflict("roles.systemCannotDelete", "Systemrollen können nicht gelöscht werden.");
         if (IsDeleted) return Result.Success();
         MarkDeleted(actorId, now);
         return Result.Success();

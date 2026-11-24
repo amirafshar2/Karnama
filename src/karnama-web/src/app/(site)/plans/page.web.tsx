@@ -8,7 +8,7 @@ export const revalidate = 60;
 export async function generateMetadata(): Promise<Metadata> {
   const [t, brand] = await Promise.all([getT(), getBrand()]);
   return {
-    title: { absolute: `${t("site.packages.title")} | ${brand?.name ?? "کارنما"}` },
+    title: { absolute: `${t("site.packages.title")} | ${brand?.name ?? "Karnama"}` },
     description: t("site.packages.description"),
     alternates: { canonical: `${SITE_URL}/plans` },
     robots: { index: true, follow: true },

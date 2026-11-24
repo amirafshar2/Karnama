@@ -10,7 +10,7 @@ import { useQuery } from "@/lib/query";
 import type { AssetDetail, Category } from "./types";
 
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : null);
-const noon = (d: string | null) => (d ? `${d}T12:00:00+03:30` : null);
+const noon = (d: string | null) => (d ? `${d}T12:00:00+01:00` : null);
 
 export function AssetEditor({ asset, onClose, onSaved }: { asset: AssetDetail | null; onClose: () => void; onSaved: (id: string) => void }) {
   const { t } = useI18n();

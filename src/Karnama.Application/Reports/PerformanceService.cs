@@ -63,9 +63,9 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
         if (!me.Has(Permissions.ScoresConfigure, PermissionScope.All)) return Error.Forbidden();
         var w = s.Weights;
         int[] all = [w.Quality, w.Speed, w.OnTime, w.Volume, w.Discipline, w.Manager, w.Client];
-        if (all.Any(x => x is < 0 or > 100) || all.Sum() == 0) return Error.Validation("scores.weights", "وزن هر شاخص بین ۰ تا ۱۰۰ و حداقل یکی بیشتر از صفر.");
-        if (s.MinSamples is < 1 or > 50) return Error.Validation("scores.minSamples", "حداقل نمونه بین ۱ تا ۵۰.");
-        if (s.ServiceWeights?.Values.Any(v => v is <= 0 or > 10) == true) return Error.Validation("scores.serviceWeight", "وزن هر خدمت بین ۰٫۱ تا ۱۰.");
+        if (all.Any(x => x is < 0 or > 100) || all.Sum() == 0) return Error.Validation("scores.weights", "Gewicht jeder Kennzahl zwischen 0 und 100, mindestens eine größer als null.");
+        if (s.MinSamples is < 1 or > 50) return Error.Validation("scores.minSamples", "Mindestanzahl zwischen 1 und 50.");
+        if (s.ServiceWeights?.Values.Any(v => v is <= 0 or > 10) == true) return Error.Validation("scores.serviceWeight", "Gewicht jeder Leistung zwischen 0,1 und 10.");
         var json = JsonSerializer.Serialize(s, Json);
         var row = await db.SiteSettings.FirstOrDefaultAsync(x => x.Key == SettingsKey, ct);
         var before = row?.Json;
@@ -82,7 +82,7 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
     public async Task<Result<WorkReportDto>> WorkAsync(DateOnly from, DateOnly to, Guid? userId, CancellationToken ct)
     {
         if (!SeesAllWork && !SeesOwnWork) return Error.Forbidden();
-        if (to < from || to.DayNumber - from.DayNumber > 92) return Error.Validation("report.range", "بازه حداکثر ۹۲ روز.");
+        if (to < from || to.DayNumber - from.DayNumber > 92) return Error.Validation("report.range", "Zeitraum höchstens 92 Tage.");
         var ids = await PeopleAsync(SeesAllWork, userId, ct);
         var data = await LoadAsync(from, to, ids, ct);
         var settings = await SettingsAsync(ct);
@@ -100,8 +100,8 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
 
     public async Task<Result<WorkDetailsDto>> DetailsAsync(Guid userId, DateOnly from, DateOnly to, CancellationToken ct)
     {
-        if (!(SeesAllWork || (SeesOwnWork && userId == Me))) return Error.NotFound("report.notFound", "پیدا نشد.");
-        if (to < from || to.DayNumber - from.DayNumber > 92) return Error.Validation("report.range", "بازه حداکثر ۹۲ روز.");
+        if (!(SeesAllWork || (SeesOwnWork && userId == Me))) return Error.NotFound("report.notFound", "Nicht gefunden.");
+        if (to < from || to.DayNumber - from.DayNumber > 92) return Error.Validation("report.range", "Zeitraum höchstens 92 Tage.");
         var data = await LoadAsync(from, to, [userId], ct);
         var titles = await db.WorkItems.AsNoTracking().Where(w => data.Timers.Select(t => t.WorkItemId).Contains(w.Id)).Select(w => new { w.Id, w.Title, w.OrderNumber })
             .ToDictionaryAsync(w => w.Id, ct);
@@ -124,8 +124,8 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
         if (r.IsFailure) return r.Error!;
         static string H(int m) => $"{m / 60}:{m % 60:00}";
         static string P(double? p) => p is { } v ? $"{v:0}%" : "—";
-        return excel.Export("Work report", ["نام", "حضور", "روی کار (تایمر)", "کار مفید", "اضافه‌کار", "تأخیر (دقیقه)", "دفعات تأخیر", "غیبت غیرموجه", "غیبت موجه", "روز مرخصی",
-                "کار تمام‌شده", "زمان تخمینی", "زمان واقعی", "به‌موقع", "تأیید بار اول", "دفعات اصلاح", "فایل از ربات", "امتیاز"],
+        return excel.Export("Work report", ["Name", "Anwesenheit", "An der Aufgabe (Timer)", "Produktive Arbeit", "Überstunden", "Verspätung (Minuten)", "Anzahl Verspätungen", "Unentschuldigte Abwesenheit", "Entschuldigte Abwesenheit", "Urlaubstag",
+                "Erledigte Aufgaben", "Geschätzte Zeit", "Tatsächliche Zeit", "Pünktlich", "Beim ersten Mal freigegeben", "Anzahl Überarbeitungen", "Datei vom Bot", "Punkte"],
             r.Value!.Rows.Select(x => (IReadOnlyList<object?>)[x.Name, H(x.PresenceMinutes), H(x.TimerMinutes), P(x.UsefulPercent), H(x.OvertimeMinutes), x.LateMinutes, x.LateCount,
                 x.UnexcusedAbsences, x.ExcusedAbsences, x.LeaveDays, x.DoneCount, H(x.EstimatedMinutes), H(x.ActualMinutes), P(x.OnTimePercent), P(x.FirstTimePercent), x.Revisions,
                 x.BotFiles, x.Score?.ToString(CultureInfo.InvariantCulture) ?? "—"]));
@@ -136,9 +136,9 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
     public async Task<Result<ScoresDto>> ScoresAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
         if (!SeesAllScores && !SeesOwnScore) return Error.Forbidden();
-        if (to < from || to.DayNumber - from.DayNumber > 370) return Error.Validation("report.range", "بازه حداکثر یک سال.");
+        if (to < from || to.DayNumber - from.DayNumber > 370) return Error.Validation("report.range", "Zeitraum höchstens ein Jahr.");
         // Workers look at their own score: a quarter is enough and keeps the team-wide calculation light.
-        if (!SeesAllScores && to.DayNumber - from.DayNumber > 92) return Error.Validation("report.range", "بازه حداکثر ۹۲ روز.");
+        if (!SeesAllScores && to.DayNumber - from.DayNumber > 92) return Error.Validation("report.range", "Zeitraum höchstens 92 Tage.");
         var settings = await SettingsAsync(ct);
         // Volume is relative to the team, so the whole team is always computed; what is shown depends on the viewer.
         var data = await LoadAsync(from, to, await PeopleAsync(true, null, ct), ct);
@@ -155,9 +155,9 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
     /// <summary>The last six Persian months of one person's total (the monthly trend chart).</summary>
     public async Task<Result<IReadOnlyList<TrendPointDto>>> TrendAsync(Guid userId, CancellationToken ct)
     {
-        if (!(SeesAllScores || (SeesOwnScore && userId == Me))) return Error.NotFound("report.notFound", "پیدا نشد.");
+        if (!(SeesAllScores || (SeesOwnScore && userId == Me))) return Error.NotFound("report.notFound", "Nicht gefunden.");
         var settings = await SettingsAsync(ct);
-        var cal = new PersianCalendar();
+        var cal = new GregorianCalendar();
         var today = Iran.Local(clock.GetUtcNow()).DateTime;
         var people = await PeopleAsync(true, null, ct);
         var points = new List<TrendPointDto>();
@@ -170,7 +170,7 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
             var to = DateOnly.FromDateTime(cal.ToDateTime(y, m, cal.GetDaysInMonth(y, m), 0, 0, 0, 0));
             var data = await LoadAsync(from, to, people, ct);
             var mine = Score(data, settings).FirstOrDefault(s => s.UserId == userId);
-            points.Add(new TrendPointDto($"{y}/{m:00}", from, mine?.Total));
+            points.Add(new TrendPointDto($"{m:00}.{y}", from, mine?.Total));
         }
         return points;
     }
@@ -270,51 +270,51 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
             var firstTime = done.Count(x => x.RevisionCount == 0);
             var revisions = done.Sum(x => x.RevisionCount);
             int? quality = done.Count == 0 ? null : Clamp(100.0 * firstTime / done.Count - 10.0 * revisions / done.Count);
-            indicators.Add(new IndicatorDto("quality", quality, $"{Fa(firstTime)} از {Fa(done.Count)} بار اول تأیید شد؛ {Fa(revisions)} اصلاح", w.Quality,
-                revisions == 0 ? "عالی؛ همین‌طور ادامه دهید." : "قبل از فرستادن، توضیح سفارش و نظرهای قبلی مشتری را دوباره مرور کنید."));
+            indicators.Add(new IndicatorDto("quality", quality, $"{Fa(firstTime)} von {Fa(done.Count)} beim ersten Mal freigegeben; {Fa(revisions)} Überarbeitungen", w.Quality,
+                revisions == 0 ? "Hervorragend; weiter so." : "Lesen Sie vor dem Senden die Auftragsbeschreibung und die bisherigen Kommentare des Kunden noch einmal."));
 
             // Speed: real time ÷ estimate, capped so rushing earns nothing extra.
             var timed = done.Where(x => x.EstimatedMinutes > 0 && d.ActualByItem.GetValueOrDefault(x.Id) > 0).ToList();
             double? ratio = timed.Count == 0 ? null : timed.Average(x => (double)d.ActualByItem[x.Id] / x.EstimatedMinutes);
             int? speed = ratio is { } r ? Clamp((2 - Math.Max(r, 0.8)) / 1.2 * 100) : null;
-            indicators.Add(new IndicatorDto("speed", speed, ratio is { } rr ? $"زمان واقعی {Fa((int)Math.Round(rr * 100))}٪ زمان تخمینی" : "تایمر روی کارها روشن نبوده", w.Speed,
-                ratio is null ? "هنگام کار تایمر را روشن کنید تا زمان واقعی ثبت شود." : ratio > 1.2 ? "کار را به قدم‌های کوچک بشکنید و اول کارهای تکراری را آماده کنید." : "سرعت خوب است؛ عجله لازم نیست."));
+            indicators.Add(new IndicatorDto("speed", speed, ratio is { } rr ? $"Tatsächliche Zeit {Fa((int)Math.Round(rr * 100))} % der geschätzten Zeit" : "Kein Timer lief auf Aufgaben", w.Speed,
+                ratio is null ? "Starten Sie bei der Arbeit den Timer, damit die tatsächliche Zeit erfasst wird." : ratio > 1.2 ? "Teilen Sie die Arbeit in kleine Schritte und bereiten Sie zuerst die wiederkehrenden Aufgaben vor." : "Das Tempo ist gut; keine Eile nötig."));
 
             // On time: first delivery before the deadline (waiting for the client does not count against anyone).
             var withDeadline = done.Where(x => x.Deadline is not null).ToList();
             var onTimeCount = withDeadline.Count(x => (x.FirstSubmittedAt ?? x.SubmittedAt ?? x.DoneAt) <= x.Deadline);
             int? onTime = withDeadline.Count == 0 ? null : Clamp(100.0 * onTimeCount / withDeadline.Count);
-            indicators.Add(new IndicatorDto("onTime", onTime, $"{Fa(onTimeCount)} از {Fa(withDeadline.Count)} قبل از ددلاین", w.OnTime,
-                onTime is null or 100 ? "عالی." : "کارهای نزدیک به ددلاین را اول بردارید؛ اگر وقت کم است زودتر به مدیر بگویید."));
+            indicators.Add(new IndicatorDto("onTime", onTime, $"{Fa(onTimeCount)} von {Fa(withDeadline.Count)} vor der Deadline", w.OnTime,
+                onTime is null or 100 ? "Hervorragend." : "Nehmen Sie sich zuerst die Aufgaben mit naher Deadline vor; wenn die Zeit knapp ist, sagen Sie dem Manager früh Bescheid."));
 
             // Volume: weighted by service (a reel weighs more than a story), relative to the busiest person in the period.
             int? volume = maxVolume > 0 ? Clamp(100 * volumes[p.Id] / maxVolume) : null;
-            indicators.Add(new IndicatorDto("volume", volume, $"{Fa(done.Count)} کار تمام‌شده (وزن‌دار: {FaD(volumes[p.Id], "0.#")})", w.Volume,
-                "حجم نسبت به پرکارترین نفر همین بازه سنجیده می‌شود."));
+            indicators.Add(new IndicatorDto("volume", volume, $"{Fa(done.Count)} erledigte Aufgaben (gewichtet: {FaD(volumes[p.Id], "0.#")})", w.Volume,
+                "Die Menge wird mit der fleißigsten Person desselben Zeitraums verglichen."));
 
             // Discipline: lateness and unexcused absence.
             var late = d.Shifts.Count(x => x.UserId == p.Id && x.LateMinutes > 0);
             var absent = d.Absences.Count(x => x.UserId == p.Id && x.Status == AbsenceStatus.Unexcused);
             var presentDays = d.Shifts.Count(x => x.UserId == p.Id);
             int? discipline = presentDays + absent == 0 ? null : Clamp(100 - 3 * late - 15 * absent);
-            indicators.Add(new IndicatorDto("discipline", discipline, $"{Fa(late)} تأخیر، {Fa(absent)} غیبت غیرموجه", w.Discipline,
-                late + absent == 0 ? "بدون تأخیر؛ عالی." : "اگر دیر می‌رسید، قبلش در اپ مرخصی ساعتی بگیرید تا غیبت حساب نشود."));
+            indicators.Add(new IndicatorDto("discipline", discipline, $"{Fa(late)} Verspätungen, {Fa(absent)} unentschuldigte Abwesenheiten", w.Discipline,
+                late + absent == 0 ? "Ohne Verspätung; hervorragend." : "Wenn Sie sich verspäten, beantragen Sie vorher in der App stundenweisen Urlaub, damit es nicht als Abwesenheit zählt."));
 
             var managerStars = done.Where(x => x.ManagerStars is not null).Select(x => (double)x.ManagerStars!.Value).ToList();
             int? manager = managerStars.Count == 0 ? null : Clamp(managerStars.Average() * 20);
-            indicators.Add(new IndicatorDto("manager", manager, managerStars.Count == 0 ? "امتیازی ثبت نشده" : $"میانگین {FaD(managerStars.Average(), "0.0")} از ۵", w.Manager, "امتیاز مدیر روی کارهای تمام‌شده."));
+            indicators.Add(new IndicatorDto("manager", manager, managerStars.Count == 0 ? "Keine Bewertung" : $"Durchschnitt {FaD(managerStars.Average(), "0.0")} von 5", w.Manager, "Bewertung des Managers für abgeschlossene Aufgaben."));
             var clientStars = done.Where(x => x.ClientStars is not null).Select(x => (double)x.ClientStars!.Value).ToList();
             int? client = clientStars.Count == 0 ? null : Clamp(clientStars.Average() * 20);
-            indicators.Add(new IndicatorDto("client", client, clientStars.Count == 0 ? "امتیازی ثبت نشده" : $"میانگین {FaD(clientStars.Average(), "0.0")} از ۵", w.Client, "امتیاز مشتری بعد از تأیید محتوا."));
+            indicators.Add(new IndicatorDto("client", client, clientStars.Count == 0 ? "Keine Bewertung" : $"Durchschnitt {FaD(clientStars.Average(), "0.0")} von 5", w.Client, "Bewertung des Kunden nach der Inhaltsfreigabe."));
 
             var counted = indicators.Where(i => i.Score is not null && i.Weight > 0).ToList();
             int? total = enough && counted.Count > 0 ? (int)Math.Round(counted.Sum(i => (double)i.Score!.Value * i.Weight) / counted.Sum(i => i.Weight)) : null;
 
             var badges = new List<string>();
-            if (enough && onTime == 100 && withDeadline.Count >= s.MinSamples) badges.Add("۱۰۰٪ به‌موقع");
-            if (enough && revisions == 0) badges.Add("بدون برگشت");
-            if (presentDays >= 10 && late == 0 && absent == 0) badges.Add("بدون تأخیر");
-            if (enough && maxVolume > 0 && volumes[p.Id] == maxVolume) badges.Add("پرکارترین");
+            if (enough && onTime == 100 && withDeadline.Count >= s.MinSamples) badges.Add("100 % pünktlich");
+            if (enough && revisions == 0) badges.Add("Keine Rückgabe");
+            if (presentDays >= 10 && late == 0 && absent == 0) badges.Add("Ohne Verspätung");
+            if (enough && maxVolume > 0 && volumes[p.Id] == maxVolume) badges.Add("Am fleißigsten");
 
             result.Add(new ScoreDto(p.Id, p.Name, total, enough, done.Count, indicators, badges));
         }
@@ -323,6 +323,6 @@ public sealed class PerformanceService(IAppDbContext db, ICurrentUser me, TimePr
 
     private static int Clamp(double v) => (int)Math.Round(Math.Clamp(v, 0, 100));
     private static string FaD(double n, string format) =>
-        string.Concat(n.ToString(format, CultureInfo.InvariantCulture).Select(c => char.IsAsciiDigit(c) ? (char)('۰' + (c - '0')) : c == '.' ? '٫' : c));
-    private static string Fa(long n) => string.Concat(n.ToString(CultureInfo.InvariantCulture).Select(c => char.IsAsciiDigit(c) ? (char)('۰' + (c - '0')) : c));
+        string.Concat(n.ToString(format, CultureInfo.InvariantCulture).Select(c => c == '.' ? ',' : c));
+    private static string Fa(long n) => string.Concat(n.ToString(CultureInfo.InvariantCulture).Select(c => c));
 }

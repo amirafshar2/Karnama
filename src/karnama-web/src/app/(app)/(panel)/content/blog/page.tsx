@@ -77,7 +77,7 @@ export default function BlogListPage() {
               <span className="min-w-0 flex-1 basis-64 font-semibold">{p.title}</span>
               <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", statusTone[p.status])}>{t(`blog.status.${p.status}` as TextKey)}</span>
               <span className={cn("text-sm font-bold tabular-nums", scoreTone(p.seoScore))} title={t("blog.score")}>
-                {formatNumber(p.seoScore)}٪
+                {formatNumber(p.seoScore)}%
               </span>
               <span className="text-xs text-muted-foreground">
                 {p.authorName} · {t("blog.words", { n: formatNumber(p.wordCount) })} · {formatDate(p.publishedAt ?? p.modifiedAt, { day: "numeric", month: "short" })}

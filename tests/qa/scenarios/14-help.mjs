@@ -1,5 +1,5 @@
 // S14 — help (docs/PROMPT3.md §2 item 14; PROMPT2.md §13).
-// The "؟" article per page (/api/v1/help/page?key=…), audience filtering, the help center search, the first-run tour inputs
+// The "?" article per page (/api/v1/help/page?key=…), audience filtering, the help center search, the first-run tour inputs
 // (the tour itself is front-end only: components/help/tour.tsx picks steps from /api/v1/me), the page-help texts for every
 // navigation page, and the automated "no form field without help" check (tools/check-help.mjs).
 import { execFileSync } from "node:child_process";
@@ -23,7 +23,7 @@ export async function run(rec, { crowd }) {
   const marketer = await qa.login(pick(crowd, "marketer", 1, 0)[0]);
   const client = await qa.login(pick(crowd, "client", 1, 0)[0]);
 
-  await rec.step("2.14.a", "the '؟' article for a page: exact key, deepest prefix, unknown page → 204", async () => {
+  await rec.step("2.14.a", "the '?' article for a page: exact key, deepest prefix, unknown page → 204", async () => {
     const att = await office.get("/api/v1/help/page?key=attendance");
     eq(att.pageKey, "attendance", "attendance article");
     const cal = await office.get("/api/v1/help/page?key=attendance/calendar");
@@ -50,22 +50,22 @@ export async function run(rec, { crowd }) {
     eq(r.status, 404, "client can't open a staff article by its slug");
   });
 
-  await rec.step("2.14.c", "PROMPT2 §13 seed articles exist (ورود، ربات، مرخصی، پکیج، تجهیز، تأیید محتوا، پایان پکیج)", async () => {
+  await rec.step("2.14.c", "PROMPT2 §13 seed articles exist (Anmeldung, Bot, Urlaub, Paket, Ausstattung, Inhaltsfreigabe, Paketende)", async () => {
     const all = await admin.get("/api/v1/help");
     for (const k of ["attendance", "media", "attendance/calendar", "packages", "assets", "dashboard"]) check(all.some((a) => a.pageKey === k), `article for ${k}`);
     check(all.some((a) => a.audience === "clients" && a.pageKey === null), "client 'when does my package end' article");
   });
 
   await rec.step("2.14.d", "help center search and category filter; drafts visible to editors only; XSS stripped", async () => {
-    const hits = await office.get(`/api/v1/help?q=${encodeURIComponent("مرخصی")}`);
+    const hits = await office.get(`/api/v1/help?q=${encodeURIComponent("Urlaub")}`);
     check(hits.length > 0, "search finds the leave article");
-    const draft = await admin.post("/api/v1/help", { title: `پیش‌نویس QA ${sfx}`, slug: null, category: "QA", audience: "everyone", pageKey: `qa-help-${sfx}`,
+    const draft = await admin.post("/api/v1/help", { title: `Entwurf QA ${sfx}`, slug: null, category: "QA", audience: "everyone", pageKey: `qa-help-${sfx}`,
       contentJson: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "<img src=x onerror=alert(1)>", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }] }] }] }),
       sortOrder: 99, isPublished: false });
     check(!/onerror=|javascript:/i.test(draft.contentHtml.replace(/&lt;img src=x onerror=alert\(1\)&gt;/g, "")), `html sanitised: ${draft.contentHtml}`);
     eq((await office.get(`/api/v1/help?category=QA`)).filter((a) => a.id === draft.id).length, 0, "draft hidden from staff");
     eq((await qa.anon("GET", `/api/v1/help/page?key=qa-help-${sfx}`, undefined, { token: office.token })).status, 204, "draft not used for the page button");
-    await admin.put(`/api/v1/help/${draft.id}`, { title: `پیش‌نویس QA ${sfx}`, slug: null, category: "QA", audience: "everyone", pageKey: `qa-help-${sfx}`, contentJson: doc("منتشر شد"), sortOrder: 99, isPublished: true });
+    await admin.put(`/api/v1/help/${draft.id}`, { title: `Entwurf QA ${sfx}`, slug: null, category: "QA", audience: "everyone", pageKey: `qa-help-${sfx}`, contentJson: doc("Veröffentlicht"), sortOrder: 99, isPublished: true });
     eq((await office.get(`/api/v1/help/page?key=qa-help-${sfx}`)).id, draft.id, "published → used for the page");
     eq((await client.get(`/api/v1/help/page?key=qa-help-${sfx}`)).id, draft.id, "'everyone' reaches clients too");
     await admin.del(`/api/v1/help/${draft.id}`);
@@ -82,7 +82,7 @@ export async function run(rec, { crowd }) {
     for (const k of ["tour.clientWelcomeBody", "tour.ordersTitle", "tour.crmTitle", "tour.workTitle", "tour.helpTitle"]) check(src.includes(k), `tour step ${k}`);
   });
 
-  await rec.step("2.14.f", "every navigation page has a '؟' page text (help.page.* in fa-n12.ts)", async () => {
+  await rec.step("2.14.f", "every navigation page has a '?' page text (help.page.* in fa-n12.ts)", async () => {
     const nav = readFileSync(join(web, "components", "app", "nav.ts"), "utf8");
     const texts = readFileSync(join(web, "lib", "i18n", "fa-n12.ts"), "utf8");
     const pages = [...new Set([...nav.matchAll(/href: "\/([^"]+)"/g)].map((m) => m[1]))];

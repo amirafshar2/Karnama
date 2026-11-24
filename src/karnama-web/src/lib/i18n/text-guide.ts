@@ -9,115 +9,115 @@ export type TextSection = {
   /** Where on the screen these texts show up, step by step from the menu. */
   where: string;
   /** Who sees them. */
-  who: "همه" | "همکاران" | "مدیرها" | "مشتری‌ها" | "بازدیدکننده‌های سایت";
+  who: "Alle" | "Mitarbeiter" | "Manager" | "Kunden" | "Website-Besucher";
   /** A page to open and look at the texts in place (panel or public site). */
   href?: string;
 };
 
 export const TEXT_SECTIONS: Record<string, TextSection> = {
   // ---------- everywhere ----------
-  common: { name: "دکمه‌ها و کلمه‌های همه‌جا", where: "کلمه‌هایی که در خیلی از صفحه‌ها تکرار می‌شوند، مثل «ذخیره»، «انصراف»، «حذف» و «در حال ذخیره…». اگر یکی را عوض کنید، همه‌جا عوض می‌شود.", who: "همه" },
-  crud: { name: "فهرست‌ها و جدول‌ها", where: "بالای هر فهرست (مثل فهرست مشتری‌ها یا همکاران): خانه‌ی جستجو، دکمه‌ی «خروجی Excel»، «نمایش حذف‌شده‌ها» و پیام «چیزی پیدا نشد».", who: "همکاران" },
-  nav: { name: "منوی کناری و پایین", where: "اسم هر بخش در منوی سمت راست (در کامپیوتر) یا نوار پایین صفحه (در گوشی). مثلاً «تابلوی کار» یا «مشتری‌ها».", who: "همه", href: "/dashboard" },
-  brand: { name: "نام و شعار آژانس", where: "نام آژانس و جمله‌ی کوتاه زیرش؛ در صفحه‌ی ورود، بالای منو و عنوان پنجره‌ی مرورگر. (نام اصلی را در «برند و ظاهر» عوض کنید.)", who: "همه", href: "/settings/brand" },
-  demo: { name: "نوار نارنجی حالت نمایشی", where: "نوار نارنجی بالای صفحه که می‌گوید داده‌ها نمونه هستند، و دکمه‌ی «تغییر نقش». فقط در نسخه‌ی دمو دیده می‌شود.", who: "همه" },
-  notFound: { name: "صفحه‌ی «پیدا نشد»", where: "وقتی کسی آدرس اشتباهی را باز کند، این متن‌ها را می‌بیند.", who: "همه" },
-  bell: { name: "زنگوله‌ی اعلان‌ها", where: "آیکن زنگوله بالای صفحه و پنجره‌ای که با زدنش باز می‌شود (فهرست پیام‌های تازه).", who: "همه", href: "/dashboard" },
-  realtime: { name: "پیام تغییر دسترسی", where: "پیام کوچکی که پایین صفحه ظاهر می‌شود وقتی مدیر دسترسی کسی را عوض می‌کند.", who: "همکاران" },
-  pwa: { name: "راهنمای نصب روی آیفون", where: "کادری که در گوشی آیفون نشان می‌دهد چطور سایت را مثل یک برنامه روی صفحه‌ی گوشی بگذارند.", who: "همه" },
-  tour: { name: "راهنمای قدم‌به‌قدم اولین ورود", where: "حباب‌های راهنما که اولین بار بعد از ورود، روی صفحه یکی‌یکی نشان می‌دهند هر قسمت چه کار می‌کند.", who: "همه" },
-  glossary: { name: "معنی کلمه‌های تخصصی", where: "توضیح کوتاه کلمه‌هایی مثل «پکیج» و «سهمیه» که در راهنما و کنار بعضی خانه‌ها نشان داده می‌شود.", who: "همه", href: "/help" },
-  help: { name: "راهنما", where: "صفحه‌ی «راهنما» در منو و پنجره‌ای که با دکمه‌ی علامت سؤال (؟) بالای هر صفحه باز می‌شود.", who: "همه", href: "/help" },
+  common: { name: "Buttons und Wörter, die überall vorkommen", where: "Wörter, die auf vielen Seiten vorkommen, z. B. „Speichern“, „Abbrechen“, „Löschen“ und „Wird gespeichert…“. Ändern Sie eines, ändert es sich überall.", who: "Alle" },
+  crud: { name: "Listen und Tabellen", where: "Oben über jeder Liste (z. B. Kunden- oder Mitarbeiterliste): Suchfeld, Button „Excel-Export“, „Gelöschte anzeigen“ und die Meldung „Nichts gefunden“.", who: "Mitarbeiter" },
+  nav: { name: "Seiten- und unteres Menü", where: "Name jedes Bereichs im Menü links (am Computer) oder in der unteren Leiste (am Handy), z. B. „Aufgabenboard“ oder „Kunden“.", who: "Alle", href: "/dashboard" },
+  brand: { name: "Name und Slogan der Agentur", where: "Name der Agentur und der kurze Satz darunter; auf der Anmeldeseite, oben im Menü und im Titel des Browserfensters. (Den Hauptnamen ändern Sie unter „Marke & Design“.)", who: "Alle", href: "/settings/brand" },
+  demo: { name: "Orange Leiste im Demo-Modus", where: "Die orange Leiste oben auf der Seite, die darauf hinweist, dass die Daten Beispiele sind, und der Button „Rolle wechseln“. Nur in der Demo-Version sichtbar.", who: "Alle" },
+  notFound: { name: "Seite „Nicht gefunden“", where: "Diese Texte sieht jemand, der eine falsche Adresse aufruft.", who: "Alle" },
+  bell: { name: "Benachrichtigungsglocke", where: "Das Glockensymbol oben auf der Seite und das Fenster, das sich beim Antippen öffnet (Liste der neuen Nachrichten).", who: "Alle", href: "/dashboard" },
+  realtime: { name: "Meldung zur Berechtigungsänderung", where: "Die kleine Meldung unten auf der Seite, wenn der Manager die Berechtigungen einer Person ändert.", who: "Mitarbeiter" },
+  pwa: { name: "Anleitung zur Installation auf dem iPhone", where: "Das Fenster, das auf dem iPhone zeigt, wie man die Website wie eine App auf den Home-Bildschirm legt.", who: "Alle" },
+  tour: { name: "Schritt-für-Schritt-Anleitung für die erste Anmeldung", where: "Hilfeblasen, die nach der ersten Anmeldung nacheinander zeigen, wozu jeder Bereich dient.", who: "Alle" },
+  glossary: { name: "Bedeutung der Fachbegriffe", where: "Kurze Erklärung von Begriffen wie „Paket“ und „Kontingent“, die in der Hilfe und neben einigen Feldern angezeigt wird.", who: "Alle", href: "/help" },
+  help: { name: "Hilfe", where: "Die Seite „Hilfe“ im Menü und das Fenster, das sich mit dem Fragezeichen-Button (?) oben auf jeder Seite öffnet.", who: "Alle", href: "/help" },
 
   // ---------- sign in & account ----------
-  login: { name: "صفحه‌ی ورود", where: "اولین صفحه: خانه‌ی شماره‌ی موبایل، کد پیامکی، دکمه‌ی ورود و پیام‌های خطای ورود.", who: "همه", href: "/login" },
-  dashboard: { name: "صفحه‌ی اول بعد از ورود", where: "منو ← «داشبورد»: سلام و تاریخ امروز و خلاصه‌ی کارها.", who: "همکاران", href: "/dashboard" },
-  onboarding: { name: "کارت راه‌اندازی قدم‌به‌قدم", where: "کارتی در داشبورد مدیر که قدم‌های اول راه‌اندازی را نشان می‌دهد (مثلاً «اولین مشتری را اضافه کنید»).", who: "مدیرها", href: "/dashboard" },
-  profile: { name: "حساب من", where: "منو ← «حساب من»: زبان، روشن یا تیره بودن صفحه و اطلاعات شخصی.", who: "همه", href: "/profile" },
-  notifyPrefs: { name: "تنظیم اعلان‌ها", where: "منو ← «حساب من» ← بخش «اعلان‌ها»: انتخاب این‌که پیام‌ها از بله، تلگرام یا پیامک هم بیایند.", who: "همه", href: "/profile#notifications" },
-  setup: { name: "راه‌اندازی اول و تنظیم حضور", where: "دو جا: (۱) صفحه‌ی اولی که فقط موقع نصب برنامه یک بار دیده می‌شود، (۲) منو ← «تنظیم حضور» (ساعت کاری، روزهای کاری، انواع مرخصی).", who: "مدیرها", href: "/attendance/setup" },
+  login: { name: "Anmeldeseite", where: "Erste Seite: Feld für die Handynummer, SMS-Code, Anmelde-Button und Fehlermeldungen bei der Anmeldung.", who: "Alle", href: "/login" },
+  dashboard: { name: "Erste Seite nach der Anmeldung", where: "Menü → „Dashboard“: Begrüßung, heutiges Datum und Übersicht der Aufgaben.", who: "Mitarbeiter", href: "/dashboard" },
+  onboarding: { name: "Karte Schritt-für-Schritt-Einrichtung", where: "Eine Karte im Dashboard des Managers, die die ersten Einrichtungsschritte zeigt (z. B. „Fügen Sie den ersten Kunden hinzu“).", who: "Manager", href: "/dashboard" },
+  profile: { name: "Mein Konto", where: "Menü → „Mein Konto“: Sprache, helle oder dunkle Darstellung und persönliche Daten.", who: "Alle", href: "/profile" },
+  notifyPrefs: { name: "Benachrichtigungen einstellen", where: "Menü → „Mein Konto“ → Bereich „Benachrichtigungen“: wählen, ob Nachrichten auch per Telegram oder SMS kommen sollen.", who: "Alle", href: "/profile#notifications" },
+  setup: { name: "Ersteinrichtung und Anwesenheit einrichten", where: "An zwei Stellen: (1) die erste Seite, die nur einmal bei der Installation erscheint, (2) Menü → „Anwesenheit einrichten“ (Arbeitszeiten, Arbeitstage, Urlaubsarten).", who: "Manager", href: "/attendance/setup" },
 
   // ---------- daily work ----------
-  work: { name: "تابلوی کار", where: "منو ← «تابلوی کار»: ستون‌ها (در انتظار، در حال انجام، بازبینی…)، کارت هر کار و پنجره‌ای که با زدن روی کارت باز می‌شود.", who: "همکاران", href: "/work" },
-  orders: { name: "سفارش‌ها", where: "منو ← «سفارش‌ها»: فهرست سفارش‌ها، دکمه‌ی «سفارش جدید» و فرم ثبت سفارش.", who: "همکاران", href: "/orders" },
-  stars: { name: "ستاره‌ی امتیاز", where: "ستاره‌های ۱ تا ۵ که مدیر یا مشتری بعد از تمام شدن یک کار به آن می‌دهد (پنجره‌ی کار و صفحه‌ی مشتری).", who: "همه" },
-  publish: { name: "تقویم انتشار", where: "منو ← «تقویم انتشار»: کدام پست، چه روزی و روی کدام پیج منتشر شود، و یادآوری‌ها.", who: "همکاران", href: "/publishing" },
-  chat: { name: "گفتگو", where: "منو ← «گفتگو»: فهرست گفتگوها، خانه‌ی نوشتن پیام و دکمه‌ی «گفتگوی تازه».", who: "همه", href: "/chat" },
-  media: { name: "صندوق فایل‌ها", where: "منو ← «صندوق فایل‌ها»: فایل‌هایی که همکاران از ربات تلگرام فرستاده‌اند و دکمه‌ی فرستادن برای نفر بعد.", who: "مدیرها", href: "/media" },
-  crm: { name: "فروش و سرنخ‌ها", where: "منو ← «فروش و سرنخ‌ها»: مشتری‌های احتمالی، مرحله‌ها، ثبت نتیجه‌ی تماس و گزارش بازاریاب‌ها.", who: "همکاران", href: "/crm" },
-  as: { name: "تجهیزات", where: "منو ← «تجهیزات»: لپ‌تاپ و دوربین‌ها، تحویل دادن به همکار، عکس هنگام تحویل و برگشت.", who: "همکاران", href: "/assets" },
+  work: { name: "Aufgabenboard", where: "Menü → „Aufgabenboard“: Spalten (Ausstehend, In Arbeit, Prüfung…), die Karte jeder Aufgabe und das Fenster, das sich beim Tippen auf die Karte öffnet.", who: "Mitarbeiter", href: "/work" },
+  orders: { name: "Aufträge", where: "Menü → „Aufträge“: Auftragsliste, Button „Neuer Auftrag“ und Bestellformular.", who: "Mitarbeiter", href: "/orders" },
+  stars: { name: "Bewertungssterne", where: "Sterne von 1 bis 5, die Manager oder Kunde nach Abschluss einer Aufgabe vergeben (Aufgabenfenster und Kundenseite).", who: "Alle" },
+  publish: { name: "Veröffentlichungskalender", where: "Menü → „Veröffentlichungskalender“: welcher Post an welchem Tag auf welcher Seite erscheint, und Erinnerungen.", who: "Mitarbeiter", href: "/publishing" },
+  chat: { name: "Chat", where: "Menü → „Chat“: Liste der Chats, Eingabefeld für Nachrichten und der Button „Neuer Chat“.", who: "Alle", href: "/chat" },
+  media: { name: "Dateieingang", where: "Menü → „Dateieingang“: Dateien, die Kollegen über den Telegram-Bot geschickt haben, und der Button zum Weiterleiten an die nächste Person.", who: "Manager", href: "/media" },
+  crm: { name: "Vertrieb & Leads", where: "Menü → „Vertrieb & Leads“: potenzielle Kunden, Stufen, Erfassen des Anrufergebnisses und Vertriebsbericht.", who: "Mitarbeiter", href: "/crm" },
+  as: { name: "Ausstattung", where: "Menü → „Ausstattung“: Laptops und Kameras, Übergabe an Kollegen, Fotos bei Übergabe und Rückgabe.", who: "Mitarbeiter", href: "/assets" },
 
   // ---------- team & attendance ----------
-  att: { name: "حضور و ساعت (ورود و خروج)", where: "منو ← «حضور و ساعت»: دکمه‌ی بزرگ ورود و خروج، تایمر کار و ساعت‌های امروز.", who: "همکاران", href: "/attendance" },
-  kiosk: { name: "کد QR دفتر", where: "منو ← «QR دفتر»: صفحه‌ای که روی تبلت دم در دفتر باز است و همکاران کدش را اسکن می‌کنند.", who: "همکاران", href: "/attendance/kiosk" },
-  leave: { name: "مرخصی", where: "منو ← «حضور و ساعت» ← بخش مرخصی: فرم درخواست مرخصی، و صفحه‌ی تأیید یا رد مرخصی برای مدیر.", who: "همکاران", href: "/attendance" },
-  abs: { name: "غیبت‌ها", where: "منو ← «حضور و ساعت»: پیام «ورود ثبت نشد» و خانه‌ای که همکار دلیل غیبتش را می‌نویسد؛ و فهرست غیبت‌ها برای مدیر.", who: "همکاران", href: "/attendance" },
-  cal: { name: "تقویم حضور", where: "منو ← «تقویم حضور»: جدول ماه، هر خانه یک روز (حاضر، تأخیر، مرخصی، غایب).", who: "همکاران", href: "/attendance/calendar" },
-  live: { name: "حضور زنده‌ی تیم", where: "منو ← «حضور زنده‌ی تیم»: چه کسی الان سر کار است و روی چه کاری.", who: "مدیرها", href: "/attendance/live" },
-  rep: { name: "گزارش حضور (برای حقوق)", where: "منو ← «گزارش حضور»: جدول ساعت کار، تأخیر، زودرفتن و مرخصی هر نفر در یک بازه.", who: "مدیرها", href: "/attendance/report" },
-  rpt: { name: "گزارش کار", where: "منو ← «گزارش کار و امتیاز»: چند ساعت کار مفید، چند کار تمام شده، نمودار روزانه.", who: "همکاران", href: "/reports" },
-  score: { name: "امتیاز همکاران", where: "منو ← «گزارش کار و امتیاز» ← زبانه‌ی امتیاز: امتیاز هر نفر و توضیح این‌که از کجا آمده.", who: "همکاران", href: "/reports" },
-  dev: { name: "دستگاه اثر انگشت", where: "منو ← «دستگاه‌های حضور»: وصل کردن دستگاه اثر انگشت یا تشخیص چهره‌ی دفتر.", who: "مدیرها", href: "/attendance/devices" },
-  cctv: { name: "دوربین‌های دفتر", where: "منو ← «دوربین‌ها»: تصویر دوربین‌های مداربسته‌ی دفتر.", who: "مدیرها", href: "/cctv" },
+  att: { name: "Anwesenheit & Zeiten (Kommen und Gehen)", where: "Menü → „Anwesenheit & Zeiten“: großer Kommen/Gehen-Button, Aufgaben-Timer und die heutigen Zeiten.", who: "Mitarbeiter", href: "/attendance" },
+  kiosk: { name: "Büro-QR-Code", where: "Menü → „Büro-QR“: die Seite, die auf dem Tablet am Büroeingang offen ist und deren Code die Kollegen scannen.", who: "Mitarbeiter", href: "/attendance/kiosk" },
+  leave: { name: "Urlaub", where: "Menü → „Anwesenheit & Zeiten“ → Bereich Urlaub: Urlaubsantrag und die Seite, auf der der Manager Urlaub genehmigt oder ablehnt.", who: "Mitarbeiter", href: "/attendance" },
+  abs: { name: "Abwesenheiten", where: "Menü → „Anwesenheit & Zeiten“: die Meldung „Kommen nicht erfasst“ und das Feld, in das der Kollege den Grund seiner Abwesenheit schreibt; sowie die Abwesenheitsliste für den Manager.", who: "Mitarbeiter", href: "/attendance" },
+  cal: { name: "Anwesenheitskalender", where: "Menü → „Anwesenheitskalender“: Monatstabelle, jedes Feld ein Tag (anwesend, verspätet, Urlaub, abwesend).", who: "Mitarbeiter", href: "/attendance/calendar" },
+  live: { name: "Team live", where: "Menü → „Team live“: wer gerade arbeitet und an welcher Aufgabe.", who: "Manager", href: "/attendance/live" },
+  rep: { name: "Anwesenheitsbericht (für die Lohnabrechnung)", where: "Menü → „Anwesenheitsbericht“: Tabelle mit Arbeitszeit, Verspätung, früherem Gehen und Urlaub jeder Person in einem Zeitraum.", who: "Manager", href: "/attendance/report" },
+  rpt: { name: "Arbeitsbericht", where: "Menü → „Arbeitsbericht & Punkte“: produktive Stunden, erledigte Aufgaben, Tagesdiagramm.", who: "Mitarbeiter", href: "/reports" },
+  score: { name: "Punkte der Kollegen", where: "Menü → „Arbeitsbericht & Punkte“ → Tab Punkte: Punktzahl jeder Person und woher sie kommt.", who: "Mitarbeiter", href: "/reports" },
+  dev: { name: "Fingerabdruckgerät", where: "Menü → „Zeiterfassungsgeräte“: Fingerabdruck- oder Gesichtserkennungsgerät des Büros verbinden.", who: "Manager", href: "/attendance/devices" },
+  cctv: { name: "Bürokameras", where: "Menü → „Kameras“: Bild der Überwachungskameras im Büro.", who: "Manager", href: "/cctv" },
 
   // ---------- clients, packages, services ----------
-  clients: { name: "مشتری‌ها", where: "منو ← «مشتری‌ها»: فهرست کسب‌وکارهای مشتری، پرونده‌ی هر مشتری و فرم مشتری جدید.", who: "همکاران", href: "/clients" },
-  vault: { name: "رمز حساب‌های مشتری", where: "منو ← «مشتری‌ها» ← یک مشتری ← بخش «اطلاعات ورود حساب‌ها» (رمز پیج‌ها، با قفل). مشتری هم در صفحه‌ی خودش می‌بیند.", who: "همه", href: "/clients" },
-  packages: { name: "پکیج‌های فروش", where: "منو ← «پکیج‌ها»: هر پکیج با قیمت، تعداد پست و ریلز، مدت و توضیحات.", who: "مدیرها", href: "/packages" },
-  notices: { name: "پیام پایان پکیج", where: "منو ← «پکیج‌ها» ← «پیام‌های پایان پکیج»: چند روز قبل از تمام شدن پکیج، چه پیامی به مشتری برود.", who: "مدیرها", href: "/packages" },
-  services: { name: "انواع خدمت", where: "منو ← «انواع خدمت»: ریلز، پست، استوری و… و فرمی که مشتری برای سفارش هر کدام پر می‌کند.", who: "مدیرها", href: "/services" },
-  platforms: { name: "شبکه‌های اجتماعی", where: "منو ← «شبکه‌ها»: اینستاگرام، تلگرام و شبکه‌های دیگری که مشتری‌ها رویشان پیج دارند.", who: "مدیرها", href: "/settings/platforms" },
+  clients: { name: "Kunden", where: "Menü → „Kunden“: Liste der Kundenunternehmen, Akte jedes Kunden und Formular für neue Kunden.", who: "Mitarbeiter", href: "/clients" },
+  vault: { name: "Passwörter der Kundenkonten", where: "Menü → „Kunden“ → ein Kunde → Bereich „Zugangsdaten der Konten“ (Passwörter der Seiten, mit Schloss). Der Kunde sieht sie auch auf seiner eigenen Seite.", who: "Alle", href: "/clients" },
+  packages: { name: "Verkaufspakete", where: "Menü → „Pakete“: jedes Paket mit Preis, Anzahl Posts und Reels, Laufzeit und Beschreibung.", who: "Manager", href: "/packages" },
+  notices: { name: "Nachricht zum Paketende", where: "Menü → „Pakete“ → „Nachrichten zum Paketende“: welche Nachricht der Kunde wie viele Tage vor Paketende erhält.", who: "Manager", href: "/packages" },
+  services: { name: "Leistungsarten", where: "Menü → „Leistungsarten“: Reel, Post, Story usw. und das Formular, das der Kunde für die jeweilige Bestellung ausfüllt.", who: "Manager", href: "/services" },
+  platforms: { name: "Soziale Netzwerke", where: "Menü → „Netzwerke“: Instagram, TikTok und weitere Netzwerke, auf denen Kunden eine Seite haben.", who: "Manager", href: "/settings/platforms" },
 
   // ---------- client panel ----------
-  portal: { name: "صفحه‌ی مشتری", where: "صفحه‌ای که مشتری بعد از ورود می‌بیند: پکیجش، روزهای باقی‌مانده، سفارش‌ها و محتوای منتظر تأیید.", who: "مشتری‌ها", href: "/dashboard" },
-  portalMsg: { name: "پیام مشتری درباره‌ی سفارش", where: "در صفحه‌ی مشتری ← یک سفارش ← خانه‌ی «پیام برای آژانس».", who: "مشتری‌ها" },
-  portalPub: { name: "پست‌هایی که مشتری خودش منتشر می‌کند", where: "در صفحه‌ی مشتری ← «پست‌هایی که باید خودتان منتشر کنید»: دانلود فایل و کپی کپشن.", who: "مشتری‌ها", href: "/publishing" },
-  profileClient: { name: "پروفایل کسب‌وکار مشتری", where: "در صفحه‌ی مشتری ← «پروفایل»: نام کسب‌وکار، شماره و پیج‌هایش.", who: "مشتری‌ها", href: "/profile" },
+  portal: { name: "Kundenseite", where: "Die Seite, die der Kunde nach der Anmeldung sieht: sein Paket, die verbleibenden Tage, Aufträge und Inhalte zur Freigabe.", who: "Kunden", href: "/dashboard" },
+  portalMsg: { name: "Nachricht des Kunden zum Auftrag", where: "Auf der Kundenseite → ein Auftrag → Feld „Nachricht an die Agentur“.", who: "Kunden" },
+  portalPub: { name: "Posts, die der Kunde selbst veröffentlicht", where: "Auf der Kundenseite → „Posts, die Sie selbst veröffentlichen“: Datei herunterladen und Caption kopieren.", who: "Kunden", href: "/publishing" },
+  profileClient: { name: "Unternehmensprofil des Kunden", where: "Auf der Kundenseite → „Profil“: Firmenname, Nummer und Seiten.", who: "Kunden", href: "/profile" },
 
   // ---------- website & content ----------
-  site: { name: "سایت عمومی", where: "سایتی که همه‌ی مردم می‌بینند (بدون ورود): منوی بالا، دکمه‌ها، پایین صفحه و فرم مشاوره.", who: "بازدیدکننده‌های سایت", href: "/" },
-  home: { name: "مدیریت صفحه‌ی اصلی سایت", where: "منو ← «صفحه‌ی اصلی سایت»: فرم‌هایی که با آن‌ها متن، عکس، ویدیو و پرسش‌های صفحه‌ی اول سایت را عوض می‌کنید.", who: "مدیرها", href: "/content/home" },
-  cases: { name: "نمونه‌کارها", where: "دو جا: منو ← «نمونه‌کارها» (فرم ساختن نمونه‌کار)، و صفحه‌ی نمونه‌کارها در سایت عمومی.", who: "همه", href: "/content/cases" },
-  blog: { name: "بلاگ", where: "منو ← «بلاگ»: فهرست مطلب‌ها، نوشتن مطلب تازه و فرستادن برای بازبینی.", who: "همکاران", href: "/content/blog" },
-  editor: { name: "صفحه‌ی نوشتن مطلب", where: "منو ← «بلاگ» ← یک مطلب: خانه‌ی عنوان، متن و دکمه‌های ذخیره و انتشار.", who: "همکاران", href: "/content/blog" },
-  toolbar: { name: "دکمه‌های قالب‌بندی متن", where: "نوار دکمه‌های بالای خانه‌ی نوشتن مطلب: تیتر، پررنگ، لیست، لینک، عکس.", who: "همکاران", href: "/content/blog" },
-  image: { name: "عکس داخل مطلب", where: "وقتی در مطلب یا نمونه‌کار عکس می‌گذارید: خانه‌ی «متن جایگزین» و «زیرنویس» عکس.", who: "همکاران" },
-  seo: { name: "تنظیمات گوگل (سئو)", where: "پایین صفحه‌ی نوشتن مطلب: عنوان و توضیحی که در نتیجه‌ی جستجوی گوگل دیده می‌شود.", who: "همکاران", href: "/content/blog" },
+  site: { name: "Öffentliche Website", where: "Die Website, die alle sehen (ohne Anmeldung): oberes Menü, Buttons, Fußzeile und Beratungsformular.", who: "Website-Besucher", href: "/" },
+  home: { name: "Startseite der Website verwalten", where: "Menü → „Startseite der Website“: Formulare, mit denen Sie Text, Fotos, Video und FAQ der Startseite ändern.", who: "Manager", href: "/content/home" },
+  cases: { name: "Referenzen", where: "An zwei Stellen: Menü → „Referenzen“ (Formular zum Anlegen einer Referenz) und die Referenzseite der öffentlichen Website.", who: "Alle", href: "/content/cases" },
+  blog: { name: "Blog", where: "Menü → „Blog“: Liste der Beiträge, neuen Beitrag schreiben und zur Prüfung senden.", who: "Mitarbeiter", href: "/content/blog" },
+  editor: { name: "Seite zum Schreiben eines Beitrags", where: "Menü → „Blog“ → ein Beitrag: Titelfeld, Text sowie Buttons zum Speichern und Veröffentlichen.", who: "Mitarbeiter", href: "/content/blog" },
+  toolbar: { name: "Buttons zur Textformatierung", where: "Buttonleiste über dem Schreibfeld für Beiträge: Überschrift, fett, Liste, Link, Bild.", who: "Mitarbeiter", href: "/content/blog" },
+  image: { name: "Bild im Beitrag", where: "Wenn Sie in einem Beitrag oder einer Referenz ein Bild einfügen: die Felder „Alternativtext“ und „Bildunterschrift“.", who: "Mitarbeiter" },
+  seo: { name: "Google-Einstellungen (SEO)", where: "Unten auf der Seite zum Schreiben eines Beitrags: Titel und Beschreibung, die im Google-Suchergebnis erscheinen.", who: "Mitarbeiter", href: "/content/blog" },
 
   // ---------- admin & settings ----------
-  users: { name: "همکاران", where: "منو ← «همکاران»: فهرست افرادی که با پنل کار می‌کنند و فرم اضافه کردن همکار.", who: "مدیرها", href: "/users" },
-  roles: { name: "نقش‌ها و دسترسی", where: "منو ← «نقش‌ها و دسترسی»: هر نقش (مثل «تدوینگر») و این‌که چه کارهایی اجازه دارد.", who: "مدیرها", href: "/roles" },
-  perm: { name: "اسم هر دسترسی", where: "منو ← «نقش‌ها و دسترسی» ← یک نقش: هر خط یک اجازه است، مثل «دیدن کارها» یا «سپردن کار به افراد».", who: "مدیرها", href: "/roles" },
-  permGroup: { name: "گروه‌های دسترسی", where: "منو ← «نقش‌ها و دسترسی» ← یک نقش: تیتر هر دسته از اجازه‌ها، مثل «کارها» یا «مشتری‌ها».", who: "مدیرها", href: "/roles" },
-  scope: { name: "اندازه‌ی دسترسی", where: "منو ← «نقش‌ها و دسترسی» ← یک نقش: کنار هر اجازه انتخاب می‌کنید «ندارد»، «فقط مال خودش» یا «همه».", who: "مدیرها", href: "/roles" },
-  brandSettings: { name: "برند و ظاهر", where: "منو ← «برند و ظاهر»: نام آژانس، لوگو و رنگ‌های سایت و اپ.", who: "مدیرها", href: "/settings/brand" },
-  texts: { name: "همین صفحه (متن‌های سایت)", where: "متن‌های همین صفحه‌ای که الان در آن هستید.", who: "مدیرها", href: "/settings/texts" },
-  dg: { name: "راهنمای دمو", where: "کارت راهنمای بالای داشبورد که فقط در نسخه‌ی نمایشی دیده می‌شود: برای هر نقش، کارهایی که باید امتحان کرد.", who: "همه", href: "/dashboard" },
-  appdl: { name: "صفحه‌ی دانلود اپ اندروید", where: "منو ← «اپ اندروید»: دکمه‌ی دانلود، کد QR و راهنمای نصب قدم‌به‌قدم.", who: "همه", href: "/app-download" },
-  langs: { name: "زبان‌های برنامه", where: "همین صفحه ← کارت «زبان‌های برنامه» بالای صفحه: اضافه کردن زبان تازه.", who: "مدیرها", href: "/settings/texts" },
+  users: { name: "Mitarbeiter", where: "Menü → „Mitarbeiter“: Liste der Personen, die mit dem Panel arbeiten, und Formular zum Hinzufügen.", who: "Manager", href: "/users" },
+  roles: { name: "Rollen & Berechtigungen", where: "Menü → „Rollen & Berechtigungen“: jede Rolle (z. B. „Cutter“) und was sie darf.", who: "Manager", href: "/roles" },
+  perm: { name: "Name jeder Berechtigung", where: "Menü → „Rollen & Berechtigungen“ → eine Rolle: Jede Zeile ist eine Berechtigung, z. B. „Aufgaben ansehen“ oder „Aufgaben an Personen zuweisen“.", who: "Manager", href: "/roles" },
+  permGroup: { name: "Berechtigungsgruppen", where: "Menü → „Rollen & Berechtigungen“ → eine Rolle: Überschrift jeder Berechtigungsgruppe, z. B. „Aufgaben“ oder „Kunden“.", who: "Manager", href: "/roles" },
+  scope: { name: "Umfang der Berechtigung", where: "Menü → „Rollen & Berechtigungen“ → eine Rolle: Neben jeder Berechtigung wählen Sie „keine“, „nur eigene“ oder „alle“.", who: "Manager", href: "/roles" },
+  brandSettings: { name: "Marke & Design", where: "Menü → „Marke & Design“: Agenturname, Logo und Farben von Website und App.", who: "Manager", href: "/settings/brand" },
+  texts: { name: "Diese Seite (Website-Texte)", where: "Die Texte genau der Seite, auf der Sie gerade sind.", who: "Manager", href: "/settings/texts" },
+  dg: { name: "Demo-Leitfaden", where: "Die Hinweiskarte oben im Dashboard, die nur in der Demo-Version erscheint: für jede Rolle die Dinge, die man ausprobieren sollte.", who: "Alle", href: "/dashboard" },
+  appdl: { name: "Download-Seite der Android-App", where: "Menü → „Android-App“: Download-Button, QR-Code und Schritt-für-Schritt-Installationsanleitung.", who: "Alle", href: "/app-download" },
+  langs: { name: "Sprachen der App", where: "Diese Seite → Karte „Sprachen der App“ oben: neue Sprache hinzufügen.", who: "Manager", href: "/settings/texts" },
 };
 
 /** Fallback for a group that has no entry above (new texts added later). */
-export const OTHER_SECTION: TextSection = { name: "سایر متن‌ها", where: "متن‌هایی که هنوز توضیح جدا ندارند. با جستجو پیدایشان کنید.", who: "همه" };
+export const OTHER_SECTION: TextSection = { name: "Weitere Texte", where: "Texte, die noch keine eigene Erklärung haben. Finden Sie sie über die Suche.", who: "Alle" };
 
 /**
  * What kind of text one key is, from the last part of its name — e.g. "orders.title" is the big heading of a page.
  * Checked in order; the first match wins.
  */
 const KINDS: [RegExp, string][] = [
-  [/(^|\.)title$/i, "تیتر بزرگ بالای صفحه یا کادر"],
-  [/(^|\.)subtitle$/i, "جمله‌ی توضیح زیر تیتر"],
-  [/placeholder$/i, "متن کم‌رنگ داخل خانه‌ی خالی (تا کسی چیزی بنویسد)"],
-  [/help$|hint$/i, "راهنمای کوچک زیر یا کنار یک خانه"],
-  [/(^|\.)empty/i, "پیامی که وقتی هنوز چیزی نیست نشان داده می‌شود"],
-  [/(error|invalid|failed|fail|wrong|denied|forbidden)/i, "پیام خطا (وقتی کاری انجام نشد)"],
-  [/(saved|done|sent|created|deleted|restored|success|copied|updated)$/i, "پیام کوتاه موفقیت (بعد از زدن دکمه)"],
-  [/confirm/i, "سؤال تأیید قبل از انجام کار"],
-  [/(^|\.)tab\./i, "اسم زبانه (برگه‌های بالای صفحه)"],
-  [/(^|\.)(status|state)\./i, "اسم یک وضعیت (مثل «در حال انجام»)"],
-  [/(^|\.)(new|add|save|cancel|delete|submit|send|edit|create|open|close|back|next|prev|reset|search|export|restore|approve|reject|accept|assign|start|stop|pause|resume|upload|download|copy|renew|retry|logout|login|more|clear|done|confirmBtn)$/i, "متن یک دکمه"],
-  [/(^|\.)group\./i, "تیتر یک دسته در منو یا فهرست"],
-  [/label$|(^|\.)(name|phone|email|from|to|date|note|reason)$/i, "اسم یک خانه‌ی فرم"],
+  [/(^|\.)title$/i, "Große Überschrift oben auf der Seite oder im Kasten"],
+  [/(^|\.)subtitle$/i, "Erklärender Satz unter der Überschrift"],
+  [/placeholder$/i, "Grauer Text im leeren Feld (bis jemand etwas schreibt)"],
+  [/help$|hint$/i, "Kleiner Hinweis unter oder neben einem Feld"],
+  [/(^|\.)empty/i, "Meldung, die angezeigt wird, solange noch nichts da ist"],
+  [/(error|invalid|failed|fail|wrong|denied|forbidden)/i, "Fehlermeldung (wenn etwas nicht geklappt hat)"],
+  [/(saved|done|sent|created|deleted|restored|success|copied|updated)$/i, "Kurze Erfolgsmeldung (nach dem Tippen auf den Button)"],
+  [/confirm/i, "Rückfrage vor dem Ausführen"],
+  [/(^|\.)tab\./i, "Name des Tabs (Reiter oben auf der Seite)"],
+  [/(^|\.)(status|state)\./i, "Name eines Status (z. B. „In Arbeit“)"],
+  [/(^|\.)(new|add|save|cancel|delete|submit|send|edit|create|open|close|back|next|prev|reset|search|export|restore|approve|reject|accept|assign|start|stop|pause|resume|upload|download|copy|renew|retry|logout|login|more|clear|done|confirmBtn)$/i, "Text eines Buttons"],
+  [/(^|\.)group\./i, "Überschrift einer Kategorie im Menü oder in einer Liste"],
+  [/label$|(^|\.)(name|phone|email|from|to|date|note|reason)$/i, "Name eines Formularfelds"],
 ];
 
 export function textKind(key: string): string | null {

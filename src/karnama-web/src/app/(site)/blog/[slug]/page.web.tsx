@@ -40,7 +40,7 @@ export default async function PostPage({ params }: Props) {
   if (!post) notFound();
   if (post.redirectTo) permanentRedirect(`/blog/${encodeURIComponent(post.redirectTo)}`);
   const url = `${SITE_URL}/blog/${post.slug}`;
-  const org = { "@type": "Organization", name: brand?.name ?? "کارنما", url: SITE_URL, ...(brand?.logoUrl ? { logo: `${SITE_URL}${brand.logoUrl}` } : {}) };
+  const org = { "@type": "Organization", name: brand?.name ?? "Karnama", url: SITE_URL, ...(brand?.logoUrl ? { logo: `${SITE_URL}${brand.logoUrl}` } : {}) };
   const graph = [
     {
       "@type": "BlogPosting",
@@ -48,7 +48,7 @@ export default async function PostPage({ params }: Props) {
       mainEntityOfPage: url,
       headline: post.title,
       description: post.metaDescription,
-      inLanguage: "fa-IR",
+      inLanguage: "de-DE",
       datePublished: post.publishedAt,
       dateModified: post.modifiedAt,
       wordCount: post.wordCount,

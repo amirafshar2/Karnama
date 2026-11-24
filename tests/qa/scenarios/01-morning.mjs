@@ -3,7 +3,7 @@
 import { qa, pick, key, check, eq, HOME_IP, OFFICE_IP } from "../lib.mjs";
 
 export const id = "S01";
-export const title = "ورود صبح — QR کیوسک، تأخیر، غیبت، خانه، مکان جعلی";
+export const title = "Kommen am Morgen – Kiosk-QR, Verspätung, Abwesenheit, Homeoffice, gefälschter Standort";
 
 const OFFICE = { lat: 29.61, lng: 52.53 };
 const userId = (actor) => JSON.parse(Buffer.from(actor.token.split(".")[1], "base64url").toString()).sub;
@@ -130,7 +130,7 @@ export async function run(rec, { crowd }) {
     eq(s.trust, "red", "trust");
     eq(s.needsReview, true, "needsReview");
     check(s.methods.some((m) => m.method === "Geofence" && !m.passed), "geofence failed");
-    check((s.reviewReason ?? "").includes("جعلی"), `reason says fake location (${s.reviewReason})`);
+    check((s.reviewReason ?? "").includes("Gefälscht"), `reason says fake location (${s.reviewReason})`);
     shiftIds[field0.phone] = s.id;
   });
 
@@ -192,16 +192,16 @@ export async function run(rec, { crowd }) {
     const a = await absOf(absent[0]);
     check(a, "worker sees own absence");
     eq(await w.refused("POST", `/api/v1/leave/absences/${a.id}/reason`, { reason: "x" }, [400, 422]) >= 400, true, "too-short reason rejected");
-    const r = await w.post(`/api/v1/leave/absences/${a.id}/reason`, { reason: "دکتر رفتم، نوبت صبح", from: qa.tehran(9, 0), to: qa.tehran(11, 0) });
+    const r = await w.post(`/api/v1/leave/absences/${a.id}/reason`, { reason: "Ich war beim Arzt, Termin am Vormittag", from: qa.tehran(9, 0), to: qa.tehran(11, 0) });
     eq(r.status, "reasonSubmitted", "status after reason");
-    const d = await (await as(managerP)).post(`/api/v1/leave/absences/${a.id}/decide`, { approve: true, note: "موجه" });
+    const d = await (await as(managerP)).post(`/api/v1/leave/absences/${a.id}/decide`, { approve: true, note: "Entschuldigt" });
     eq(d.status, "excused", "decided status");
   });
 
   await rec.step("2.1.n", "absent worker B writes a reason → manager rejects (unexcused)", async () => {
     const a = await absOf(absent[1]);
-    await (await as(absent[1])).post(`/api/v1/leave/absences/${a.id}/reason`, { reason: "خواب ماندم" });
-    const d = await (await as(managerP)).post(`/api/v1/leave/absences/${a.id}/decide`, { approve: false, note: "غیرموجه" });
+    await (await as(absent[1])).post(`/api/v1/leave/absences/${a.id}/reason`, { reason: "Ich habe verschlafen" });
+    const d = await (await as(managerP)).post(`/api/v1/leave/absences/${a.id}/decide`, { approve: false, note: "Unentschuldigt" });
     eq(d.status, "unexcused", "decided status");
   });
 
@@ -209,7 +209,7 @@ export async function run(rec, { crowd }) {
     const a = await absOf(absent[1]);
     const other = await as(onTime[1]);
     eq(await other.refused("POST", `/api/v1/leave/absences/${a.id}/decide`, { approve: true }, [403]), 403, "worker decides");
-    eq(await other.refused("POST", `/api/v1/leave/absences/${a.id}/reason`, { reason: "دلیل جعلی" }, [404]), 404, "someone else's reason");
+    eq(await other.refused("POST", `/api/v1/leave/absences/${a.id}/reason`, { reason: "Vorgetäuschter Grund" }, [404]), 404, "someone else's reason");
     const lateAbs = (await (await as(managerP)).get("/api/v1/leave/absences")).find((x) => x.userId === ids[late[0].phone] && x.day === day);
     eq(await (await as(managerP)).refused("POST", `/api/v1/leave/absences/${lateAbs.id}/decide`, { approve: false }, [409]), 409, "became-late decide");
   });
@@ -241,8 +241,8 @@ export async function run(rec, { crowd }) {
     const home = queue.find((s) => s.userId === homeUid);
     const fake = queue.find((s) => s.id === shiftIds[field0.phone]);
     eq(await (await as(onTime[2])).refused("POST", `/api/v1/attendance/shifts/${home.id}/review`, { approve: true }, [403]), 403, "worker review");
-    await mgr.post(`/api/v1/attendance/shifts/${home.id}/review`, { approve: true, note: "از خانه با هماهنگی" });
-    await mgr.post(`/api/v1/attendance/shifts/${fake.id}/review`, { approve: false, note: "مکان جعلی" });
+    await mgr.post(`/api/v1/attendance/shifts/${home.id}/review`, { approve: true, note: "Homeoffice nach Absprache" });
+    await mgr.post(`/api/v1/attendance/shifts/${fake.id}/review`, { approve: false, note: "Gefälschter Standort" });
     const after = await mgr.get(`/api/v1/attendance/shifts?from=${day}&to=${day}`);
     const h = after.find((s) => s.id === home.id), f = after.find((s) => s.id === fake.id);
     eq(h.needsReview, false, "home shift reviewed");
@@ -288,7 +288,7 @@ export async function run(rec, { crowd }) {
 
   await rec.step("2.1.v", "an approved clock-in correction (09:25 → 08:58) also clears the lateness it caused", async () => {
     const w = await as(late[0]);
-    const c = await w.post("/api/v1/attendance/corrections", { day, clockIn: qa.tehran(8, 58), reason: "۸:۵۸ رسیدم، QR کیوسک کار نکرد" });
+    const c = await w.post("/api/v1/attendance/corrections", { day, clockIn: qa.tehran(8, 58), reason: "Ich war um 8:58 da, der Kiosk-QR hat nicht funktioniert" });
     await (await as(managerP)).post(`/api/v1/attendance/corrections/${c.id}/decide`, { approve: true });
     const s = (await (await as(managerP)).get(`/api/v1/attendance/shifts?userId=${ids[late[0].phone]}&from=${day}&to=${day}`))[0];
     check(near((new Date(s.clockInAt) - new Date(qa.tehran(8, 58))) / 60000, 0), `clock-in corrected (${s.clockInAt})`);

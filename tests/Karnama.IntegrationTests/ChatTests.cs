@@ -33,8 +33,8 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     {
         var editor = await As("editor");
         var admin = await As("admin");
-        var adminId = await UserAsync("09000000001");
-        var writerId = await UserAsync("09000000003");
+        var adminId = await UserAsync("015100000001");
+        var writerId = await UserAsync("015100000003");
 
         var contacts = await Ok(await editor.GetAsync("/api/v1/chat/contacts"));
         contacts.EnumerateArray().Select(c => c.GetProperty("id").GetGuid()).Should().Contain(adminId).And.NotContain(writerId, "worker↔worker is off by default");
@@ -42,11 +42,11 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
 
         var conv = await Ok(await editor.PostAsJsonAsync("/api/v1/chat/direct", new { userId = adminId }));
         var id = conv.GetProperty("id").GetGuid();
-        (await Ok(await admin.PostAsJsonAsync("/api/v1/chat/direct", new { userId = await UserAsync("09000000002") }))).GetProperty("id").GetGuid().Should().Be(id, "one chat per pair");
+        (await Ok(await admin.PostAsJsonAsync("/api/v1/chat/direct", new { userId = await UserAsync("015100000002") }))).GetProperty("id").GetGuid().Should().Be(id, "one chat per pair");
 
         var key = Guid.NewGuid();
-        var sent = await Ok(await editor.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "سلام، راش‌ها آماده است", clientKey = key }));
-        await Ok(await editor.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "سلام، راش‌ها آماده است", clientKey = key }));   // re-sent after a drop
+        var sent = await Ok(await editor.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "Hallo, das Rohmaterial ist fertig", clientKey = key }));
+        await Ok(await editor.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "Hallo, das Rohmaterial ist fertig", clientKey = key }));   // re-sent after a drop
         var page = await Ok(await admin.GetAsync($"/api/v1/chat/{id}/messages"));
         page.GetProperty("items").GetArrayLength().Should().Be(1);
         (await Ok(await admin.GetAsync("/api/v1/chat/unread"))).GetProperty("count").GetInt32().Should().BeGreaterThan(0);
@@ -66,13 +66,13 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
 
         // Edit within 15 minutes by the author only; delete is soft.
         (await admin.PutAsJsonAsync($"/api/v1/chat/messages/{lastId}", new { body = "x" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await Ok(await editor.PutAsJsonAsync($"/api/v1/chat/messages/{lastId}", new { body = "سلام، راش‌های کافه آماده است" }))).GetProperty("editedAt").ValueKind.Should().NotBe(JsonValueKind.Null);
+        (await Ok(await editor.PutAsJsonAsync($"/api/v1/chat/messages/{lastId}", new { body = "Hallo, das Café-Rohmaterial ist fertig" }))).GetProperty("editedAt").ValueKind.Should().NotBe(JsonValueKind.Null);
         using (var scope = _f.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await db.ChatMessages.Where(m => m.Id == lastId).ExecuteUpdateAsync(s => s.SetProperty(m => m.CreatedAt, m => m.CreatedAt.AddMinutes(-20)));
         }
-        (await editor.PutAsJsonAsync($"/api/v1/chat/messages/{lastId}", new { body = "دیر" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await editor.PutAsJsonAsync($"/api/v1/chat/messages/{lastId}", new { body = "Spät" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
         await Ok(await editor.DeleteAsync($"/api/v1/chat/messages/{lastId}"));
         var after = (await Ok(await admin.GetAsync($"/api/v1/chat/{id}/messages"))).GetProperty("items")[0];
         after.GetProperty("deleted").GetBoolean().Should().BeTrue();
@@ -83,15 +83,15 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task A_client_only_talks_to_managers_and_never_joins_groups()
     {
         var client = await As("client");
-        var editorId = await UserAsync("09000000002");
-        var clientUser = await UserAsync("09000000004");
+        var editorId = await UserAsync("015100000002");
+        var clientUser = await UserAsync("015100000004");
         var contacts = await Ok(await client.GetAsync("/api/v1/chat/contacts"));
         contacts.EnumerateArray().Select(c => c.GetProperty("id").GetGuid()).Should().NotContain(editorId);
         (await client.PostAsJsonAsync("/api/v1/chat/direct", new { userId = editorId })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await client.PostAsJsonAsync("/api/v1/chat/groups", new { title = "x", members = new[] { editorId } })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         var admin = await As("admin");
-        var group = await Ok(await admin.PostAsJsonAsync("/api/v1/chat/groups", new { title = "تیم تدوین", members = new[] { editorId, clientUser } }));
+        var group = await Ok(await admin.PostAsJsonAsync("/api/v1/chat/groups", new { title = "Schnitt-Team", members = new[] { editorId, clientUser } }));
         group.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("id").GetGuid()).Should().Contain(editorId).And.NotContain(clientUser);
         (await (await As("editor")).PostAsJsonAsync("/api/v1/chat/groups", new { title = "y", members = Array.Empty<Guid>() })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
@@ -99,7 +99,7 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         await Ok(await admin.PutAsJsonAsync("/api/v1/settings/chat", new { workerToWorker = true, clientChat = false }));
         (await Ok(await admin.GetAsync("/api/v1/chat/contacts"))).EnumerateArray().Should().NotContain(c => c.GetProperty("isClient").GetBoolean());
         (await Ok(await (await As("editor")).GetAsync("/api/v1/chat/contacts"))).EnumerateArray().Select(c => c.GetProperty("id").GetGuid())
-            .Should().Contain(await UserAsync("09000000003"), "worker↔worker switched on");
+            .Should().Contain(await UserAsync("015100000003"), "worker↔worker switched on");
         await Ok(await admin.PutAsJsonAsync("/api/v1/settings/chat", new { workerToWorker = false, clientChat = true }));
     }
 
@@ -108,10 +108,10 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     {
         var client = await As("client");
         var admin = await As("admin");
-        var adminId = await UserAsync("09000000001");
+        var adminId = await UserAsync("015100000001");
         var conv = await Ok(await client.PostAsJsonAsync("/api/v1/chat/direct", new { userId = adminId }));
         var id = conv.GetProperty("id").GetGuid();
-        await Ok(await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "سلام", clientKey = Guid.NewGuid() }));
+        await Ok(await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "Hallo", clientKey = Guid.NewGuid() }));
 
         await Ok(await admin.PutAsJsonAsync("/api/v1/settings/chat", new { workerToWorker = false, clientChat = false }));
         try
@@ -120,7 +120,7 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
             var start = await client.PostAsJsonAsync("/api/v1/chat/direct", new { userId = adminId });
             start.StatusCode.Should().Be(HttpStatusCode.Forbidden);
             (await start.JsonAsync()).GetProperty("code").GetString().Should().Be("chat.clientChatOff");
-            (await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "هنوز هستید؟", clientKey = Guid.NewGuid() }))
+            (await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "Sind Sie noch da?", clientKey = Guid.NewGuid() }))
                 .StatusCode.Should().Be(HttpStatusCode.Forbidden);
             using (var form = new MultipartFormDataContent())
             {
@@ -129,19 +129,19 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
                 form.Add(file, "file", "a.png");
                 (await client.PostAsync($"/api/v1/chat/{id}/files", form)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
             }
-            (await admin.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "پاسخ", clientKey = Guid.NewGuid() }))
+            (await admin.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "Antwort", clientKey = Guid.NewGuid() }))
                 .StatusCode.Should().Be(HttpStatusCode.Forbidden, "the setting closes client chats for both sides");
             (await Ok(await client.GetAsync($"/api/v1/chat/{id}/messages"))).GetProperty("items").GetArrayLength().Should().BeGreaterThan(0, "history stays readable");
 
             // Staff chats are untouched.
-            var editorConv = await Ok(await admin.PostAsJsonAsync("/api/v1/chat/direct", new { userId = await UserAsync("09000000005") }));
-            await Ok(await admin.PostAsJsonAsync($"/api/v1/chat/{editorConv.GetProperty("id").GetGuid()}/messages", new { body = "سلام تیم", clientKey = Guid.NewGuid() }));
+            var editorConv = await Ok(await admin.PostAsJsonAsync("/api/v1/chat/direct", new { userId = await UserAsync("015100000005") }));
+            await Ok(await admin.PostAsJsonAsync($"/api/v1/chat/{editorConv.GetProperty("id").GetGuid()}/messages", new { body = "Hallo Team", clientKey = Guid.NewGuid() }));
         }
         finally
         {
             await Ok(await admin.PutAsJsonAsync("/api/v1/settings/chat", new { workerToWorker = false, clientChat = true }));
         }
-        await Ok(await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "دوباره سلام", clientKey = Guid.NewGuid() }));
+        await Ok(await client.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "Hallo nochmal", clientKey = Guid.NewGuid() }));
     }
 
     [Fact]
@@ -154,8 +154,8 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var id = conv.GetProperty("id").GetGuid();
         (await Ok(await admin.PostAsync($"/api/v1/chat/orders/{order}", null))).GetProperty("id").GetGuid().Should().Be(id);
         var members = conv.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("id").GetGuid()).ToList();
-        var outsiderRole = members.Contains(await UserAsync("09000000003")) ? "editor" : "writer";
-        if (members.Contains(await UserAsync("09000000002")) && outsiderRole == "editor") outsiderRole = "client";
+        var outsiderRole = members.Contains(await UserAsync("015100000003")) ? "editor" : "writer";
+        if (members.Contains(await UserAsync("015100000002")) && outsiderRole == "editor") outsiderRole = "client";
         (await (await As("client")).PostAsync($"/api/v1/chat/orders/{order}", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         async Task<HttpResponseMessage> Upload(byte[] bytes, string name, bool voice = false, int? duration = null)
@@ -180,10 +180,10 @@ public sealed class ChatTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         get.Content.Headers.ContentType!.MediaType.Should().Be("audio/ogg");
         (await (await As(outsiderRole)).GetAsync($"/api/v1/chat/files/{voice.GetProperty("id").GetInt64()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        await Ok(await admin.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "لطفاً کاور را عوض کنید", clientKey = Guid.NewGuid() }));
-        var hits = await Ok(await admin.GetAsync("/api/v1/chat/search?q=" + Uri.EscapeDataString("کاور")));
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/chat/{id}/messages", new { body = "Bitte das Titelbild ändern", clientKey = Guid.NewGuid() }));
+        var hits = await Ok(await admin.GetAsync("/api/v1/chat/search?q=" + Uri.EscapeDataString("Titelbild")));
         hits.EnumerateArray().Should().Contain(h => h.GetProperty("conversationId").GetGuid() == id);
-        (await Ok(await (await As(outsiderRole)).GetAsync("/api/v1/chat/search?q=" + Uri.EscapeDataString("کاور")))).EnumerateArray()
+        (await Ok(await (await As(outsiderRole)).GetAsync("/api/v1/chat/search?q=" + Uri.EscapeDataString("Titelbild")))).EnumerateArray()
             .Should().NotContain(h => h.GetProperty("conversationId").GetGuid() == id);
     }
 }

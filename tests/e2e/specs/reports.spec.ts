@@ -12,16 +12,16 @@ test.describe("N8: work report and scores", () => {
     await expect(page.getByTestId("rpt-excel")).toBeVisible();
     await shot(page, info, "n8-report");
 
-    await page.getByTestId("rpt-row-علی (تدوینگر نمونه)").click();
+    await page.getByTestId("rpt-row-Lukas (Beispiel-Cutter)").click();
     await expect(page.getByTestId("rpt-details")).toBeVisible();
-    await expect(page.getByTestId("rpt-details")).toContainText("کارهای تمام‌شده");
+    await expect(page.getByTestId("rpt-details")).toContainText("Erledigte Aufgaben");
     await shot(page, info, "n8-details");
 
     await page.getByTestId("rpt-tab-scores").click();
-    const ali = page.getByTestId("score-علی (تدوینگر نمونه)");
+    const ali = page.getByTestId("score-Lukas (Beispiel-Cutter)");
     await expect(ali.getByTestId("score-total")).toBeVisible();
     await ali.getByRole("button").first().click();
-    await expect(ali.getByTestId("score-why")).toContainText("به‌موقع بودن");
+    await expect(ali.getByTestId("score-why")).toContainText("Pünktlichkeit");
     await expect(ali.getByTestId("score-trend")).toBeVisible();
     await shot(page, info, "n8-scores");
 
@@ -29,7 +29,7 @@ test.describe("N8: work report and scores", () => {
     await expect(page.getByTestId("score-settings")).toBeVisible();
     await page.getByTestId("weight-quality").fill("26");
     await page.getByTestId("score-settings-save").click();
-    await expect(page.getByText("وزن‌ها ذخیره شد.")).toBeVisible();
+    await expect(page.getByText("Gewichte gespeichert.")).toBeVisible();
     await shot(page, info, "n8-settings");
   });
 

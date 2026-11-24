@@ -6,15 +6,15 @@ test.describe("N4: credential vault, client profile, package reminders", () => {
     const mobile = info.project.name !== "desktop";
     await demoLogin(page, "admin");
     await navTo(page, mobile, "clients");
-    const row = page.locator("tr, li").filter({ hasText: "کافه نمونه" }).filter({ visible: true }).first();
-    await row.getByRole("button", { name: "ویرایش" }).click();
+    const row = page.locator("tr, li").filter({ hasText: "Café Beispiel" }).filter({ visible: true }).first();
+    await row.getByRole("button", { name: "Bearbeiten" }).click();
     const vault = page.getByTestId("vault");
-    await expect(vault).toContainText("رمز ثبت شده");
+    await expect(vault).toContainText("Passwort hinterlegt");
     await expect(page.getByTestId("client-quotas")).toBeVisible();
     await vault.scrollIntoViewIfNeeded();
     await shot(page, info, "n4-vault-list");
 
-    await page.getByTestId("vault-reveal-کافه_نمونه").click();
+    await page.getByTestId("vault-reveal-Café_Beispiel").click();
     const demo = page.getByTestId("vault-demo-code");
     await expect(demo).toBeVisible();
     const code = (await demo.textContent())!.replace(/[^0-9۰-۹]/g, "").replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
@@ -24,7 +24,7 @@ test.describe("N4: credential vault, client profile, package reminders", () => {
     const secret = page.getByTestId("vault-secret");
     // The client may have changed the password in an earlier project run; the recovery email stays.
     await expect(secret).toContainText("cafe@example.com");
-    const password = (await page.getByTestId("vault-value-رمز عبور").textContent())!;
+    const password = (await page.getByTestId("vault-value-Passwort").textContent())!;
     expect(password.length).toBeGreaterThan(5);
     await shot(page, info, "n4-vault-revealed");
     await page.getByTestId("vault-hide").click();
@@ -37,37 +37,37 @@ test.describe("N4: credential vault, client profile, package reminders", () => {
     await demoLogin(page, "admin");
     await navTo(page, mobile, "packages");
     await page.getByTestId("notices-open").click();
-    await expect(page.getByTestId("notices-days")).toContainText("۷ روز قبل");
+    await expect(page.getByTestId("notices-days")).toContainText("7 Tage vorher");
     await page.getByTestId("notices-day").fill("14");
     await page.getByTestId("notices-day-add").click();
-    await expect(page.getByTestId("notices-days")).toContainText("۱۴ روز قبل");
+    await expect(page.getByTestId("notices-days")).toContainText("14 Tage vorher");
     await shot(page, info, "n4-notices");
     await page.getByTestId("notices-save").click();
-    await expect(page.getByText("ذخیره شد.")).toBeVisible();
+    await expect(page.getByText("Gespeichert.")).toBeVisible();
   });
 
   test("client sees its profile, asks for renewal once and changes its own password (write-only)", async ({ page }, info) => {
     await demoLogin(page, "client");
     await page.getByTestId("portal-profile-link").click();
     const profile = page.getByTestId("portal-profile");
-    await expect(profile).toContainText("کافه نمونه");
+    await expect(profile).toContainText("Café Beispiel");
     await expect(page.getByTestId("profile-package")).toBeVisible();
     await shot(page, info, "n4-client-profile");
 
     if (await page.getByTestId("renew-open").isVisible()) {
       await page.getByTestId("renew-open").click();
-      await page.getByTestId("renew-note").fill("همین پکیج را برای یک ماه دیگر می‌خواهیم");
+      await page.getByTestId("renew-note").fill("Wir möchten dieses Paket noch einen Monat");
       await page.getByTestId("renew-send").click();
       await expect(page.getByTestId("renew-done")).toBeVisible();
     }
 
-    await page.getByTestId("vault-edit-کافه_نمونه").click();
+    await page.getByTestId("vault-edit-Café_Beispiel").click();
     await expect(page.getByRole("dialog")).toContainText("Business Suite");
     await page.getByTestId("vault-password").fill(`Client-New-${info.project.name}`);
     await shot(page, info, "n4-client-password");
     await page.getByTestId("vault-form-save").click();
-    await expect(page.getByText("ذخیره شد.")).toBeVisible();
-    await expect(page.getByTestId("vault-item-کافه_نمونه")).toContainText("ثبت توسط مشتری");
+    await expect(page.getByText("Gespeichert.")).toBeVisible();
+    await expect(page.getByTestId("vault-item-Café_Beispiel")).toContainText("Vom Kunden erfasst");
     await expect(page.getByText(`Client-New-${info.project.name}`)).toHaveCount(0);
   });
 });

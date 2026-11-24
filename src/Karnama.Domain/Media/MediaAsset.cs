@@ -96,7 +96,7 @@ public sealed class MediaAsset : Entity
 
     public Result Assign(Guid to, Guid by, DateTimeOffset now)
     {
-        if (to == Guid.Empty) return Karnama.Domain.Common.Error.Validation("media.noTarget", "گیرنده را انتخاب کنید.");
+        if (to == Guid.Empty) return Karnama.Domain.Common.Error.Validation("media.noTarget", "Wählen Sie den Empfänger.");
         AssignedToId = to;
         AssignedById = by;
         AssignedAt = now;

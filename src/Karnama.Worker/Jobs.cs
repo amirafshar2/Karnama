@@ -117,8 +117,8 @@ internal sealed class JobRegistrar(IRecurringJobManager jobs) : IHostedService
         jobs.AddOrUpdate<NotifyJobs>("publish-tick", j => j.PublishTickAsync(CancellationToken.None), Cron.Minutely());
         jobs.AddOrUpdate<NotifyJobs>("cctv-health", j => j.CctvHealthAsync(CancellationToken.None), Cron.Minutely());
         jobs.AddOrUpdate<NotifyJobs>("device-health", j => j.DeviceHealthAsync(CancellationToken.None), "*/10 * * * *");
-        jobs.AddOrUpdate<NotifyJobs>("asset-alerts", j => j.AssetAlertsAsync(CancellationToken.None), "0 9 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran") });
-        jobs.AddOrUpdate<NotifyJobs>("package-expiry", j => j.PackageExpiryAsync(CancellationToken.None), "30 5 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran") });
+        jobs.AddOrUpdate<NotifyJobs>("asset-alerts", j => j.AssetAlertsAsync(CancellationToken.None), "0 9 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin") });
+        jobs.AddOrUpdate<NotifyJobs>("package-expiry", j => j.PackageExpiryAsync(CancellationToken.None), "30 5 * * *", new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin") });
         return Task.CompletedTask;
     }
 
@@ -131,7 +131,7 @@ internal sealed class SystemUser : ICurrentUser
     public Guid? UserId => null;
     public bool IsDemo => false;
     public UserKind? Kind => null;
-    public string LanguageCode => "fa";
+    public string LanguageCode => "de";
     public string? TraceId => System.Diagnostics.Activity.Current?.TraceId.ToString();
     public PermissionScope? ScopeOf(string permission) => null;
 }

@@ -22,18 +22,11 @@ export type PublishJob = {
   version: number;
 };
 
-/** Iran has had no DST since 2022: local Tehran time is always +03:30. */
-export const TEHRAN = "+03:30";
+import { atBerlin, splitBerlin } from "@/lib/berlin";
 
-/** "2026-10-25" + "18:30" → ISO in Tehran time. */
-export const atTehran = (day: string, time: string) => `${day}T${time}:00${TEHRAN}`;
-
-/** ISO → {day:"2026-10-25", time:"18:30"} in Tehran time. */
-export function splitTehran(iso: string) {
-  const d = new Date(new Date(iso).getTime() + 210 * 60_000);
-  const s = d.toISOString();
-  return { day: s.slice(0, 10), time: s.slice(11, 16) };
-}
+/** Agency local time is Europe/Berlin (names kept from the first version). */
+export const atTehran = atBerlin;
+export const splitTehran = splitBerlin;
 
 export const statusTone: Record<PublishStatus, string> = {
   scheduled: "border-border bg-card",

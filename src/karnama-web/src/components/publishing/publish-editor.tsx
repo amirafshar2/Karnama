@@ -24,7 +24,7 @@ export function PublishEditor({ job, initial, onClose, onSaved }: { job?: Publis
   const start = job ? splitTehran(job.publishAt) : { day: initial?.day ?? "", time: "18:00" };
   const [clientId, setClientId] = useState(job?.clientId ?? initial?.clientId ?? "");
   const [account, setAccount] = useState(job ? `${job.platformId}|${job.handle}` : "");
-  const [day, setDay] = useState<string | null>(start.day ? `${start.day}T00:00:00+03:30` : null);
+  const [day, setDay] = useState<string | null>(start.day ? `${start.day}T00:00:00+01:00` : null);
   const [time, setTime] = useState(start.time);
   const [orderId, setOrderId] = useState(job?.orderId ?? initial?.orderId ?? "");
   const [fileIds, setFileIds] = useState<string[]>(job?.files.map((f) => f.id) ?? []);

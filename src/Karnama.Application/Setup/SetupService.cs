@@ -18,10 +18,10 @@ public sealed class CompleteSetupValidator : AbstractValidator<CompleteSetupRequ
 {
     public CompleteSetupValidator()
     {
-        RuleFor(x => x.Token).NotEmpty().WithMessage("کد نصب را وارد کنید.");
-        RuleFor(x => x.Phone).Must(p => PhoneNumber.TryNormalize(p, out _)).WithMessage("شماره‌ی موبایل معتبر نیست.");
-        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(100).WithMessage("نام باید بین ۱ تا ۱۰۰ کاراکتر باشد.");
-        RuleFor(x => x.BrandName).MaximumLength(80).WithMessage("نام برند حداکثر ۸۰ کاراکتر است.");
+        RuleFor(x => x.Token).NotEmpty().WithMessage("Geben Sie den Installationscode ein.");
+        RuleFor(x => x.Phone).Must(p => PhoneNumber.TryNormalize(p, out _)).WithMessage("Die Handynummer ist ungültig.");
+        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(100).WithMessage("Der Name muss zwischen 1 und 100 Zeichen haben.");
+        RuleFor(x => x.BrandName).MaximumLength(80).WithMessage("Der Markenname darf höchstens 80 Zeichen haben.");
     }
 }
 
@@ -35,20 +35,20 @@ public sealed class SetupService(IAppDbContext db, IAuditWriter audit, IOptions<
     {
         // Real owners never live next to demo accounts: demo sessions could otherwise change real data.
         if (seed.Value.Mode == SeedMode.Demo || demo.Value.Enabled)
-            return Error.Conflict("setup.demoInstall", "این نصب نمایشی است؛ برای مشتری واقعی نصب خالی (start-empty.cmd) را اجرا کنید.");
+            return Error.Conflict("setup.demoInstall", "Dies ist eine Demo-Installation; für echte Kunden führen Sie die leere Installation (start-empty.cmd) aus.");
 
         var expected = Encoding.UTF8.GetBytes(options.Value.Token);
         var given = Encoding.UTF8.GetBytes(request.Token ?? string.Empty);
         if (expected.Length == 0 || !CryptographicOperations.FixedTimeEquals(SHA256.HashData(expected), SHA256.HashData(given)))
-            return Error.Forbidden("setup.invalidToken", "کد نصب درست نیست.");
+            return Error.Forbidden("setup.invalidToken", "Der Installationscode ist falsch.");
 
         return await db.InTransactionAsync<Result>(async token =>
         {
             if (await HasRealOwnerAsync(token))
-                return Error.Conflict("setup.done", "راه‌اندازی قبلاً انجام شده است.");
+                return Error.Conflict("setup.done", "Die Einrichtung wurde bereits durchgeführt.");
 
             var ownerRole = await db.Roles.FirstOrDefaultAsync(r => r.SystemKey == SystemRoles.Owner, token);
-            if (ownerRole is null) return Error.Conflict("setup.noOwnerRole", "نقش مالک پیدا نشد؛ برنامه را دوباره اجرا کنید.");
+            if (ownerRole is null) return Error.Conflict("setup.noOwnerRole", "Inhaberrolle nicht gefunden; starten Sie die App neu.");
 
             PhoneNumber.TryNormalize(request.Phone, out var phone);
             var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == phone && !u.IsDemo, token);

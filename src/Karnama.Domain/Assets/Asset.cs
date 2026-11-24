@@ -24,7 +24,7 @@ public sealed class AssetCategory : Entity
     public Result Update(string name, int sortOrder, bool isActive)
     {
         var n = (name ?? "").Trim();
-        if (n.Length is 0 or > 40) return Error.Validation("assets.categoryName", "نام دسته الزامی است (حداکثر ۴۰ کاراکتر).");
+        if (n.Length is 0 or > 40) return Error.Validation("assets.categoryName", "Der Kategoriename ist Pflicht (höchstens 40 Zeichen).");
         Name = n;
         SortOrder = sortOrder;
         IsActive = isActive;
@@ -71,11 +71,11 @@ public sealed class Asset : AuditableEntity
     public Result Update(AssetSpec s, string? fallbackTag = null)
     {
         var name = (s.Name ?? "").Trim();
-        if (name.Length is 0 or > 80) return Error.Validation("assets.name", "نام تجهیز الزامی است (حداکثر ۸۰ کاراکتر).");
+        if (name.Length is 0 or > 80) return Error.Validation("assets.name", "Der Gerätename ist Pflicht (höchstens 80 Zeichen).");
         var tag = Clean(s.Tag, 30) ?? fallbackTag ?? Tag;
-        if (string.IsNullOrWhiteSpace(tag)) return Error.Validation("assets.tag", "کد اموال الزامی است.");
-        if (s.PurchasePrice is < 0) return Error.Validation("assets.price", "قیمت خرید نمی‌تواند منفی باشد.");
-        if (s.PurchasedOn is { } p && s.WarrantyUntil is { } w && w < p) return Error.Validation("assets.warranty", "پایان گارانتی قبل از تاریخ خرید است.");
+        if (string.IsNullOrWhiteSpace(tag)) return Error.Validation("assets.tag", "Die Inventarnummer ist Pflicht.");
+        if (s.PurchasePrice is < 0) return Error.Validation("assets.price", "Der Kaufpreis darf nicht negativ sein.");
+        if (s.PurchasedOn is { } p && s.WarrantyUntil is { } w && w < p) return Error.Validation("assets.warranty", "Das Garantieende liegt vor dem Kaufdatum.");
         if (WarrantyUntil != s.WarrantyUntil) WarrantyNoticeDays = null;
         Name = name;
         CategoryId = s.CategoryId;
@@ -94,8 +94,8 @@ public sealed class Asset : AuditableEntity
     public Result SetStatus(AssetStatus status)
     {
         if (HolderId is not null || Status == AssetStatus.Assigned)
-            return Error.Conflict("assets.held", "این تجهیز دست کسی است؛ اول برگشت را ثبت کنید.");
-        if (status == AssetStatus.Assigned) return Error.Validation("assets.status", "برای سپردن از «تحویل به کارگر» استفاده کنید.");
+            return Error.Conflict("assets.held", "Dieses Gerät ist ausgegeben; erfassen Sie zuerst die Rückgabe.");
+        if (status == AssetStatus.Assigned) return Error.Validation("assets.status", "Zum Übergeben verwenden Sie „An Mitarbeiter ausgeben“.");
         Status = status;
         return Result.Success();
     }
@@ -103,8 +103,8 @@ public sealed class Asset : AuditableEntity
     public Result CanHandOver() => Status switch
     {
         AssetStatus.Available when HolderId is null => Result.Success(),
-        AssetStatus.Assigned => Error.Conflict("assets.held", "این تجهیز الان دست کس دیگری است."),
-        _ => Error.Conflict("assets.unavailable", "این تجهیز قابل تحویل نیست (در تعمیر، گم‌شده یا کنار گذاشته).")
+        AssetStatus.Assigned => Error.Conflict("assets.held", "Dieses Gerät ist gerade bei jemand anderem."),
+        _ => Error.Conflict("assets.unavailable", "Dieses Gerät kann nicht ausgegeben werden (in Reparatur, verloren oder ausgemustert).")
     };
 
     internal void HandTo(Guid userId) { HolderId = userId; Status = AssetStatus.Assigned; }
@@ -159,7 +159,7 @@ public sealed class AssetAssignment : Entity
         var ok = asset.CanHandOver();
         if (ok.IsFailure) return ok.Error!;
         if (expectedReturn is { } er && er < DateOnly.FromDateTime(now.UtcDateTime.AddHours(3.5)))
-            return Error.Validation("assets.expectedReturn", "تاریخ برگشت نمی‌تواند در گذشته باشد.");
+            return Error.Validation("assets.expectedReturn", "Das Rückgabedatum darf nicht in der Vergangenheit liegen.");
         var list = (accessories ?? []).Select(x => x.Trim()).Where(x => x.Length > 0).Select(x => x.Length > 60 ? x[..60] : x).Distinct().Take(20).ToList();
         var a = new AssetAssignment
         {
@@ -175,7 +175,7 @@ public sealed class AssetAssignment : Entity
     public Result Accept(Guid me, DateTimeOffset now)
     {
         if (me != UserId) return Error.Forbidden();
-        if (State != AssignmentState.PendingAcceptance) return Error.Conflict("assets.notPending", "این تحویل منتظر تأیید نیست.");
+        if (State != AssignmentState.PendingAcceptance) return Error.Conflict("assets.notPending", "Diese Übergabe wartet nicht auf Bestätigung.");
         State = AssignmentState.Active;
         AcceptedAt = now;
         return Result.Success();
@@ -185,7 +185,7 @@ public sealed class AssetAssignment : Entity
     public Result Decline(Guid me, Asset asset)
     {
         if (me != UserId) return Error.Forbidden();
-        if (State != AssignmentState.PendingAcceptance) return Error.Conflict("assets.notPending", "این تحویل منتظر تأیید نیست.");
+        if (State != AssignmentState.PendingAcceptance) return Error.Conflict("assets.notPending", "Diese Übergabe wartet nicht auf Bestätigung.");
         State = AssignmentState.Cancelled;
         asset.Released(AssetStatus.Available);
         return Result.Success();
@@ -194,7 +194,7 @@ public sealed class AssetAssignment : Entity
     /// <summary>Manager takes back a hand-over nobody accepted yet.</summary>
     public Result Cancel(Asset asset)
     {
-        if (State != AssignmentState.PendingAcceptance) return Error.Conflict("assets.notPending", "فقط تحویلِ تأییدنشده لغو می‌شود؛ برای بقیه برگشت ثبت کنید.");
+        if (State != AssignmentState.PendingAcceptance) return Error.Conflict("assets.notPending", "Nur eine nicht bestätigte Übergabe kann storniert werden; für alle anderen erfassen Sie eine Rückgabe.");
         State = AssignmentState.Cancelled;
         asset.Released(AssetStatus.Available);
         return Result.Success();
@@ -204,7 +204,7 @@ public sealed class AssetAssignment : Entity
     public Result SubmitReturn(Guid me, string? condition, string? damage, DateTimeOffset now)
     {
         if (me != UserId) return Error.Forbidden();
-        if (State != AssignmentState.Active) return Error.Conflict("assets.notActive", "این تجهیز الان دست شما نیست.");
+        if (State != AssignmentState.Active) return Error.Conflict("assets.notActive", "Dieses Gerät ist gerade nicht bei Ihnen.");
         State = AssignmentState.ReturnSubmitted;
         ReturnedAt = now;
         ConditionIn = Cut(condition, 500);
@@ -216,8 +216,8 @@ public sealed class AssetAssignment : Entity
     /// <summary>Manager closes the hand-over. <paramref name="next"/>: Available, InRepair (damaged) or Lost.</summary>
     public Result ConfirmReturn(Asset asset, Guid by, AssetStatus next, string? condition, string? damage, DateTimeOffset now)
     {
-        if (!IsOpen || State == AssignmentState.PendingAcceptance) return Error.Conflict("assets.notActive", "برگشت فقط برای تجهیزی که تحویل گرفته شده ثبت می‌شود.");
-        if (next is not (AssetStatus.Available or AssetStatus.InRepair or AssetStatus.Lost)) return Error.Validation("assets.status", "وضعیت بعد از برگشت درست نیست.");
+        if (!IsOpen || State == AssignmentState.PendingAcceptance) return Error.Conflict("assets.notActive", "Eine Rückgabe kann nur für ein ausgegebenes Gerät erfasst werden.");
+        if (next is not (AssetStatus.Available or AssetStatus.InRepair or AssetStatus.Lost)) return Error.Validation("assets.status", "Der Status nach der Rückgabe ist ungültig.");
         if (State == AssignmentState.Active)
         {
             ReturnedAt = now;
@@ -239,15 +239,15 @@ public sealed class AssetAssignment : Entity
     /// <summary>Holder (or a manager) offers the item straight to a colleague.</summary>
     public Result OfferTransfer(Guid to)
     {
-        if (State != AssignmentState.Active) return Error.Conflict("assets.notActive", "فقط تجهیزی که تحویل گرفته شده منتقل می‌شود.");
-        if (to == UserId) return Error.Validation("assets.transferSelf", "تجهیز همین الان دست همین نفر است.");
+        if (State != AssignmentState.Active) return Error.Conflict("assets.notActive", "Nur ein übernommenes Gerät kann weitergegeben werden.");
+        if (to == UserId) return Error.Validation("assets.transferSelf", "Das Gerät ist bereits bei genau dieser Person.");
         TransferToId = to;
         return Result.Success();
     }
 
     public Result CancelTransfer()
     {
-        if (TransferToId is null) return Error.Conflict("assets.noTransfer", "انتقالی در جریان نیست.");
+        if (TransferToId is null) return Error.Conflict("assets.noTransfer", "Keine Übergabe läuft.");
         TransferToId = null;
         return Result.Success();
     }
@@ -256,7 +256,7 @@ public sealed class AssetAssignment : Entity
     public Result<AssetAssignment> AcceptTransfer(Asset asset, Guid me, string? condition, DateTimeOffset now)
     {
         if (TransferToId != me) return Error.Forbidden();
-        if (State != AssignmentState.Active) return Error.Conflict("assets.notActive", "این انتقال دیگر معتبر نیست.");
+        if (State != AssignmentState.Active) return Error.Conflict("assets.notActive", "Diese Übergabe ist nicht mehr gültig.");
         State = AssignmentState.Transferred;
         ReturnedAt = now;
         ConditionIn = Cut(condition, 500);

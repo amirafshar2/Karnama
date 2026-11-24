@@ -17,7 +17,7 @@ public sealed record AttendanceSettingsDto(
 
 public static class Iran
 {
-    private static readonly TimeZoneInfo Zone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran");
+    private static readonly TimeZoneInfo Zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
     public static DateTimeOffset Local(DateTimeOffset utc) => TimeZoneInfo.ConvertTime(utc, Zone);
     public static DateOnly Today(DateTimeOffset utc) => DateOnly.FromDateTime(Local(utc).DateTime);
     public static DateTimeOffset At(DateOnly day, TimeOnly time)
@@ -29,10 +29,7 @@ public static class Iran
     /// <summary>1404/08/05 with Persian digits, for texts that leave the app (notifications, history notes).</summary>
     public static string Jalali(DateOnly day)
     {
-        var cal = new System.Globalization.PersianCalendar();
-        var d = day.ToDateTime(TimeOnly.MinValue);
-        var s = $"{cal.GetYear(d)}/{cal.GetMonth(d):00}/{cal.GetDayOfMonth(d):00}";
-        return string.Concat(s.Select(ch => ch is >= '0' and <= '9' ? (char)('۰' + (ch - '0')) : ch));
+        return day.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture);
     }
 }
 

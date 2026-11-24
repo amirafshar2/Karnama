@@ -49,7 +49,7 @@ public sealed class Conversation : Entity
     public Result Rename(string title)
     {
         var t = (title ?? "").Trim();
-        if (t.Length is 0 or > 80) return Error.Validation("chat.title", "نام گروه الزامی است (حداکثر ۸۰ کاراکتر).");
+        if (t.Length is 0 or > 80) return Error.Validation("chat.title", "Der Gruppenname ist Pflicht (höchstens 80 Zeichen).");
         Title = t;
         return Result.Success();
     }
@@ -118,7 +118,7 @@ public sealed class ChatMessage
     public static Result<ChatMessage> Text(Guid conversationId, Guid author, string body, Guid clientKey, DateTimeOffset now)
     {
         var b = (body ?? "").Trim();
-        if (b.Length is 0 or > 4000) return Error.Validation("chat.body", "پیام خالی است یا بیش از ۴۰۰۰ کاراکتر است.");
+        if (b.Length is 0 or > 4000) return Error.Validation("chat.body", "Die Nachricht ist leer oder länger als 4000 Zeichen.");
         return new ChatMessage { ConversationId = conversationId, AuthorId = author, Kind = MessageKind.Text, Body = b, CreatedAt = now, ClientKey = clientKey };
     }
 
@@ -133,10 +133,10 @@ public sealed class ChatMessage
     public Result Edit(Guid by, string body, DateTimeOffset now)
     {
         if (by != AuthorId) return Error.Forbidden();
-        if (DeletedAt is not null) return Error.Conflict("chat.deleted", "این پیام حذف شده است.");
-        if (now - CreatedAt > EditWindow) return Error.Conflict("chat.editWindow", "فقط تا ۱۵ دقیقه بعد از فرستادن می‌شود پیام را ویرایش کرد.");
+        if (DeletedAt is not null) return Error.Conflict("chat.deleted", "Diese Nachricht wurde gelöscht.");
+        if (now - CreatedAt > EditWindow) return Error.Conflict("chat.editWindow", "Nachrichten lassen sich nur bis 15 Minuten nach dem Senden bearbeiten.");
         var b = (body ?? "").Trim();
-        if (b.Length is 0 or > 4000) return Error.Validation("chat.body", "پیام خالی است یا بیش از ۴۰۰۰ کاراکتر است.");
+        if (b.Length is 0 or > 4000) return Error.Validation("chat.body", "Die Nachricht ist leer oder länger als 4000 Zeichen.");
         Body = b;
         EditedAt = now;
         return Result.Success();
@@ -150,10 +150,10 @@ public sealed class ChatMessage
         return Result.Success();
     }
 
-    public string Preview() => DeletedAt is not null ? "پیام حذف شد" : Kind switch
+    public string Preview() => DeletedAt is not null ? "Nachricht gelöscht" : Kind switch
     {
-        MessageKind.Image => "🖼 عکس",
-        MessageKind.Voice => "🎤 پیام صوتی",
+        MessageKind.Image => "🖼 Foto",
+        MessageKind.Voice => "🎤 Sprachnachricht",
         MessageKind.File => $"📎 {FileName}",
         _ => Body!.Length > 80 ? Body[..80] + "…" : Body,
     };

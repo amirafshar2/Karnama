@@ -55,11 +55,11 @@ export default function PackagesPage() {
 
   const price = (p: PackageItem) => (
     <span className="inline-flex flex-wrap items-baseline gap-x-2 whitespace-nowrap">
-      <span>{t("crud.toman", { amount: formatNumber(p.effectivePrice / 10) })}</span>
-      {p.specialPrice !== null && p.effectivePrice < p.price && <s className="text-xs text-muted-foreground">{formatNumber(p.price / 10)}</s>}
+      <span>{t("crud.toman", { amount: formatNumber(p.effectivePrice) })}</span>
+      {p.specialPrice !== null && p.effectivePrice < p.price && <s className="text-xs text-muted-foreground">{formatNumber(p.price)}</s>}
     </span>
   );
-  const quotas = (p: PackageItem) => p.quotas.map((q) => `${formatNumber(q.count)} ${q.serviceName ?? ""}`).join("، ");
+  const quotas = (p: PackageItem) => p.quotas.map((q) => `${formatNumber(q.count)} ${q.serviceName ?? ""}`).join(", ");
   const status = (p: PackageItem) => (
     <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${p.status === "active" ? "bg-secondary text-secondary-foreground" : "border"}`}>{t(`packages.status.${p.status}` as TextKey)}</span>
   );

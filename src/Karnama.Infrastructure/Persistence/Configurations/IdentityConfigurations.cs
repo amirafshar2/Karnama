@@ -9,7 +9,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
     public void Configure(EntityTypeBuilder<User> b)
     {
         b.ToTable("users");
-        b.Property(x => x.Phone).HasMaxLength(11).IsRequired();
+        b.Property(x => x.Phone).HasMaxLength(15).IsRequired();
         b.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
         b.Property(x => x.LanguageCode).HasMaxLength(10).IsRequired();
         b.Property(x => x.TwoFactorSecret).HasMaxLength(1000);
@@ -62,7 +62,7 @@ internal sealed class OtpChallengeConfiguration : IEntityTypeConfiguration<OtpCh
     public void Configure(EntityTypeBuilder<OtpChallenge> b)
     {
         b.ToTable("otp_challenges");
-        b.Property(x => x.Phone).HasMaxLength(11).IsRequired();
+        b.Property(x => x.Phone).HasMaxLength(15).IsRequired();
         b.Property(x => x.CodeHash).HasMaxLength(64).IsRequired();
         b.HasIndex(x => new { x.Phone, x.CreatedAt });
         b.HasIndex(x => x.ExpiresAt);

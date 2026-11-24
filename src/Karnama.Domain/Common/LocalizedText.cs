@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 namespace Karnama.Domain.Common;
 
 /// <summary>
-/// Translatable content stored as JSON (<c>{"fa":"...","en":"..."}</c>).
+/// Translatable content stored as JSON (<c>{"de":"...","en":"..."}</c>).
 /// Reads fall back to the default language, then to any available value.
 /// </summary>
 public sealed class LocalizedText : IEquatable<LocalizedText>
@@ -28,7 +28,7 @@ public sealed class LocalizedText : IEquatable<LocalizedText>
 
     public bool IsEmpty => _values.Count == 0;
 
-    public string Get(string? lang, string defaultLang = "fa")
+    public string Get(string? lang, string defaultLang = "de")
     {
         if (lang is not null && _values.TryGetValue(lang, out var v)) return v;
         if (_values.TryGetValue(defaultLang, out var d)) return d;

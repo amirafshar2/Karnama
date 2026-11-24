@@ -83,7 +83,7 @@ export function NumberField({ label, help, value, onChange, optional, testId, mi
   );
 }
 
-/** Persian-calendar date typed as ۱۴۰۵/۰۸/۰۳; value is an ISO string (UTC midnight Tehran isn't needed for whole days). */
+/** Date typed as 03.11.2026; value is an ISO string (UTC midnight Berlin isn't needed for whole days). */
 export function JalaliDateField({ label, help, value, onChange, optional, testId }: { label: string; help?: string; value: string | null; onChange: (iso: string | null) => void; optional?: boolean; testId?: string }) {
   const { formatDate } = useI18n();
   const [text, setText] = useState(formatJalali(value));
@@ -106,7 +106,7 @@ export function JalaliDateField({ label, help, value, onChange, optional, testId
             onChange={(e) => {
               setText(e.target.value);
               const iso = e.target.value.trim() === "" ? null : parseJalali(e.target.value);
-              if (e.target.value.trim() === "" || iso) onChange(iso ? `${iso}T00:00:00+03:30` : null);
+              if (e.target.value.trim() === "" || iso) onChange(iso ? `${iso}T00:00:00+01:00` : null);
             }}
           />
           {parsed && <p className="text-xs text-muted-foreground">{formatDate(parsed + "T12:00:00", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>}
@@ -164,6 +164,6 @@ export function Toggle({ label, help, checked, onChange, testId }: { label: stri
   );
 }
 
-/** Toman in the UI, rials in the API (money is always a long in rials). */
-export const toRial = (toman: number | null) => (toman === null ? null : toman * 10);
-export const toToman = (rial: number | null | undefined) => (rial === null || rial === undefined ? null : Math.round(rial / 10));
+/** Money is always a long in whole euros (UI and API). */
+export const toRial = (euro: number | null) => (euro === null ? null : euro);
+export const toToman = (euro: number | null | undefined) => (euro === null || euro === undefined ? null : Math.round(euro));

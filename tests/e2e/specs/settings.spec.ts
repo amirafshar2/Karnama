@@ -7,49 +7,49 @@ test.describe("white-label: brand, colours, logo and texts from the admin panel"
     const isMobile = info.project.name !== "desktop";
     await demoLogin(page, "admin");
     await page.goto(`${DEMO_URL}/settings/brand`);
-    await expect(page.getByRole("heading", { name: "برند و ظاهر" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Marke & Design" })).toBeVisible();
     await shot(page, info, "brand-settings");
 
     const run = Date.now().toString(36).slice(-4);
-    await page.getByTestId("brand-name").fill(`آژانس ام ${run}`);
+    await page.getByTestId("brand-name").fill(`Agentur M ${run}`);
     await page.getByTestId("brand-color-primary").fill("#00C2FF");
     await page.getByTestId("brand-save").click();
-    await expect(page.getByText("برند ذخیره شد").first()).toBeVisible();
+    await expect(page.getByText("Marke gespeichert").first()).toBeVisible();
     const primary = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--primary").trim());
     expect(primary).toBe("#00c2ff");
-    await expect(page.getByText(`آژانس ام ${run}`).filter({ visible: true }).first()).toBeVisible();
+    await expect(page.getByText(`Agentur M ${run}`).filter({ visible: true }).first()).toBeVisible();
     await shot(page, info, "brand-saved-blue");
 
     // Logo upload (PNG) shows up in the header mark
     await page.getByTestId("brand-logo-input").setInputFiles("specs/fixtures/logo.png");
-    await expect(page.getByText("لوگو عوض شد.")).toBeVisible();
+    await expect(page.getByText("Logo geändert.")).toBeVisible();
     await expect(page.locator("img[src*='/media/public/brand/']").filter({ visible: true }).first()).toBeVisible();
 
     // Back to the client's yellow/black so other screenshots stay on-brand
     await page.getByTestId("brand-name").fill("");
-    await page.getByRole("button", { name: "رنگ‌های پیش‌فرض" }).click();
+    await page.getByRole("button", { name: "Standardfarben" }).click();
     await page.getByTestId("brand-save").click();
-    await expect(page.getByText("برند ذخیره شد").first()).toBeVisible();
+    await expect(page.getByText("Marke gespeichert").first()).toBeVisible();
     await shot(page, info, "brand-back-to-default");
 
     // Texts: change the login title, see it on the login page, then reset
     await page.goto(`${DEMO_URL}/settings/texts`);
     await page.getByTestId("texts-search").fill("login.title");
     const input = page.getByTestId("text-input-login.title");
-    await input.fill("ورود همکاران آژانس");
+    await input.fill("Anmeldung für Agenturmitarbeiter");
     await input.blur();
-    await expect(page.getByText("متن ذخیره شد.")).toBeVisible();
+    await expect(page.getByText("Text gespeichert.")).toBeVisible();
     await shot(page, info, "texts-edited");
     await page.goto(`${DEMO_URL}/profile`);
     await page.getByTestId("logout").click();
-    await expect(page.getByRole("heading", { name: "ورود همکاران آژانس" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Anmeldung für Agenturmitarbeiter" })).toBeVisible();
     await shot(page, info, "login-custom-title");
 
     await demoLogin(page, "admin");
     await page.goto(`${DEMO_URL}/settings/texts`);
     await page.getByTestId("texts-search").fill("login.title");
-    await page.getByTestId("text-row-login.title").getByRole("button", { name: "برگرداندن به پیش‌فرض" }).click();
-    await expect(page.getByText("متن به پیش‌فرض برگشت.")).toBeVisible();
+    await page.getByTestId("text-row-login.title").getByRole("button", { name: "Auf Standard zurücksetzen" }).click();
+    await expect(page.getByText("Text auf Standard zurückgesetzt.")).toBeVisible();
     expect(await menuHas(page, isMobile, "settings/texts")).toBe(true);
   });
 

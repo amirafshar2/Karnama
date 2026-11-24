@@ -21,7 +21,7 @@ export function WorkReportView({ range, canExport }: { range: string; canExport:
   const rep = useQuery({ queryKey: ["work-report", range], queryFn: () => api<WorkReport>(`/api/v1/reports/work?${range}`) });
   const [open, setOpen] = useState<string | null>(null);
   const hm = (m: number) => `${formatNumber(Math.floor(m / 60))}:${formatNumber(m % 60).padStart(2, formatNumber(0))}`;
-  const pct = (v: number | null) => (v === null ? "—" : `${formatNumber(Math.round(v))}٪`);
+  const pct = (v: number | null) => (v === null ? "—" : `${formatNumber(Math.round(v))} %`);
 
   const download = async () => {
     const get = () => fetch(`${API_BASE}/api/v1/reports/work/export?${range}`, { credentials: "include", headers: tokenStore.access ? { Authorization: `Bearer ${tokenStore.access}` } : undefined });

@@ -21,9 +21,9 @@ public sealed class UpsertPublishValidator : AbstractValidator<UpsertPublishRequ
 {
     public UpsertPublishValidator()
     {
-        RuleFor(x => x.ClientId).NotEmpty().WithMessage("مشتری را انتخاب کنید.");
-        RuleFor(x => x.PlatformId).NotEmpty().WithMessage("شبکه را انتخاب کنید.");
-        RuleFor(x => x.Caption).MaximumLength(PublishJob.MaxCaption).WithMessage("کپشن حداکثر ۲۲۰۰ کاراکتر است.");
+        RuleFor(x => x.ClientId).NotEmpty().WithMessage("Wählen Sie einen Kunden.");
+        RuleFor(x => x.PlatformId).NotEmpty().WithMessage("Wählen Sie ein Netzwerk.");
+        RuleFor(x => x.Caption).MaximumLength(PublishJob.MaxCaption).WithMessage("Die Caption darf höchstens 2200 Zeichen haben.");
     }
 }
 
@@ -36,7 +36,7 @@ public sealed class PublishService(IAppDbContext db, ICurrentUser me, WorkAccess
 
     public async Task<Result<IReadOnlyList<PublishJobDto>>> ListAsync(DateTimeOffset from, DateTimeOffset to, Guid? clientId, CancellationToken ct)
     {
-        if (to <= from || (to - from).TotalDays > 45) return Error.Validation("publish.range", "بازه حداکثر ۴۵ روز.");
+        if (to <= from || (to - from).TotalDays > 45) return Error.Validation("publish.range", "Zeitraum höchstens 45 Tage.");
         var q = db.PublishJobs.AsNoTracking().Where(j => j.PublishAt >= from && j.PublishAt < to && j.Status != PublishStatus.Cancelled);
         if (await access.PortalClientIdAsync(ct) is { } own) q = q.Where(j => j.ClientId == own);
         else if (!CanSee) return Error.Forbidden();
@@ -79,7 +79,7 @@ public sealed class PublishService(IAppDbContext db, ICurrentUser me, WorkAccess
         if (!CanManage) return Error.Forbidden();
         var j = await db.PublishJobs.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (j is null) return Error.NotFound();
-        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "Die Datensatzversion fehlt; laden Sie die Seite neu.");
         db.SetOriginalVersion(j, v);
         var check = await CheckAsync(r with { ClientId = j.ClientId }, ct);
         if (check.IsFailure) return check.Error!;
@@ -122,7 +122,7 @@ public sealed class PublishService(IAppDbContext db, ICurrentUser me, WorkAccess
             if (!(me.Kind == UserKind.Staff && me.Has(Permissions.WorkRun, PermissionScope.Assigned))) return Error.Forbidden();
             var uid = me.UserId ?? Guid.Empty;
             var mine = j.OrderId is { } oid && await db.WorkItems.AnyAsync(w => w.OrderId == oid && w.AssigneeId == uid, ct);
-            if (!mine) return Error.Forbidden("publish.notYours", "این انتشار به کار شما مربوط نیست.");
+            if (!mine) return Error.Forbidden("publish.notYours", "Diese Veröffentlichung gehört nicht zu Ihren Aufgaben.");
         }
         var res = j.MarkPublished(me.UserId ?? Guid.Empty, portal is not null, r.PostUrl, clock.GetUtcNow());
         if (res.IsFailure) return res.Error!;
@@ -149,15 +149,15 @@ public sealed class PublishService(IAppDbContext db, ICurrentUser me, WorkAccess
             {
                 due++;
                 if (j.Management == PageManagement.ClientManaged && clients.GetValueOrDefault(j.ClientId)?.PortalUserId is { } portalUser)
-                    await notifier.NotifyAsync([portalUser], "publish.reminder", "وقت انتشار پست رسید", "فایل و کپشن آماده است؛ بعد از انتشار «منتشر کردم» را بزنید.", "/dashboard", true, $"pub-due:{j.Id:N}", ct);
+                    await notifier.NotifyAsync([portalUser], "publish.reminder", "Zeit zum Veröffentlichen des Posts", "Datei und Caption sind fertig; tippen Sie nach der Veröffentlichung auf „Ich habe veröffentlicht“.", "/dashboard", true, $"pub-due:{j.Id:N}", ct);
                 else
-                    await notifier.NotifyAsync(managers, "publish.due", $"وقت انتشار برای {name}", $"@{j.Handle}", "/publishing", false, $"pub-due:{j.Id:N}", ct);
+                    await notifier.NotifyAsync(managers, "publish.due", $"Veröffentlichungszeit für {name}", $"@{j.Handle}", "/publishing", false, $"pub-due:{j.Id:N}", ct);
                 changes.Record("publish", j.Id, j.ClientId, null, null, "status");
             }
             else if (j.MarkOverdue(now, OverdueAfter))
             {
                 over++;
-                await notifier.NotifyAsync(managers, "publish.overdue", $"انتشار عقب افتاد: {name}", $"@{j.Handle} — ۲ ساعت از زمان انتشار گذشته و تأیید نشده.", "/publishing", true, $"pub-over:{j.Id:N}", ct);
+                await notifier.NotifyAsync(managers, "publish.overdue", $"Veröffentlichung verspätet: {name}", $"@{j.Handle} – 2 Stunden nach der Veröffentlichungszeit und noch nicht bestätigt.", "/publishing", true, $"pub-over:{j.Id:N}", ct);
                 changes.Record("publish", j.Id, j.ClientId, null, null, "status");
             }
         }
@@ -176,12 +176,12 @@ public sealed class PublishService(IAppDbContext db, ICurrentUser me, WorkAccess
     private async Task<Result<PageManagement>> CheckAsync(UpsertPublishRequest r, CancellationToken ct)
     {
         var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.Id == r.ClientId, ct);
-        if (client is null) return Error.Validation("publish.client", "مشتری پیدا نشد.");
+        if (client is null) return Error.Validation("publish.client", "Kunde nicht gefunden.");
         var account = client.Accounts.FirstOrDefault(a => a.PlatformId == r.PlatformId && string.Equals(a.Handle, r.Handle?.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (account is null) return Error.Validation("publish.account", "این پیج برای این مشتری ثبت نشده است.");
-        if (r.OrderId is { } oid && !await db.Orders.AnyAsync(o => o.Id == oid && o.ClientId == r.ClientId, ct)) return Error.Validation("publish.order", "سفارش مال این مشتری نیست.");
+        if (account is null) return Error.Validation("publish.account", "Diese Seite ist für diesen Kunden nicht erfasst.");
+        if (r.OrderId is { } oid && !await db.Orders.AnyAsync(o => o.Id == oid && o.ClientId == r.ClientId, ct)) return Error.Validation("publish.order", "Der Auftrag gehört nicht zu diesem Kunden.");
         if (r.FileIds is { Count: > 0 } f && await db.Files.CountAsync(x => f.Contains(x.Id) && x.ClientId == r.ClientId && x.Status == Domain.Files.FileStatus.Ready, ct) != f.Distinct().Count())
-            return Error.Validation("publish.files", "یکی از فایل‌ها مال این مشتری نیست.");
+            return Error.Validation("publish.files", "Eine der Dateien gehört nicht zu diesem Kunden.");
         return account.Management;
     }
 

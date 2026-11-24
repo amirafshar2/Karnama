@@ -154,7 +154,7 @@ export function SetupForms({ setup }: { setup: Setup }) {
         {setup.policies.map((p) => (
           <PolicyRow key={p.id} policy={p} roles={(roles.data?.items ?? []).filter((r) => r.systemKey !== "client")} onSave={(body) => run(() => api(`/api/v1/attendance/setup/policies/${p.id}`, { method: "PUT", body }))} />
         ))}
-        <Button variant="outline" className="h-11" onClick={() => run(() => api("/api/v1/attendance/setup/policies", { method: "POST", body: { name: "قانون جدید", rule: "ManagerApproval", roleIds: [], userIds: [], isDefault: false } }))}>
+        <Button variant="outline" className="h-11" onClick={() => run(() => api("/api/v1/attendance/setup/policies", { method: "POST", body: { name: "Neue Regel", rule: "ManagerApproval", roleIds: [], userIds: [], isDefault: false } }))}>
           <Plus aria-hidden="true" />
           {t("crud.add")}
         </Button>
@@ -293,7 +293,7 @@ function LeaveTypes() {
           <LeaveTypeRowEditor key={row.id} row={row} onSave={(b) => save(row, b)} />
         ))}
       </ul>
-      <Button variant="outline" className="h-11" onClick={() => save(null, { name: "نوع جدید", kind: "other", paid: false, needsDocument: false, annualDays: null, color: "#607D8B", isActive: true, sortOrder: 99 })}>
+      <Button variant="outline" className="h-11" onClick={() => save(null, { name: "Neue Art", kind: "other", paid: false, needsDocument: false, annualDays: null, color: "#607D8B", isActive: true, sortOrder: 99 })}>
         <Plus aria-hidden="true" />
         {t("crud.add")}
       </Button>

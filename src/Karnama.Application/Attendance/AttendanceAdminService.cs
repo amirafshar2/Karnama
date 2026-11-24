@@ -59,7 +59,7 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
     public async Task<Result<IReadOnlyList<ShiftDto>>> ShiftsAsync(Guid? userId, DateOnly from, DateOnly to, bool needsReviewOnly, CancellationToken ct)
     {
         if (!SeesAll) userId = Me;
-        if (to < from || to.DayNumber - from.DayNumber > 62) return Error.Validation("attendance.range", "بازه باید حداکثر ۶۲ روز باشد.");
+        if (to < from || to.DayNumber - from.DayNumber > 62) return Error.Validation("attendance.range", "Der Zeitraum darf höchstens 62 Tage betragen.");
         var q = db.Shifts.AsNoTracking().Where(s => s.Day >= from && s.Day <= to);
         if (userId is { } uid) q = q.Where(s => s.UserId == uid);
         if (needsReviewOnly) q = q.Where(s => s.NeedsReview);
@@ -75,7 +75,7 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         if (!me.Has(Permissions.AttendanceApprove, PermissionScope.All) && !me.Has(Permissions.AttendanceCorrect, PermissionScope.All)) return Error.Forbidden();
         var s = await db.Shifts.FirstOrDefaultAsync(x => x.Id == shiftId, ct);
         if (s is null) return Error.NotFound();
-        if (s.UserId == Me) return Error.Forbidden("attendance.selfReview", "شیفت خودتان را مدیر دیگری باید بررسی کند.");
+        if (s.UserId == Me) return Error.Forbidden("attendance.selfReview", "Ihre eigene Schicht muss ein anderer Manager prüfen.");
         s.Review(Me, r.Approve);
         audit.Add(r.Approve ? "attendance.reviewAccepted" : "attendance.reviewRejected", nameof(Shift), shiftId.ToString(), new { r.Note });
         changes.Record("presence", s.UserId, null, s.UserId, null, "review");
@@ -120,7 +120,7 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         if (!me.Has(Permissions.AttendanceCorrect, PermissionScope.All)) return Error.Forbidden();
         var c = await db.AttendanceCorrections.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (c is null) return Error.NotFound();
-        if (c.UserId == Me) return Error.Forbidden("corrections.self", "درخواست اصلاح خودتان را مدیر دیگری باید تأیید کند.");
+        if (c.UserId == Me) return Error.Forbidden("corrections.self", "Ihre eigene Korrektur muss ein anderer Manager genehmigen.");
         var now = clock.GetUtcNow();
         var d = c.Decide(Me, r.Approve, r.Note, now);
         if (d.IsFailure) return d.Error!;
@@ -129,12 +129,12 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
             var shift = c.ShiftId is { } sid ? await db.Shifts.FirstOrDefaultAsync(s => s.Id == sid, ct) : null;
             if (shift is null)
             {
-                if (c.ClockIn is not { } inAt) return Error.Validation("corrections.needIn", "برای روزی که ورود ندارد، ساعت ورود لازم است.");
+                if (c.ClockIn is not { } inAt) return Error.Validation("corrections.needIn", "Für einen Tag ohne Kommen ist die Kommen-Zeit nötig.");
                 // Without a clock-out the new shift would stay open: never a second open shift next to the current one.
                 if (c.ClockOut is null && await db.Shifts.AnyAsync(s => s.UserId == c.UserId && s.Status == ShiftStatus.Open, ct))
                     return Error.Conflict("corrections.openShift",
-                        "این همکار الان شیفت باز دارد؛ برای روزی که شیفت ندارد، ساعت خروج را هم در درخواست اصلاح بخواهید یا بعد از خروج او تأیید کنید.");
-                shift = Shift.Open(c.UserId, c.Day, inAt, [new MethodResult("ManagerApproval", true, "اصلاح تأییدشده")], Trust.Green, false, null, false, 0);
+                        "Dieser Mitarbeiter hat gerade eine offene Schicht; für einen Tag ohne Schicht beantragen Sie in der Korrektur auch die Gehzeit oder genehmigen Sie nach seinem Gehen.");
+                shift = Shift.Open(c.UserId, c.Day, inAt, [new MethodResult("ManagerApproval", true, "Korrektur genehmigt")], Trust.Green, false, null, false, 0);
                 db.Shifts.Add(shift);
             }
             var sched = await ScheduleForAsync(c.UserId, ct);
@@ -154,10 +154,10 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
             var kinds = await db.AttendanceEvents.AsNoTracking().Where(e => e.ShiftId == shift.Id).Select(e => e.Kind).ToListAsync(ct);
             if (!kinds.Contains(AttendanceEventKind.ClockIn))
                 db.AttendanceEvents.Add(new AttendanceEvent(c.UserId, shift.Id, AttendanceEventKind.ClockIn, shift.ClockInAt, now, null, $"corr-in-{c.Id:N}", json, Trust.Green,
-                    "اصلاح تأییدشده", Me));
+                    "Korrektur genehmigt", Me));
             if (shift.Status == ShiftStatus.Closed && !kinds.Contains(AttendanceEventKind.ClockOut))
                 db.AttendanceEvents.Add(new AttendanceEvent(c.UserId, shift.Id, AttendanceEventKind.ClockOut, shift.ClockOutAt!.Value, now, null, $"corr-out-{c.Id:N}", json,
-                    Trust.Green, "اصلاح تأییدشده", Me));
+                    Trust.Green, "Korrektur genehmigt", Me));
         }
         audit.Add(r.Approve ? "attendance.correctionApproved" : "attendance.correctionRejected", nameof(AttendanceCorrection), id.ToString(), new { c.UserId, c.Day });
         changes.Record("presence", c.UserId, null, c.UserId, null, "correction");
@@ -194,9 +194,9 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
     public async Task<Result> SaveSettingsAsync(AttendanceSettingsDto s, CancellationToken ct)
     {
         if (s.OfficeNetworks.Count > 20 || s.OfficeNetworks.Any(n => !System.Net.IPNetwork.TryParse(n.Contains('/') ? n : $"{n}/{(n.Contains(':') ? 128 : 32)}", out _)))
-            return Error.Validation("attendance.networks", "آدرس IP دفتر معتبر نیست (مثل 5.160.10.20 یا 5.160.10.0/24).");
+            return Error.Validation("attendance.networks", "Die Büro-IP-Adresse ist ungültig (z. B. 5.160.10.20 oder 5.160.10.0/24).");
         if (s.OfflineToleranceMinutes is < 1 or > 120 || s.ForgottenAfterHours is < 1 or > 24 || s.SelfieRetentionDays is < 1 or > 365 || s.LocationRetentionDays is < 1 or > 365)
-            return Error.Validation("attendance.settings", "یکی از عددها خارج از محدوده است.");
+            return Error.Validation("attendance.settings", "Eine der Zahlen liegt außerhalb des Bereichs.");
         await store.SaveAsync(s with { OfficeNetworks = s.OfficeNetworks.Select(x => x.Trim()).Distinct().ToList() }, Me, clock.GetUtcNow(), ct);
         audit.Add("attendance.settings", "SiteSetting", AttendanceSettingsStore.Key, new { networks = s.OfficeNetworks.Count });
         await db.SaveChangesAsync(ct);
@@ -281,8 +281,8 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
 
     public async Task<Result<HolidayDto>> AddHolidayAsync(UpsertHolidayRequest r, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(r.Name) || r.Name.Length > 100) return Error.Validation("holidays.name", "نام تعطیلی الزامی است.");
-        if (await db.Holidays.AnyAsync(h => h.Date == r.Date, ct)) return Error.Conflict("holidays.exists", "این روز قبلاً ثبت شده است.");
+        if (string.IsNullOrWhiteSpace(r.Name) || r.Name.Length > 100) return Error.Validation("holidays.name", "Der Name des Feiertags ist Pflicht.");
+        if (await db.Holidays.AnyAsync(h => h.Date == r.Date, ct)) return Error.Conflict("holidays.exists", "Dieser Tag ist bereits erfasst.");
         var h = new Holiday(r.Date, r.Name);
         db.Holidays.Add(h);
         await db.SaveChangesAsync(ct);
@@ -327,18 +327,18 @@ public sealed class AttendanceAdminService(IAppDbContext db, ICurrentUser me, IR
         foreach (var (shift, end) in due)
         {
             shift.AutoClose(end);
-            const string note = "خروج ثبت نشد؛ سیستم شیفت را در پایان برنامه بست.";
+            const string note = "Gehen nicht erfasst; das System hat die Schicht zum Planende geschlossen.";
             db.AttendanceEvents.Add(new AttendanceEvent(shift.UserId, shift.Id, AttendanceEventKind.ClockOut, shift.ClockOutAt!.Value, now, null, $"auto-out-{shift.Id:N}",
                 "[]", Trust.Yellow, note, null));
             foreach (var t in await db.WorkTimers.Where(t => t.UserId == shift.UserId && t.StoppedAt == null).ToListAsync(ct)) t.Stop(end);
 
             var at = Iran.Local(end).ToString("HH:mm");
             var name = names.GetValueOrDefault(shift.UserId) ?? "—";
-            await notifier.NotifyAsync([shift.UserId], "attendance.forgotten", "خروج شما ثبت نشد",
-                $"شیفت شما ساعت {at} (پایان برنامه) بسته شد و نیازمند بررسی است. ساعت واقعی خروج را با «درخواست اصلاح» ثبت کنید.", "/attendance", true,
+            await notifier.NotifyAsync([shift.UserId], "attendance.forgotten", "Ihr Gehen wurde nicht erfasst",
+                $"Ihre Schicht wurde um {at} (Ende des Dienstplans) geschlossen und muss geprüft werden. Tragen Sie die tatsächliche Gehzeit über „Korrektur beantragen“ ein.", "/attendance", true,
                 $"forgot:{shift.Id:N}", ct);
-            await notifier.NotifyAsync(approvers.Where(u => u != shift.UserId), "attendance.forgotten", $"خروج ثبت نشد: {name}",
-                $"شیفت {name} تا {s.ForgottenAfterHours} ساعت بعد از پایان برنامه باز ماند؛ سیستم آن را ساعت {at} بست و نیازمند بررسی است.", "/attendance/live", false,
+            await notifier.NotifyAsync(approvers.Where(u => u != shift.UserId), "attendance.forgotten", $"Gehen nicht erfasst: {name}",
+                $"Die Schicht von {name} blieb {s.ForgottenAfterHours} Stunden nach Planende offen; das System hat sie um {at} geschlossen, sie muss geprüft werden.", "/attendance/live", false,
                 $"forgot:{shift.Id:N}", ct);
 
             audit.Add("attendance.autoClosed", nameof(Shift), shift.Id.ToString(), actorOverride: null);

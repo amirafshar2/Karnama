@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const [p, brand] = await Promise.all([load(slug), getBrand()]);
   if (!p) return { robots: { index: false } };
-  const name = brand?.name ?? "کارنما";
+  const name = brand?.name ?? "Karnama";
   const title = p.seoTitle || `${p.name} | ${name}`;
   const description = p.seoDescription || p.short || undefined;
   const url = `${SITE_URL}/plans/${p.slug}`;
@@ -26,7 +26,7 @@ export default async function PackagePage({ params }: Props) {
   const price = p.special ?? p.price;
   const graph = [
     {
-      "@type": "Service", name: p.name, description: p.short ?? undefined, url, provider: { "@type": "Organization", name: brand?.name ?? "کارنما", url: SITE_URL },
+      "@type": "Service", name: p.name, description: p.short ?? undefined, url, provider: { "@type": "Organization", name: brand?.name ?? "Karnama", url: SITE_URL },
       offers: { "@type": "Offer", url, priceCurrency: "IRR", price, availability: "https://schema.org/InStock" },
     },
     { "@type": "BreadcrumbList", itemListElement: [

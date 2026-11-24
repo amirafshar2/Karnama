@@ -13,14 +13,14 @@ public static class CrmDefaults
 
     public static IReadOnlyList<(Guid Id, string Name, StageKind Kind, int Order)> Stages { get; } =
     [
-        (New, "جدید", StageKind.Open, 10),
-        (FirstCall, "تماس اول", StageKind.Open, 20),
-        (Meeting, "جلسه / مشاوره", StageKind.Open, 30),
-        (Proposal, "پیشنهاد قیمت", StageKind.Open, 40),
-        (Negotiation, "مذاکره", StageKind.Open, 50),
-        (Won, "بسته شد (برد)", StageKind.Won, 60),
-        (Lost, "از دست رفت", StageKind.Lost, 70),
+        (New, "Neu", StageKind.Open, 10),
+        (FirstCall, "Erstkontakt", StageKind.Open, 20),
+        (Meeting, "Termin / Beratung", StageKind.Open, 30),
+        (Proposal, "Angebot", StageKind.Open, 40),
+        (Negotiation, "Verhandlung", StageKind.Open, 50),
+        (Won, "Abgeschlossen (gewonnen)", StageKind.Won, 60),
+        (Lost, "Verloren", StageKind.Lost, 70),
     ];
 
-    public static IReadOnlyList<string> Sources { get; } = ["معرفی", "اینستاگرام", "تماس ورودی", "فرم سایت", "حضوری", "ربات"];
+    public static IReadOnlyList<string> Sources { get; } = ["Vorstellung", "Instagram", "Eingehender Anruf", "Website-Formular", "Vor Ort", "Bot"];
 }

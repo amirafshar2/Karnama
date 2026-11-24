@@ -18,6 +18,7 @@ import { mediaUrl } from "@/lib/config";
 import { useAuth } from "@/lib/auth";
 import { toLatinDigits, useI18n } from "@/lib/i18n/provider";
 import type { DemoAccount } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { faAuth } from "@/lib/i18n/fa-pages";
 import { registerTexts as registerPageTexts } from "@/lib/i18n/registry";
 
@@ -60,7 +61,7 @@ export function LoginScreen() {
         </header>
 
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
-          {step.kind === "phone" && <PhoneStep onSent={(s) => setStep(s)} />}
+          {step.kind === "phone" && !brand.demo && <PhoneStep onSent={(s) => setStep(s)} />}
           {step.kind === "code" && (
             <CodeStep
               step={step}
@@ -82,10 +83,10 @@ export function LoginScreen() {
           )}
           {(step.kind === "totp" || step.kind === "totp-setup") && <TotpStep step={step} onDone={finish} />}
 
-          {step.kind === "phone" && brand.demo && <DemoLogin onDone={finish} />}
+          {step.kind === "phone" && brand.demo && <DemoLogin onDone={finish} standalone />}
         </div>
 
-        <footer className="text-center text-sm text-muted-foreground">
+        <footer className="text-center text-sm text-muted-foreground" hidden={!!brand.demo}>
           <Link href="/setup" className="underline-offset-4 hover:underline">
             {t("login.setupLink")}
           </Link>
@@ -109,7 +110,7 @@ function PhoneStep({ onSent }: { onSent: (s: Step) => void }) {
     e.preventDefault();
     setError(null);
     const normalized = toLatinDigits(phone.trim()).replace(/[\s-]/g, "");
-    if (!/^(\+98|0098|98|0)?9\d{9}$/.test(normalized)) {
+    if (!/^(\+49|0049|49|0)?1[5-7]\d{8,9}$/.test(normalized.replace(/[()/]/g, ""))) {
       setError(new ApiError(422, "auth.invalidPhone", t("login.invalidPhone")));
       return;
     }
@@ -342,7 +343,7 @@ function TotpStep({ step, onDone }: { step: Extract<Step, { kind: "totp" | "totp
   );
 }
 
-function DemoLogin({ onDone }: { onDone: (s: Session) => Promise<void> }) {
+function DemoLogin({ onDone, standalone }: { onDone: (s: Session) => Promise<void>; standalone?: boolean }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -369,7 +370,7 @@ function DemoLogin({ onDone }: { onDone: (s: Session) => Promise<void> }) {
   });
   if (!data?.length)
     return waking ? (
-      <p className="mt-10 flex items-center gap-2 border-t pt-6 text-sm text-muted-foreground" role="status" data-testid="demo-waking">
+      <p className={cn("flex items-center gap-2 text-sm text-muted-foreground", !standalone && "mt-10 border-t pt-6")} role="status" data-testid="demo-waking">
         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
         {t("login.demoWaking")}
       </p>
@@ -388,10 +389,16 @@ function DemoLogin({ onDone }: { onDone: (s: Session) => Promise<void> }) {
   };
 
   return (
-    <section className="mt-10 border-t pt-6" aria-labelledby="demo-title">
-      <h2 id="demo-title" className="font-bold">
-        {t("login.demoTitle")}
-      </h2>
+    <section className={cn(!standalone && "mt-10 border-t pt-6")} aria-labelledby="demo-title">
+      {standalone ? (
+        <h1 id="demo-title" className="text-3xl font-extrabold">
+          {t("login.demoTitle")}
+        </h1>
+      ) : (
+        <h2 id="demo-title" className="font-bold">
+          {t("login.demoTitle")}
+        </h2>
+      )}
       <p className="mt-1 text-sm text-muted-foreground">{t("login.demoHint")}</p>
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {data.map((a) => {

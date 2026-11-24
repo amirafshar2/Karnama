@@ -65,22 +65,22 @@ public sealed class CredentialService(
 {
     public const int VisibleSeconds = 30;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private static Error NotFound => Error.NotFound("credentials.notFound", "حساب پیدا نشد.");
-    private static Error NotConfigured => Error.Conflict("credentials.vaultOff", "گاوصندوق رمز روی سرور تنظیم نشده است (کلید اصلی). با پشتیبانی فنی تماس بگیرید.");
+    private static Error NotFound => Error.NotFound("credentials.notFound", "Konto nicht gefunden.");
+    private static Error NotConfigured => Error.Conflict("credentials.vaultOff", "Der Passwort-Tresor ist auf dem Server nicht eingerichtet (Hauptschlüssel). Wenden Sie sich an den technischen Support.");
 
     // ---------- staff ----------
 
     public async Task<Result<IReadOnlyList<CredentialDto>>> ListAsync(Guid clientId, CancellationToken ct)
     {
         if (!me.Has(Permissions.CredentialsView, PermissionScope.All)) return Error.Forbidden();
-        if (!await db.Clients.AnyAsync(c => c.Id == clientId, ct)) return Error.NotFound("clients.notFound", "مشتری پیدا نشد.");
+        if (!await db.Clients.AnyAsync(c => c.Id == clientId, ct)) return Error.NotFound("clients.notFound", "Kunde nicht gefunden.");
         return Result.Success(await ListForAsync(clientId, ct));
     }
 
     public async Task<Result<CredentialDto>> CreateAsync(Guid clientId, UpsertCredentialRequest r, CancellationToken ct)
     {
         if (!me.Has(Permissions.CredentialsManage, PermissionScope.All)) return Error.Forbidden();
-        if (!await db.Clients.AnyAsync(c => c.Id == clientId, ct)) return Error.NotFound("clients.notFound", "مشتری پیدا نشد.");
+        if (!await db.Clients.AnyAsync(c => c.Id == clientId, ct)) return Error.NotFound("clients.notFound", "Kunde nicht gefunden.");
         return await CreateForAsync(clientId, r, CredentialSource.Staff, ct);
     }
 
@@ -108,7 +108,7 @@ public sealed class CredentialService(
         if (!me.Has(Permissions.CredentialsReveal, PermissionScope.All) || me.UserId is not { } uid) return Error.Forbidden();
         var cred = await db.ClientCredentials.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (cred is null) return NotFound;
-        if (!cred.HasSecret) return Error.Validation("credentials.noSecret", "برای این حساب رمزی ثبت نشده است.");
+        if (!cred.HasSecret) return Error.Validation("credentials.noSecret", "Für dieses Konto ist kein Passwort hinterlegt.");
 
         var user = await db.Users.AsNoTracking().FirstAsync(u => u.Id == uid, ct);
         var now = clock.GetUtcNow();
@@ -119,7 +119,7 @@ public sealed class CredentialService(
         var options = otpOptions.Value;
         // No resend timer here (several pages may be opened one after another), only a cap per 10 minutes.
         if (recent.Count >= options.MaxSendsPer10Minutes * 3)
-            return Error.TooMany("auth.otpLimit", "تعداد درخواست کد زیاد بود. ۱۰ دقیقه‌ی دیگر تلاش کنید.");
+            return Error.TooMany("auth.otpLimit", "Zu viele Code-Anfragen. Versuchen Sie es in 10 Minuten erneut.");
 
         var challengeId = Guid.CreateVersion7();
         var code = otp.GenerateCode();
@@ -161,18 +161,18 @@ public sealed class CredentialService(
         }
         var consumed = await db.OtpChallenges.Where(c => c.Id == challenge.Id && c.ConsumedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now), ct);
-        if (consumed == 0) return Error.Validation("auth.otpUsed", "این کد قبلاً استفاده شده است. کد جدید بگیرید.");
+        if (consumed == 0) return Error.Validation("auth.otpUsed", "Dieser Code wurde bereits verwendet. Fordern Sie einen neuen Code an.");
 
-        if (!cred.HasSecret) return Error.Validation("credentials.noSecret", "برای این حساب رمزی ثبت نشده است.");
+        if (!cred.HasSecret) return Error.Validation("credentials.noSecret", "Für dieses Konto ist kein Passwort hinterlegt.");
         var secret = OpenSecret(cred);
-        if (secret is null) return Error.Conflict("credentials.unreadable", "این رمز با کلید فعلی سرور باز نمی‌شود. از مشتری رمز تازه بگیرید.");
+        if (secret is null) return Error.Conflict("credentials.unreadable", "Dieses Passwort lässt sich mit dem aktuellen Serverschlüssel nicht entschlüsseln. Holen Sie sich vom Kunden ein neues Passwort.");
 
         cred.MarkRevealed(uid, now);
         audit.Add("credentials.revealed", nameof(ClientCredential), cred.Id.ToString(), new { cred.ClientId, cred.Handle });
         var who = await db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => u.DisplayName).FirstAsync(ct);
         var clientName = await db.Clients.AsNoTracking().Where(c => c.Id == cred.ClientId).Select(c => c.BusinessName).FirstAsync(ct);
         var owners = await OwnersAsync(ct);
-        await notifier.NotifyAsync(owners.Where(o => o != uid), "credentials.revealed", $"{who} رمز @{cred.Handle} ({clientName}) را دید",
+        await notifier.NotifyAsync(owners.Where(o => o != uid), "credentials.revealed", $"{who} hat das Passwort von @{cred.Handle} ({clientName}) angesehen",
             null, "/clients", true, $"reveal:{cred.Id:N}:{now.ToUnixTimeSeconds()}:{uid:N}", ct);
         await db.SaveChangesAsync(ct);
         return new RevealedSecretDto(secret.Password, secret.RecoveryEmail, secret.RecoveryPhone, secret.TwoFactorNote, VisibleSeconds);
@@ -186,7 +186,7 @@ public sealed class CredentialService(
     public async Task<Result<CredentialDto>> PortalCreateAsync(UpsertCredentialRequest r, CancellationToken ct)
     {
         if (await PortalClientAsync(ct) is not { } clientId) return Error.Forbidden();
-        if (await db.ClientCredentials.CountAsync(x => x.ClientId == clientId, ct) >= 20) return Error.Validation("credentials.tooMany", "حداکثر ۲۰ حساب.");
+        if (await db.ClientCredentials.CountAsync(x => x.ClientId == clientId, ct) >= 20) return Error.Validation("credentials.tooMany", "Höchstens 20 Konten.");
         var result = await CreateForAsync(clientId, r, CredentialSource.Client, ct);
         if (result.IsSuccess) await TellManagersAsync(clientId, result.Value!.Handle, ct);
         return result;
@@ -230,7 +230,7 @@ public sealed class CredentialService(
         if (await CheckPlatformAsync(r.PlatformId, ct) is { } bad) return bad;
         var handle = (r.Handle ?? "").Trim().TrimStart('@');
         if (await db.ClientCredentials.AnyAsync(x => x.ClientId == clientId && x.PlatformId == r.PlatformId && x.Handle == handle, ct))
-            return Error.Conflict("credentials.duplicate", "این حساب قبلاً ثبت شده است؛ همان را ویرایش کنید.");
+            return Error.Conflict("credentials.duplicate", "Dieses Konto ist bereits erfasst; bearbeiten Sie das vorhandene.");
         if (r.Secret is { IsEmpty: false } && !vault.IsConfigured) return NotConfigured;
 
         var now = clock.GetUtcNow();
@@ -247,7 +247,7 @@ public sealed class CredentialService(
     private async Task<Result<CredentialDto>> UpdateForAsync(ClientCredential c, UpsertCredentialRequest r, CredentialSource source, CancellationToken ct)
     {
         if (await CheckPlatformAsync(r.PlatformId, ct) is { } bad) return bad;
-        if (r.PlatformId != c.PlatformId) return Error.Validation("credentials.platformFixed", "شبکه‌ی یک حساب عوض نمی‌شود؛ حساب تازه بسازید.");
+        if (r.PlatformId != c.PlatformId) return Error.Validation("credentials.platformFixed", "Das Netzwerk eines Kontos lässt sich nicht ändern; legen Sie ein neues Konto an.");
         var touchesSecret = !r.RemoveSecret && r.Secret is { } input
                             && (input.Password ?? input.RecoveryEmail ?? input.RecoveryPhone ?? input.TwoFactorNote) is not null;
         if (touchesSecret && !vault.IsConfigured) return NotConfigured;
@@ -300,7 +300,7 @@ public sealed class CredentialService(
     }
 
     private async Task<Error?> CheckPlatformAsync(Guid platformId, CancellationToken ct) =>
-        await db.Platforms.AnyAsync(p => p.Id == platformId, ct) ? null : Error.Validation("credentials.platform", "شبکه‌ی اجتماعی را انتخاب کنید.");
+        await db.Platforms.AnyAsync(p => p.Id == platformId, ct) ? null : Error.Validation("credentials.platform", "Wählen Sie das soziale Netzwerk.");
 
     private async Task<Dictionary<Guid, string>> PlatformNamesAsync(CancellationToken ct) =>
         (await db.Platforms.IgnoreQueryFilters().AsNoTracking().ToListAsync(ct)).ToDictionary(p => p.Id, p => p.Name.Get(me.LanguageCode));
@@ -320,7 +320,7 @@ public sealed class CredentialService(
         var managers = await notifier.StaffWithAsync(Permissions.CredentialsManage, PermissionScope.All, ct);
         var name = await db.Clients.AsNoTracking().Where(c => c.Id == clientId).Select(c => c.BusinessName).FirstAsync(ct);
         var now = clock.GetUtcNow();
-        await notifier.NotifyAsync(managers, "credentials.clientChanged", $"{name} اطلاعات ورود @{handle} را به‌روز کرد", null, "/clients", false,
+        await notifier.NotifyAsync(managers, "credentials.clientChanged", $"{name} hat die Zugangsdaten von @{handle} aktualisiert", null, "/clients", false,
             $"cred-client:{clientId:N}:{handle}:{now.ToUnixTimeSeconds() / 600}", ct);
         await db.SaveChangesAsync(ct);
     }

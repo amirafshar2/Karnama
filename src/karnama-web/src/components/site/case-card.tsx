@@ -3,7 +3,7 @@ import type { CaseCard as C, T } from "@/lib/site";
 import { faNum } from "@/lib/site";
 
 /**
- * Portfolio card: the client's best photo full-bleed, the big number on top of it ("از ۱٬۲۰۰ به ۱۸٬۰۰۰ فالوور"),
+ * Portfolio card: the client's best photo full-bleed, the big number on top of it ("von 1.200 auf 18.000 Follower"),
  * and where the number came from underneath. Hover slowly zooms the photo (21st: @shadcnblockscom/gallery4 cards).
  */
 export function CaseCard({ c, t, delay = 0 }: { c: C; t: T; delay?: number }) {
@@ -30,7 +30,7 @@ export function CaseCard({ c, t, delay = 0 }: { c: C; t: T; delay?: number }) {
           <h3 className="mt-4 text-xl font-black">
             <Link href={`/cases/${c.slug}`} className="after:absolute after:inset-0">{c.businessName}</Link>
           </h3>
-          <p className="text-xs opacity-70">{[c.industry, c.city].filter(Boolean).join("، ")}</p>
+          <p className="text-xs opacity-70">{[c.industry, c.city].filter(Boolean).join(", ")}</p>
         </div>
       </div>
       {(c.summary || c.source || c.revenueGrowth !== null) && (

@@ -43,13 +43,13 @@ public sealed class PublishJob : AuditableEntity
     public Result Update(Guid platformId, string handle, PageManagement management, DateTimeOffset publishAt, string caption, IEnumerable<string> hashtags,
         IEnumerable<Guid> fileIds, DateTimeOffset now)
     {
-        if (Status is PublishStatus.Published or PublishStatus.Cancelled) return Error.Conflict("publish.closed", "این انتشار بسته شده است.");
+        if (Status is PublishStatus.Published or PublishStatus.Cancelled) return Error.Conflict("publish.closed", "Diese Veröffentlichung ist geschlossen.");
         caption = caption?.Trim() ?? "";
-        if (caption.Length > MaxCaption) return Error.Validation("publish.caption", "کپشن حداکثر ۲۲۰۰ کاراکتر است.");
-        if (string.IsNullOrWhiteSpace(handle)) return Error.Validation("publish.handle", "پیج را انتخاب کنید.");
+        if (caption.Length > MaxCaption) return Error.Validation("publish.caption", "Die Caption darf höchstens 2200 Zeichen haben.");
+        if (string.IsNullOrWhiteSpace(handle)) return Error.Validation("publish.handle", "Wählen Sie eine Seite.");
         var tags = hashtags.Select(h => h.Trim().TrimStart('#')).Where(h => h.Length is > 0 and <= 60 && !h.Any(char.IsWhiteSpace)).Distinct().Take(30).ToList();
         if (publishAt < now.AddMinutes(-5) && Status == PublishStatus.Scheduled && PublishAt != publishAt)
-            return Error.Validation("publish.past", "زمان انتشار نمی‌تواند در گذشته باشد.");
+            return Error.Validation("publish.past", "Die Veröffentlichungszeit darf nicht in der Vergangenheit liegen.");
         PlatformId = platformId; Handle = handle.Trim(); Management = management; Caption = caption; Hashtags = tags; FileIds = fileIds.Distinct().Take(20).ToList();
         if (PublishAt != publishAt) { PublishAt = publishAt; if (Status is PublishStatus.Due or PublishStatus.Overdue) { Status = PublishStatus.Scheduled; DueNotifiedAt = null; } }
         return Result.Success();
@@ -73,10 +73,10 @@ public sealed class PublishJob : AuditableEntity
 
     public Result MarkPublished(Guid by, bool byClient, string? url, DateTimeOffset now)
     {
-        if (Status is PublishStatus.Published or PublishStatus.Cancelled) return Error.Conflict("publish.closed", "این انتشار بسته شده است.");
-        if (byClient && Management != PageManagement.ClientManaged) return Error.Forbidden("publish.agencyPage", "این پیج را آژانس منتشر می‌کند.");
+        if (Status is PublishStatus.Published or PublishStatus.Cancelled) return Error.Conflict("publish.closed", "Diese Veröffentlichung ist geschlossen.");
+        if (byClient && Management != PageManagement.ClientManaged) return Error.Forbidden("publish.agencyPage", "Diese Seite veröffentlicht die Agentur.");
         if (url is { Length: > 0 } && !(Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == "https"))
-            return Error.Validation("publish.url", "لینک پست باید با https:// شروع شود.");
+            return Error.Validation("publish.url", "Der Link zum Post muss mit https:// beginnen.");
         Status = PublishStatus.Published;
         PublishedAt = now; PublishedBy = by; PublishedByClient = byClient; PostUrl = string.IsNullOrWhiteSpace(url) ? null : url;
         return Result.Success();
@@ -84,7 +84,7 @@ public sealed class PublishJob : AuditableEntity
 
     public Result Cancel()
     {
-        if (Status == PublishStatus.Published) return Error.Conflict("publish.done", "منتشرشده را نمی‌شود لغو کرد.");
+        if (Status == PublishStatus.Published) return Error.Conflict("publish.done", "Veröffentlichtes kann nicht storniert werden.");
         Status = PublishStatus.Cancelled;
         return Result.Success();
     }

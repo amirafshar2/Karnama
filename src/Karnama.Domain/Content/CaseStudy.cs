@@ -61,12 +61,12 @@ public sealed class CaseStudy : AuditableEntity
     public Result Update(Spec s)
     {
         var name = s.BusinessName?.Trim() ?? "";
-        if (name.Length is < 2 or > 80) return Error.Validation("cases.name", "نام کسب‌وکار بین ۲ تا ۸۰ کاراکتر.");
-        if (s.From is { } f && s.To is { } t && t < f) return Error.Validation("cases.period", "پایان همکاری قبل از شروع است.");
-        if (new[] { s.FollowersBefore, s.FollowersAfter, s.RevenueBefore, s.RevenueAfter }.Any(v => v is < 0)) return Error.Validation("cases.negative", "عدد منفی قبول نیست.");
-        if (s.VideoUrl is { Length: > 0 } v && !(Uri.TryCreate(v, UriKind.Absolute, out var u) && u.Scheme == "https")) return Error.Validation("cases.video", "لینک ویدیو باید با https:// شروع شود.");
+        if (name.Length is < 2 or > 80) return Error.Validation("cases.name", "Firmenname zwischen 2 und 80 Zeichen.");
+        if (s.From is { } f && s.To is { } t && t < f) return Error.Validation("cases.period", "Das Ende der Zusammenarbeit liegt vor dem Beginn.");
+        if (new[] { s.FollowersBefore, s.FollowersAfter, s.RevenueBefore, s.RevenueAfter }.Any(v => v is < 0)) return Error.Validation("cases.negative", "Negative Zahlen sind nicht erlaubt.");
+        if (s.VideoUrl is { Length: > 0 } v && !(Uri.TryCreate(v, UriKind.Absolute, out var u) && u.Scheme == "https")) return Error.Validation("cases.video", "Der Videolink muss mit https:// beginnen.");
         var slug = Common.Slug.From(string.IsNullOrWhiteSpace(s.Slug) ? name : s.Slug, 60);
-        if (slug.Length == 0) return Error.Validation("cases.slug", "نامک نامعتبر است.");
+        if (slug.Length == 0) return Error.Validation("cases.slug", "Der Slug ist ungültig.");
         BusinessName = name; Slug = slug; Industry = Clean(s.Industry, 60); City = Clean(s.City, 40); Logo = Clean(s.Logo, 100); Handle = Clean(s.Handle?.TrimStart('@'), 60);
         From = s.From; To = s.To; Services = s.Services.Select(x => x.Trim()).Where(x => x.Length is > 0 and <= 60).Distinct().Take(10).ToList();
         Summary = Clean(s.Summary, 600); FollowersBefore = s.FollowersBefore; FollowersAfter = s.FollowersAfter; RevenueBefore = s.RevenueBefore; RevenueAfter = s.RevenueAfter;
@@ -88,7 +88,7 @@ public sealed class CaseStudy : AuditableEntity
 
     public Result SetPublished(bool on)
     {
-        if (on && !CanPublish) return Error.Validation("cases.consent", "بدون رضایت کتبی مشتری (و فایل آن) نمونه‌کار منتشر نمی‌شود.");
+        if (on && !CanPublish) return Error.Validation("cases.consent", "Ohne schriftliche Einwilligung des Kunden (und deren Datei) wird keine Referenz veröffentlicht.");
         Published = on;
         return Result.Success();
     }

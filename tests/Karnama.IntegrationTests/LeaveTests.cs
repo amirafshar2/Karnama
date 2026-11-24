@@ -50,9 +50,9 @@ public sealed class LeaveTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         var now = _f.Clock.GetUtcNow();
         (await writer.PostAsJsonAsync("/api/v1/leave/requests", new { leaveTypeId = sick, hourly = true, from = now.AddDays(5), to = now.AddDays(5).AddHours(2), reason = "د" }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);   // reason too short
-        var req = await Ok(await writer.PostAsJsonAsync("/api/v1/leave/requests", new { leaveTypeId = annual, hourly = true, from = now.AddHours(-1), to = now.AddHours(2), reason = "کار بانکی" }));
+        var req = await Ok(await writer.PostAsJsonAsync("/api/v1/leave/requests", new { leaveTypeId = annual, hourly = true, from = now.AddHours(-1), to = now.AddHours(2), reason = "Bankangelegenheit" }));
         req.GetProperty("status").GetString().Should().Be("pending");
-        (await writer.PostAsJsonAsync("/api/v1/leave/requests", new { leaveTypeId = annual, hourly = true, from = now, to = now.AddHours(1), reason = "تکراری" }))
+        (await writer.PostAsJsonAsync("/api/v1/leave/requests", new { leaveTypeId = annual, hourly = true, from = now, to = now.AddHours(1), reason = "Doppelt" }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await writer.PostAsJsonAsync($"/api/v1/leave/requests/{req.GetProperty("id").GetGuid()}/decide", new { approve = true })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var decided = await Ok(await admin.PostAsJsonAsync($"/api/v1/leave/requests/{req.GetProperty("id").GetGuid()}/decide", new { approve = true }));
@@ -69,7 +69,7 @@ public sealed class LeaveTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
 
         // The editor writes the reason; can't decide it himself; the manager excuses it.
         var absId = editorAbs.GetProperty("id").GetGuid();
-        (await Ok(await editor.PostAsJsonAsync($"/api/v1/leave/absences/{absId}/reason", new { reason = "ترافیک و تصادف در مسیر" })))
+        (await Ok(await editor.PostAsJsonAsync($"/api/v1/leave/absences/{absId}/reason", new { reason = "Stau und Unfall auf dem Weg" })))
             .GetProperty("status").GetString().Should().Be("reasonSubmitted");
         (await editor.PostAsJsonAsync($"/api/v1/leave/absences/{absId}/decide", new { approve = true })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 

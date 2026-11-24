@@ -27,7 +27,7 @@ internal static class RateLimits
             await ctx.HttpContext.Response.WriteAsJsonAsync(new
             {
                 status = 429,
-                title = "درخواست‌ها زیاد بود. کمی صبر کنید و دوباره تلاش کنید.",
+                title = "Zu viele Anfragen. Warten Sie kurz und versuchen Sie es erneut.",
                 code = "errors.rateLimited",
             }, ct);
         };

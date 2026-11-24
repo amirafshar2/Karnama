@@ -54,14 +54,14 @@ public sealed class ServiceTypeService(IAppDbContext db, ICurrentUser me, IAudit
     public async Task<Result<ServiceFormDto>> FormAsync(Guid id, CancellationToken ct)
     {
         var s = await db.ServiceTypes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
-        if (s is null) return Error.NotFound("services.notFound", "خدمت پیدا نشد.");
+        if (s is null) return Error.NotFound("services.notFound", "Leistung nicht gefunden.");
         return new ServiceFormDto(s.Id, s.Name.Get(me.LanguageCode), s.FormVersion, FormSchema.Parse(s.FormSchemaJson));
     }
 
         public async Task<Result<ServiceTypeDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var s = await db.ServiceTypes.IgnoreQueryFilters().AsNoTracking().Include(x => x.Stages).FirstOrDefaultAsync(x => x.Id == id, ct);
-        return s is null ? Error.NotFound("services.notFound", "خدمت پیدا نشد.") : ToDto(s);
+        return s is null ? Error.NotFound("services.notFound", "Leistung nicht gefunden.") : ToDto(s);
     }
 
     public async Task<Result<ServiceTypeDto>> CreateAsync(UpsertServiceTypeRequest r, CancellationToken ct)
@@ -80,8 +80,8 @@ public sealed class ServiceTypeService(IAppDbContext db, ICurrentUser me, IAudit
     public async Task<Result<ServiceTypeDto>> UpdateAsync(Guid id, UpsertServiceTypeRequest r, CancellationToken ct)
     {
         var s = await db.ServiceTypes.Include(x => x.Stages).FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (s is null) return Error.NotFound("services.notFound", "خدمت پیدا نشد.");
-        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        if (s is null) return Error.NotFound("services.notFound", "Leistung nicht gefunden.");
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "Die Datensatzversion fehlt; laden Sie die Seite neu.");
         db.SetOriginalVersion(s, v);
         var u = s.Update(new LocalizedText(r.Name), r.Description, r.Icon, r.BasePrice, r.ConsumesQuota, r.Weight, r.SortOrder, r.IsActive);
         if (u.IsFailure) return u.Error!;
@@ -107,14 +107,14 @@ public sealed class ServiceTypeService(IAppDbContext db, ICurrentUser me, IAudit
 
         var roleIds = r.Stages.Where(x => x.RoleId is not null).Select(x => x.RoleId!.Value).Distinct().ToList();
         if (roleIds.Count > 0 && await db.Roles.CountAsync(x => roleIds.Contains(x.Id), ct) != roleIds.Count)
-            return Error.Validation("services.unknownRole", "نقش انتخاب‌شده برای یکی از مراحل وجود ندارد.");
+            return Error.Validation("services.unknownRole", "Die für einen der Schritte gewählte Rolle existiert nicht.");
         return s.SetStages(r.Stages.Select(x => new StageSpec(x.Id, new LocalizedText(x.Name), x.RoleId, x.EstimatedMinutes, x.SlaHours, x.NeedsAdminReview, x.NeedsClientApproval)).ToList());
     }
 
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
     {
         var s = await db.ServiceTypes.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (s is null) return Error.NotFound("services.notFound", "خدمت پیدا نشد.");
+        if (s is null) return Error.NotFound("services.notFound", "Leistung nicht gefunden.");
         s.Delete(me.UserId, clock.GetUtcNow());
         audit.Add("services.deleted", nameof(ServiceType), id.ToString());
         await db.SaveChangesAsync(ct);
@@ -124,7 +124,7 @@ public sealed class ServiceTypeService(IAppDbContext db, ICurrentUser me, IAudit
     public async Task<Result<ServiceTypeDto>> RestoreAsync(Guid id, CancellationToken ct)
     {
         var s = await db.ServiceTypes.IgnoreQueryFilters().Include(x => x.Stages).FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (s is null) return Error.NotFound("services.notFound", "خدمت پیدا نشد.");
+        if (s is null) return Error.NotFound("services.notFound", "Leistung nicht gefunden.");
         s.Restore();
         audit.Add("services.restored", nameof(ServiceType), id.ToString());
         await db.SaveChangesAsync(ct);
@@ -134,9 +134,9 @@ public sealed class ServiceTypeService(IAppDbContext db, ICurrentUser me, IAudit
     public async Task<byte[]> ExportAsync(CancellationToken ct)
     {
         var rows = await db.ServiceTypes.AsNoTracking().Include(s => s.Stages).OrderBy(s => s.SortOrder).ToListAsync(ct);
-        return excel.Export("Services", ["نام", "قیمت پایه (ریال)", "کم از پکیج", "وزن", "مراحل", "تعداد فیلد فرم", "فعال"],
-            rows.Select(s => (IReadOnlyList<object?>)[s.Name.Get(me.LanguageCode), s.BasePrice, s.ConsumesQuota ? "بله" : "نه", s.Weight,
-                string.Join(" ← ", s.Stages.OrderBy(x => x.Order).Select(x => x.Name.Get(me.LanguageCode))), FormSchema.Parse(s.FormSchemaJson).Count, s.IsActive ? "بله" : "نه"]));
+        return excel.Export("Services", ["Name", "Grundpreis (Euro)", "Weniger als im Paket", "Gewicht", "Schritte", "Anzahl Formularfelder", "Aktiv"],
+            rows.Select(s => (IReadOnlyList<object?>)[s.Name.Get(me.LanguageCode), s.BasePrice, s.ConsumesQuota ? "Ja" : "Nein", s.Weight,
+                string.Join(" ← ", s.Stages.OrderBy(x => x.Order).Select(x => x.Name.Get(me.LanguageCode))), FormSchema.Parse(s.FormSchemaJson).Count, s.IsActive ? "Ja" : "Nein"]));
     }
 
     private ServiceTypeDto ToDto(ServiceType s) => new(

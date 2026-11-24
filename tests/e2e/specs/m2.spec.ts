@@ -11,22 +11,22 @@ test.describe("M2: clients, packages, services, users, platforms", () => {
     await expect(page.getByTestId("onboarding")).toBeVisible();
     await shot(page, info, "m2-dashboard-onboarding");
 
-    // Services: seeded list, add a stage + form field to "ریلز"
+    // Services: seeded list, add a stage + form field to "Reels"
     await page.goto(`${DEMO_URL}/services`);
     const services = rowsOf(page, "services", mobile);
-    await expect(services.filter({ hasText: "ریلز" }).first()).toBeVisible();
+    await expect(services.filter({ hasText: "Reels" }).first()).toBeVisible();
     await shot(page, info, "m2-services");
-    await services.filter({ hasText: "ریلز" }).first().getByRole("button", { name: "ویرایش" }).click();
+    await services.filter({ hasText: "Reels" }).first().getByRole("button", { name: "Bearbeiten" }).click();
     await expect(page.getByTestId("stage-0")).toBeVisible();
     await shot(page, info, "m2-service-editor");
-    await page.getByRole("button", { name: "انصراف" }).click();
+    await page.getByRole("button", { name: "Abbrechen" }).click();
 
     // Packages: create one with a quota
     await page.goto(`${DEMO_URL}/packages`);
     const packages = rowsOf(page, "packages", mobile);
-    await expect(packages.filter({ hasText: "طلایی" }).first()).toBeVisible();
+    await expect(packages.filter({ hasText: "Gold" }).first()).toBeVisible();
     await shot(page, info, "m2-packages");
-    const pkgName = `پکیج تست ${run}`;
+    const pkgName = `Test-Paket ${run}`;
     await page.getByTestId("packages-new").click();
     await page.getByTestId("package-name").fill(pkgName);
     await page.getByTestId("package-sku").fill(`T-${run}`.slice(0, 30));
@@ -36,40 +36,40 @@ test.describe("M2: clients, packages, services, users, platforms", () => {
     await page.getByTestId("quota-0").locator("select").selectOption({ index: 1 });
     await shot(page, info, "m2-package-form");
     await page.getByTestId("package-editor-save").click();
-    await expect(page.getByText("ساخته شد.")).toBeVisible();
+    await expect(page.getByText("Angelegt.")).toBeVisible();
     const pkgRow = packages.filter({ hasText: pkgName });
     await expect(pkgRow).toContainText("۱۲٬۰۰۰٬۰۰۰");
 
     // Clients: create, then assign the new package
     await page.goto(`${DEMO_URL}/clients`);
     const clients = rowsOf(page, "clients", mobile);
-    await expect(clients.filter({ hasText: "کافه نمونه" }).first()).toBeVisible();
+    await expect(clients.filter({ hasText: "Café Beispiel" }).first()).toBeVisible();
     await shot(page, info, "m2-clients");
-    const clientName = `مشتری تست ${run}`;
+    const clientName = `Test-Kunde ${run}`;
     await page.getByTestId("clients-new").click();
     await page.getByTestId("client-business").fill(clientName);
-    await page.getByTestId("client-mobile").fill("09171234567");
+    await page.getByTestId("client-mobile").fill("015171234567");
     await page.getByTestId("account-add").click();
     await page.getByTestId("account-0").getByRole("textbox").fill("test_page");
     await page.getByTestId("client-editor-save").click();
-    await expect(page.getByText("ساخته شد.")).toBeVisible();
+    await expect(page.getByText("Angelegt.")).toBeVisible();
     const clientRow = clients.filter({ hasText: clientName });
-    await expect(clientRow).toContainText("بدون پکیج فعال");
-    await clientRow.getByRole("button", { name: "ویرایش" }).click();
+    await expect(clientRow).toContainText("Ohne aktives Paket");
+    await clientRow.getByRole("button", { name: "Bearbeiten" }).click();
     const option = page.getByTestId("assign-package").locator("option", { hasText: pkgName });
     await page.getByTestId("assign-package").selectOption((await option.getAttribute("value"))!);
     await page.getByTestId("assign-submit").click();
-    await expect(page.getByText("پکیج تخصیص داده شد.")).toBeVisible();
+    await expect(page.getByText("Paket zugewiesen.")).toBeVisible();
     await expect(page.getByTestId("client-packages")).toContainText(pkgName);
     await shot(page, info, "m2-client-package");
-    await page.getByRole("button", { name: "انصراف" }).click();
+    await page.getByRole("button", { name: "Abbrechen" }).click();
     await expect(clientRow).toContainText(pkgName);
 
     // Delete + undo
-    await clientRow.getByRole("button", { name: "حذف" }).click();
+    await clientRow.getByRole("button", { name: "Löschen" }).click();
     await page.getByTestId("clients-confirm-delete").filter({ visible: true }).click();
     await expect(clientRow).toHaveCount(0);
-    await page.getByRole("button", { name: "برگرداندن" }).click();
+    await page.getByRole("button", { name: "Wiederherstellen" }).click();
     await expect(clientRow).toBeVisible();
 
     // Users
@@ -77,10 +77,10 @@ test.describe("M2: clients, packages, services, users, platforms", () => {
     await expect(rowsOf(page, "users", mobile).first()).toBeVisible();
     await shot(page, info, "m2-users");
     await page.getByTestId("users-new").click();
-    await page.getByTestId("user-name").fill(`تدوینگر ${run}`);
+    await page.getByTestId("user-name").fill(`Cutter ${run}`);
     await page.getByTestId("user-phone").fill(`0919${String(Date.now()).slice(-7)}`);
     await shot(page, info, "m2-user-form");
-    await page.getByRole("button", { name: "انصراف" }).click();
+    await page.getByRole("button", { name: "Abbrechen" }).click();
 
     // Platforms
     await page.goto(`${DEMO_URL}/settings/platforms`);

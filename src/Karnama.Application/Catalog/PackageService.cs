@@ -42,15 +42,15 @@ public sealed class UpsertPackageValidator : AbstractValidator<UpsertPackageRequ
 {
     public UpsertPackageValidator()
     {
-        RuleFor(x => x.Name).Must(n => n is not null && n.Values.Any(v => !string.IsNullOrWhiteSpace(v))).WithMessage("نام پکیج الزامی است.");
-        RuleFor(x => x.Slug).MaximumLength(80).WithMessage("نامک حداکثر ۸۰ کاراکتر است (خالی = خودکار از نام).");
-        RuleFor(x => x.Sku).NotEmpty().MaximumLength(30).WithMessage("کد پکیج الزامی است.");
-        RuleFor(x => x.Price).GreaterThanOrEqualTo(0).WithMessage("قیمت نمی‌تواند منفی باشد.");
-        RuleFor(x => x.ValidityDays).InclusiveBetween(1, 3650).WithMessage("مدت اعتبار باید بین ۱ تا ۳۶۵۰ روز باشد.");
-        RuleFor(x => x.DescriptionMarkdown).MaximumLength(20_000).WithMessage("توضیحات حداکثر ۲۰ هزار کاراکتر است.");
-        RuleFor(x => x.SeoTitle).MaximumLength(70).WithMessage("عنوان سئو حداکثر ۷۰ کاراکتر است.");
-        RuleFor(x => x.SeoDescription).MaximumLength(170).WithMessage("توضیح سئو حداکثر ۱۷۰ کاراکتر است.");
-        RuleFor(x => x.Quotas).NotNull().WithMessage("سهمیه‌ها را مشخص کنید (می‌تواند خالی باشد).");
+        RuleFor(x => x.Name).Must(n => n is not null && n.Values.Any(v => !string.IsNullOrWhiteSpace(v))).WithMessage("Der Paketname ist Pflicht.");
+        RuleFor(x => x.Slug).MaximumLength(80).WithMessage("Der Slug darf höchstens 80 Zeichen haben (leer = automatisch aus dem Namen).");
+        RuleFor(x => x.Sku).NotEmpty().MaximumLength(30).WithMessage("Der Paketcode ist Pflicht.");
+        RuleFor(x => x.Price).GreaterThanOrEqualTo(0).WithMessage("Der Preis darf nicht negativ sein.");
+        RuleFor(x => x.ValidityDays).InclusiveBetween(1, 3650).WithMessage("Die Gültigkeitsdauer muss zwischen 1 und 3650 Tagen liegen.");
+        RuleFor(x => x.DescriptionMarkdown).MaximumLength(20_000).WithMessage("Die Beschreibung darf höchstens 20.000 Zeichen haben.");
+        RuleFor(x => x.SeoTitle).MaximumLength(70).WithMessage("Der SEO-Titel darf höchstens 70 Zeichen haben.");
+        RuleFor(x => x.SeoDescription).MaximumLength(170).WithMessage("Die SEO-Beschreibung darf höchstens 170 Zeichen haben.");
+        RuleFor(x => x.Quotas).NotNull().WithMessage("Legen Sie die Kontingente fest (dürfen leer sein).");
         RuleFor(x => x.Period).IsInEnum();
         RuleFor(x => x.Status).IsInEnum();
         RuleFor(x => x.Access).IsInEnum();
@@ -88,7 +88,7 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
     public async Task<Result<PackageDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var p = await db.Packages.IgnoreQueryFilters().AsNoTracking().Include(x => x.Quotas).FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("packages.notFound", "پکیج پیدا نشد.");
+        if (p is null) return Error.NotFound("packages.notFound", "Paket nicht gefunden.");
         return await ToDtoAsync(p, ct);
     }
 
@@ -108,8 +108,8 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
     public async Task<Result<PackageDto>> UpdateAsync(Guid id, UpsertPackageRequest r, CancellationToken ct)
     {
         var p = await db.Packages.Include(x => x.Quotas).FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("packages.notFound", "پکیج پیدا نشد.");
-        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        if (p is null) return Error.NotFound("packages.notFound", "Paket nicht gefunden.");
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "Die Datensatzversion fehlt; laden Sie die Seite neu.");
         db.SetOriginalVersion(p, v);
         var check = await CheckReferencesAsync(r, id, ct);
         if (check.IsFailure) return check.Error!;
@@ -127,7 +127,7 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
     public async Task<Result<PackageDto>> SetCoverAsync(Guid id, Stream content, long length, CancellationToken ct)
     {
         var p = await db.Packages.Include(x => x.Quotas).FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("packages.notFound", "پکیج پیدا نشد.");
+        if (p is null) return Error.NotFound("packages.notFound", "Paket nicht gefunden.");
         var saved = await media.SaveImageAsync(content, length, "packages", ct);
         if (saved.IsFailure) return saved.Error!;
         p.SetCover(saved.Value);
@@ -140,7 +140,7 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
     {
         var p = await db.Packages.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("packages.notFound", "پکیج پیدا نشد.");
+        if (p is null) return Error.NotFound("packages.notFound", "Paket nicht gefunden.");
         p.Delete(me.UserId, clock.GetUtcNow());
         audit.Add("packages.deleted", nameof(Package), id.ToString());
         await db.SaveChangesAsync(ct);
@@ -151,9 +151,9 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
     public async Task<Result<PackageDto>> RestoreAsync(Guid id, CancellationToken ct)
     {
         var p = await db.Packages.IgnoreQueryFilters().Include(x => x.Quotas).FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("packages.notFound", "پکیج پیدا نشد.");
+        if (p is null) return Error.NotFound("packages.notFound", "Paket nicht gefunden.");
         if (await db.Packages.AnyAsync(x => x.Slug == p.Slug || x.Sku == p.Sku, ct))
-            return Error.Conflict("packages.duplicate", "پکیج دیگری با همین نامک یا کد ساخته شده است.");
+            return Error.Conflict("packages.duplicate", "Es gibt bereits ein anderes Paket mit diesem Slug oder Code.");
         p.Restore();
         audit.Add("packages.restored", nameof(Package), id.ToString());
         await db.SaveChangesAsync(ct);
@@ -166,23 +166,23 @@ public sealed class PackageService(IAppDbContext db, ICurrentUser me, IAuditWrit
         var rows = await db.Packages.AsNoTracking().Include(p => p.Quotas).OrderBy(p => p.SortOrder).ToListAsync(ct);
         var names = await ServiceNamesAsync(ct);
         var active = await ActiveCountsAsync(rows.Select(r => r.Id).ToList(), ct);
-        return excel.Export("Packages", ["نام", "کد", "دسته", "قیمت (ریال)", "قیمت ویژه (ریال)", "دوره", "اعتبار (روز)", "سهمیه‌ها", "وضعیت", "مشتری فعال", "ظرفیت"],
+        return excel.Export("Packages", ["Name", "Code", "Kategorie", "Preis (Euro)", "Sonderpreis (Euro)", "Zeitraum", "Gültigkeit (Tage)", "Kontingente", "Status", "Aktive Kunden", "Kapazität"],
             rows.Select(p => (IReadOnlyList<object?>)[p.Name.Get(me.LanguageCode), p.Sku, p.Category, p.Price, p.SpecialPrice, p.Period.ToString(), p.ValidityDays,
-                string.Join("، ", p.Quotas.Select(q => $"{names.GetValueOrDefault(q.ServiceTypeId)} ×{q.Count}")), p.Status.ToString(), active.GetValueOrDefault(p.Id), p.Capacity]));
+                string.Join(", ", p.Quotas.Select(q => $"{names.GetValueOrDefault(q.ServiceTypeId)} ×{q.Count}")), p.Status.ToString(), active.GetValueOrDefault(p.Id), p.Capacity]));
     }
 
     private async Task<Result> CheckReferencesAsync(UpsertPackageRequest r, Guid? id, CancellationToken ct)
     {
-        var slug = Slug.From(string.IsNullOrWhiteSpace(r.Slug) ? new LocalizedText(r.Name).Get("fa") : r.Slug);
+        var slug = Slug.From(string.IsNullOrWhiteSpace(r.Slug) ? new LocalizedText(r.Name).Get("de") : r.Slug);
         var sku = r.Sku.Trim().ToUpperInvariant();
-        if (await db.Packages.AnyAsync(p => p.Slug == slug && p.Id != id, ct)) return Error.Conflict("packages.slugTaken", "این نامک برای پکیج دیگری است.");
-        if (await db.Packages.AnyAsync(p => p.Sku == sku && p.Id != id, ct)) return Error.Conflict("packages.skuTaken", "این کد برای پکیج دیگری است.");
+        if (await db.Packages.AnyAsync(p => p.Slug == slug && p.Id != id, ct)) return Error.Conflict("packages.slugTaken", "Dieser Slug gehört zu einem anderen Paket.");
+        if (await db.Packages.AnyAsync(p => p.Sku == sku && p.Id != id, ct)) return Error.Conflict("packages.skuTaken", "Dieser Code gehört zu einem anderen Paket.");
         var serviceIds = r.Quotas.Select(q => q.ServiceTypeId).Distinct().ToList();
         if (serviceIds.Count > 0 && await db.ServiceTypes.CountAsync(s => serviceIds.Contains(s.Id), ct) != serviceIds.Count)
-            return Error.Validation("packages.unknownService", "یکی از خدمت‌های سهمیه وجود ندارد.");
+            return Error.Validation("packages.unknownService", "Eine der Leistungen im Kontingent existiert nicht.");
         var platformIds = (r.PlatformIds ?? []).Distinct().ToList();
         if (platformIds.Count > 0 && await db.Platforms.CountAsync(p => platformIds.Contains(p.Id), ct) != platformIds.Count)
-            return Error.Validation("packages.unknownPlatform", "یکی از شبکه‌ها وجود ندارد.");
+            return Error.Validation("packages.unknownPlatform", "Eines der Netzwerke existiert nicht.");
         return Result.Success();
     }
 

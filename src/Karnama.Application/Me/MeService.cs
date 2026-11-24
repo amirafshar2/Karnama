@@ -18,9 +18,9 @@ public sealed class MeService(IAppDbContext db, ICurrentUser me)
 {
     public async Task<Result<MeDto>> GetAsync(CancellationToken ct)
     {
-        if (me.UserId is not { } id) return Error.Unauthorized("auth.required", "اول وارد شوید.");
+        if (me.UserId is not { } id) return Error.Unauthorized("auth.required", "Bitte zuerst anmelden.");
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id && u.IsActive, ct);
-        if (user is null) return Error.Unauthorized("auth.required", "اول وارد شوید.");
+        if (user is null) return Error.Unauthorized("auth.required", "Bitte zuerst anmelden.");
 
         var roleNames = await (from ur in db.UserRoles.AsNoTracking()
                                join r in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
@@ -35,14 +35,14 @@ public sealed class MeService(IAppDbContext db, ICurrentUser me)
 
     public async Task<Result<MeDto>> UpdateAsync(UpdateMeRequest request, CancellationToken ct)
     {
-        if (me.UserId is not { } id) return Error.Unauthorized("auth.required", "اول وارد شوید.");
+        if (me.UserId is not { } id) return Error.Unauthorized("auth.required", "Bitte zuerst anmelden.");
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id && u.IsActive, ct);
-        if (user is null) return Error.Unauthorized("auth.required", "اول وارد شوید.");
+        if (user is null) return Error.Unauthorized("auth.required", "Bitte zuerst anmelden.");
 
         if (request.LanguageCode is { } lang)
         {
             var exists = await db.Languages.AnyAsync(l => l.Code == lang && l.IsActive, ct);
-            if (!exists) return Error.Validation("users.invalidLanguage", "این زبان فعال نیست.");
+            if (!exists) return Error.Validation("users.invalidLanguage", "Diese Sprache ist nicht aktiv.");
             var r = user.ChangeLanguage(lang);
             if (r.IsFailure) return r.Error!;
         }

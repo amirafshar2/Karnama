@@ -60,7 +60,7 @@ export function PortalProfile() {
     <div className="space-y-6" data-testid="portal-profile">
       <section className="rounded-xl border bg-card p-4 sm:p-5">
         <h2 className="text-xl font-extrabold">{p.businessName}</h2>
-        <p className="text-sm text-muted-foreground">{[p.industry, p.city, p.contactName].filter(Boolean).join("، ")}</p>
+        <p className="text-sm text-muted-foreground">{[p.industry, p.city, p.contactName].filter(Boolean).join(", ")}</p>
         {p.accounts.length > 0 && (
           <ul className="mt-3 flex flex-wrap gap-2 text-sm">
             {p.accounts.map((a) => (

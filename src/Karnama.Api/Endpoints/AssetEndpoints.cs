@@ -26,7 +26,7 @@ internal static class AssetEndpoints
         g.MapPost("/{id:guid}/photos", async (Guid id, IFormFile file, string? stage, Guid? assignmentId, AssetService svc, HttpContext http, CancellationToken ct) =>
         {
             if (CatalogEndpoints.E<AssetPhotoStage>(stage) is not { } photoStage)
-                return Result.Failure(Error.Validation("assets.photoStage", "مرحله‌ی عکس معتبر نیست (profile، handOver یا return).")).ToHttp(http);
+                return Result.Failure(Error.Validation("assets.photoStage", "Der Fotoschritt ist ungültig (profile, handOver oder return).")).ToHttp(http);
             await using var s = file.OpenReadStream();
             return (await svc.AddPhotoAsync(id, photoStage, assignmentId, s, file.Length, ct)).ToHttp(http);
         }).DisableAntiforgery().WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(AssetService.MaxPhotoBytes + 64 * 1024));

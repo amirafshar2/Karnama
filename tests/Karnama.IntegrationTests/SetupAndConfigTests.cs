@@ -16,17 +16,17 @@ public sealed class EmptyInstallTests(EmptyAppFixture app) : IClassFixture<Empty
         (await c.PostAsJsonAsync("/api/v1/auth/demo", new { role = "admin" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await (await c.GetAsync("/api/v1/setup/status")).JsonAsync()).GetProperty("needsSetup").GetBoolean().Should().BeTrue();
 
-        (await c.PostAsJsonAsync("/api/v1/setup", new { token = "wrong-token", phone = "09121234567", displayName = "x" }))
+        (await c.PostAsJsonAsync("/api/v1/setup", new { token = "wrong-token", phone = "015121234567", displayName = "x" }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         // Parallel first-run attempts: exactly one wins.
         var attempts = await Task.WhenAll(Enumerable.Range(0, 4).Select(i => _f.CreateClient().PostAsJsonAsync("/api/v1/setup",
-            new { token = KarnamaFactory.SetupToken, phone = $"0912123456{i}", displayName = "مالک", brandName = "آژانس تست" })));
+            new { token = KarnamaFactory.SetupToken, phone = $"0151123456{i}", displayName = "Inhaber", brandName = "Test-Agentur" })));
         attempts.Count(r => r.StatusCode == HttpStatusCode.NoContent).Should().Be(1);
         attempts.Where(r => r.StatusCode != HttpStatusCode.NoContent).Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Conflict);
 
         (await (await c.GetAsync("/api/v1/setup/status")).JsonAsync()).GetProperty("needsSetup").GetBoolean().Should().BeFalse();
-        (await (await c.GetAsync("/api/v1/public/brand")).JsonAsync()).GetProperty("name").GetString().Should().Be("آژانس تست");
+        (await (await c.GetAsync("/api/v1/public/brand")).JsonAsync()).GetProperty("name").GetString().Should().Be("Test-Agentur");
     }
 
     [Fact]

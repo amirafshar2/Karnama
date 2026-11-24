@@ -5,7 +5,7 @@ import { inflateRawSync } from "node:zlib";
 import { qa, pick, key, check, eq, API } from "../lib.mjs";
 
 export const id = "S10";
-export const title = "گزارش بازه‌ای، خروجی Excel، امتیازها و «چرا این امتیاز»، تأخیر مشتری بی‌اثر";
+export const title = "Zeitraumbericht, Excel-Export, Punkte und „Warum diese Punktzahl“, Kundenverzug ohne Einfluss";
 
 // People (kept apart from S02): lead[0] = owner (reports.view/export, scores.view all)
 //   office[11] = X (photographer: two single posts) · office[13] = Y (influencer stage 1) · office[14] = Z (influencer stage 2)
@@ -64,15 +64,15 @@ export async function run(rec, { crowd }) {
   const c7 = await login(pick(crowd, "client", 1, 7)[0]);
   const s = {};
 
-  await rec.step("2.10.a", "داده‌ی طراحی‌شده: دو پست تکی برای X، کمپین دومرحله‌ای برای Y و Z", async () => {
+  await rec.step("2.10.a", "Vorbereitete Daten: zwei Einzelposts für X, zweistufige Kampagne für Y und Z", async () => {
     for (const [a, k] of [[X, "X"], [Y, "Y"], [Z, "Z"]]) s[k] = (await a.get("/api/v1/me")).id;
     const services = Object.fromEntries((await owner.get("/api/v1/services/options")).map((o) => [o.name, o.id]));
     const clientOf = async (c) => (await owner.get("/api/v1/clients?q=" + encodeURIComponent((await c.get("/api/v1/portal/home")).clientName))).items[0].id;
     s.c6 = await clientOf(c6); s.c7 = await clientOf(c7);
     const order = (clientId, svc, t) => owner.post("/api/v1/orders", { clientId, serviceTypeId: services[svc], title: t, priority: "normal", autoAccept: true, answers: { topic: t } });
-    s.o1 = await order(s.c6, "پست تکی", "S10 X1 — مشتری دیر تأیید می‌کند");
-    s.o2 = await order(s.c6, "پست تکی", "S10 X2 — کارگر واقعاً دیر تحویل می‌دهد");
-    s.o3 = await order(s.c7, "کمپین اینفلوئنسر", "S10 کمپین — مرحله‌ی ۱ منتظر مشتری");
+    s.o1 = await order(s.c6, "Einzelpost", "S10 X1 – Kunde gibt spät frei");
+    s.o2 = await order(s.c6, "Einzelpost", "S10 X2 – Mitarbeiter liefert wirklich zu spät");
+    s.o3 = await order(s.c7, "Influencer-Kampagne", "S10 Kampagne – Schritt 1 wartet auf den Kunden");
     s.x1 = s.o1.stages[0].id; s.x2 = s.o2.stages[0].id;
     [s.y1, s.z2] = s.o3.stages.sort((a, b) => a.order - b.order).map((x) => x.id);
     eq(s.o3.stages.length, 2, "influencer campaign has two stages");
@@ -82,7 +82,7 @@ export async function run(rec, { crowd }) {
     await assign(owner, s.x1, s.X); await assign(owner, s.x2, s.X); await assign(owner, s.y1, s.Y); await assign(owner, s.z2, s.Z);
   });
 
-  await rec.step("2.10.b", "روز ۱: X کار ۱ را با تایمر انجام و زود تحویل می‌دهد؛ Y مرحله‌ی ۱ را زود تحویل می‌دهد", async () => {
+  await rec.step("2.10.b", "Tag 1: X erledigt Aufgabe 1 mit Timer und liefert früh; Y liefert Schritt 1 früh", async () => {
     await X.post("/api/v1/attendance/clock-in", { idempotencyKey: key() });
     await move(X, s.x1, "inProgress");
     await X.post(`/api/v1/attendance/timer/${s.x1}`);
@@ -99,7 +99,7 @@ export async function run(rec, { crowd }) {
     eq((await cardOf(owner, s.z2)).status, "waiting", "stage 2 waits for stage 1");
   });
 
-  await rec.step("2.10.c", "مشتری ۳ روز جواب نمی‌دهد (بعد از ددلاین)؛ X کار ۲ را خودش دیر تحویل می‌دهد", async () => {
+  await rec.step("2.10.c", "Der Kunde antwortet 3 Tage nicht (nach der Deadline); X liefert Aufgabe 2 selbst zu spät", async () => {
     await advance(72 * H - 40);                        // day 3, 09:00 — X1/Y1 deadlines (t0+48h) have passed
     check(Date.parse((await qa.clock()).now) > Date.parse(s.deadline.x1), "now past X1's deadline");
     await c6.post(`/api/v1/portal/approvals/${s.x1}`, { approve: true, stars: 5 });
@@ -117,7 +117,7 @@ export async function run(rec, { crowd }) {
     eq((await cardOf(owner, s.x2)).status, "done", "X2 done");
   });
 
-  await rec.step("2.10.d", "مشتری کمپین بعد از ۴ روز مرحله‌ی ۱ را تأیید می‌کند → Z بلافاصله مرحله‌ی ۲ را تحویل می‌دهد", async () => {
+  await rec.step("2.10.d", "Der Kampagnenkunde gibt Schritt 1 nach 4 Tagen frei → Z liefert Schritt 2 sofort", async () => {
     await advance(28 * H);                             // t0 + 100h: past stage 2's deadline (t0 + 96h)
     await c7.post(`/api/v1/portal/approvals/${s.y1}`, { approve: true });
     eq((await cardOf(owner, s.z2)).status, "todo", "stage 2 unlocked only now — its deadline already passed while the client was silent");
@@ -131,7 +131,7 @@ export async function run(rec, { crowd }) {
 
   const range = () => `from=${day0}&to=${day1}`;
 
-  await rec.step("2.10.e", "گزارش بازه‌ای کل تیم و هر کارگر (ردیف‌ها، نمودار روزانه، جزئیات)", async () => {
+  await rec.step("2.10.e", "Zeitraumbericht für das ganze Team und jeden Mitarbeiter (Zeilen, Tagesdiagramm, Details)", async () => {
     const team = await owner.get(`/api/v1/reports/work?${range()}`);
     eq(team.days.length, Date.parse(day1) / 86400_000 - Date.parse(day0) / 86400_000 + 1, "one chart point per day of the range");
     const row = (id) => team.rows.find((r) => r.userId === id);
@@ -157,7 +157,7 @@ export async function run(rec, { crowd }) {
     eq(await owner.refused("GET", `/api/v1/reports/work?from=2025-01-01&to=2025-12-31`, undefined, [422]), 422, "range > 92 days → 422");
   });
 
-  await rec.step("2.10.f", "کارگر فقط گزارش خودش را می‌بیند؛ گزارش دیگری → 404؛ خروجی Excel → 403", async () => {
+  await rec.step("2.10.f", "Ein Mitarbeiter sieht nur seinen eigenen Bericht; fremder Bericht → 404; Excel-Export → 403", async () => {
     const mine = await X.get(`/api/v1/reports/work?${range()}`);
     eq(mine.rows.length, 1, "worker sees one row");
     eq(mine.rows[0].userId, s.X, "…their own");
@@ -166,7 +166,7 @@ export async function run(rec, { crowd }) {
     eq(await c6.refused("GET", `/api/v1/reports/work?${range()}`, undefined, [403]), 403, "a client gets no reports");
   });
 
-  await rec.step("2.10.g", "خروجی Excel: فایل واقعی XLSX (PK، نوع، نام فایل) با ردیف کارگرها", async () => {
+  await rec.step("2.10.g", "Excel-Export: echte XLSX-Datei (PK, Typ, Dateiname) mit Mitarbeiterzeilen", async () => {
     const res = await fetch(`${API}/api/v1/reports/work/export?${range()}`, { headers: { Authorization: `Bearer ${owner.token}` } });
     eq(res.status, 200, "export ok");
     eq(res.headers.get("content-type"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "XLSX content type");
@@ -177,14 +177,14 @@ export async function run(rec, { crowd }) {
     check(files["[Content_Types].xml"] && files["xl/workbook.xml"], "OOXML workbook parts present");
     const xml = Object.entries(files).filter(([n]) => n.startsWith("xl/") && n.endsWith(".xml")).map(([, b]) => b?.toString("utf8") ?? "").join("\n");
     for (const p of [xP, yP, zP]) check(xml.includes(p.name), `sheet has a row for ${p.name}`);
-    check(xml.includes("کار تمام‌شده") && xml.includes("امتیاز"), "Persian headers present");
+    check(xml.includes("Erledigte Aufgaben") && xml.includes("Punkte"), "Persian headers present");
     const sheet = Object.entries(files).find(([n]) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))?.[1]?.toString("utf8") ?? "";
     const rows = (sheet.match(/<(?:x:)?row\b/g) ?? []).length;
     check(rows >= 4, `sheet has a header + rows (${rows})`);
     // PDF: the web page prints itself (browser print → PDF); there is no server PDF endpoint to check here.
   });
 
-  await rec.step("2.10.h", "امتیازها + «چرا این امتیاز» برای هر نفر؛ کمتر از ۵ نمونه → «داده‌ی کافی نیست»", async () => {
+  await rec.step("2.10.h", "Punkte + „Warum diese Punktzahl“ für jede Person; weniger als 5 Werte → „Nicht genug Daten“", async () => {
     const sc = await owner.get(`/api/v1/reports/scores?${range()}`);
     eq(sc.rankingVisible, true, "owner sees the team ranking");
     const keys = ["quality", "speed", "onTime", "volume", "discipline", "manager", "client"];
@@ -208,7 +208,7 @@ export async function run(rec, { crowd }) {
     eq(trend.length, 6, "six-month trend");
   });
 
-  await rec.step("2.10.i", "تأخیر به‌خاطر مشتری (تأیید دیر) روی «به‌موقع» اثر ندارد؛ تأخیر واقعی کارگر اثر دارد", async () => {
+  await rec.step("2.10.i", "Verspätung wegen des Kunden (späte Freigabe) wirkt sich nicht auf „Pünktlich“ aus; echte Verspätung des Mitarbeiters schon", async () => {
     const det = await owner.get(`/api/v1/reports/work/${s.X}?${range()}`);
     const x1 = det.done.find((d) => d.id === s.x1), x2 = det.done.find((d) => d.id === s.x2);
     check(Date.parse(x1.delivered) < Date.parse(x1.deadline), "X1 delivered (first hand-in) before its deadline");
@@ -221,7 +221,7 @@ export async function run(rec, { crowd }) {
     eq(sc.people.find((p) => p.userId === s.Y).indicators.find((i) => i.key === "onTime").score, 100, "Y on-time = 100");
   });
 
-  await rec.step("2.10.j", "مرحله‌ی بعدی که به‌خاطر سکوت مشتری دیر باز شد نباید امتیاز Z را کم کند", async () => {
+  await rec.step("2.10.j", "Der nächste Schritt, der wegen des schweigenden Kunden spät startete, darf die Punkte von Z nicht senken", async () => {
     const z = await owner.get(`/api/v1/reports/work/${s.Z}?${range()}`);
     const line = z.done.find((d) => d.id === s.z2);
     check(line, "Z's stage 2 is in the report");

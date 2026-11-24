@@ -33,7 +33,7 @@ public sealed class BlogCategory : Entity
     public Result Update(string name, string? description, int sort)
     {
         name = name?.Trim() ?? "";
-        if (name.Length is < 2 or > 60) return Error.Validation("blog.category", "نام دسته بین ۲ تا ۶۰ کاراکتر.");
+        if (name.Length is < 2 or > 60) return Error.Validation("blog.category", "Kategoriename zwischen 2 und 60 Zeichen.");
         Name = name; Slug = Common.Slug.From(name, 60); Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()[..Math.Min(300, description.Trim().Length)];
         SortOrder = sort;
         return Result.Success();
@@ -111,7 +111,7 @@ public sealed partial class BlogPost : AuditableEntity
     private Result SetTitle(string title)
     {
         title = title?.Trim() ?? "";
-        if (title.Length is < 3 or > 150) return Error.Validation("blog.title", "عنوان بین ۳ تا ۱۵۰ کاراکتر.");
+        if (title.Length is < 3 or > 150) return Error.Validation("blog.title", "Titel zwischen 3 und 150 Zeichen.");
         Title = title;
         return Result.Success();
     }
@@ -125,26 +125,26 @@ public sealed partial class BlogPost : AuditableEntity
     /// <summary>Content and the author's manual overrides. A non-empty override locks that field; an empty one unlocks it (back to automatic).</summary>
     public Result Edit(EditSpec s, DateTimeOffset now)
     {
-        if (Status == PostStatus.Archived) return Error.Conflict("blog.archived", "این مطلب بایگانی شده است.");
+        if (Status == PostStatus.Archived) return Error.Conflict("blog.archived", "Dieser Beitrag ist archiviert.");
         var t = SetTitle(s.Title);
         if (t.IsFailure) return t;
-        if (string.IsNullOrWhiteSpace(s.ContentJson) || s.ContentJson.Length > MaxJson) return Error.Validation("blog.content", "متن مطلب خالی است یا خیلی بزرگ است.");
-        if (s.CoverAlt is { Length: > 200 }) return Error.Validation("blog.alt", "متن جایگزین عکس حداکثر ۲۰۰ کاراکتر.");
+        if (string.IsNullOrWhiteSpace(s.ContentJson) || s.ContentJson.Length > MaxJson) return Error.Validation("blog.content", "Der Beitragstext ist leer oder zu groß.");
+        if (s.CoverAlt is { Length: > 200 }) return Error.Validation("blog.alt", "Alternativtext des Bildes höchstens 200 Zeichen.");
         ContentJson = s.ContentJson; CategoryId = s.CategoryId;
         Tags = s.Tags.Select(x => x.Trim().TrimStart('#')).Where(x => x.Length is > 0 and <= 40).Distinct().Take(15).ToList();
         CoverImage = string.IsNullOrWhiteSpace(s.CoverImage) ? null : s.CoverImage; CoverAlt = string.IsNullOrWhiteSpace(s.CoverAlt) ? null : s.CoverAlt.Trim();
 
         SeoTitleLocked = !string.IsNullOrWhiteSpace(s.SeoTitle);
-        if (SeoTitleLocked) { if (s.SeoTitle!.Trim().Length > 70) return Error.Validation("blog.seoTitle", "عنوان سئو حداکثر ۷۰ کاراکتر."); SeoTitle = s.SeoTitle.Trim(); }
+        if (SeoTitleLocked) { if (s.SeoTitle!.Trim().Length > 70) return Error.Validation("blog.seoTitle", "SEO-Titel höchstens 70 Zeichen."); SeoTitle = s.SeoTitle.Trim(); }
         MetaLocked = !string.IsNullOrWhiteSpace(s.MetaDescription);
-        if (MetaLocked) { if (s.MetaDescription!.Trim().Length > 170) return Error.Validation("blog.meta", "توضیح متا حداکثر ۱۷۰ کاراکتر."); MetaDescription = s.MetaDescription.Trim(); }
+        if (MetaLocked) { if (s.MetaDescription!.Trim().Length > 170) return Error.Validation("blog.meta", "Meta-Beschreibung höchstens 170 Zeichen."); MetaDescription = s.MetaDescription.Trim(); }
         KeywordLocked = !string.IsNullOrWhiteSpace(s.FocusKeyword);
         if (KeywordLocked) FocusKeyword = s.FocusKeyword!.Trim()[..Math.Min(60, s.FocusKeyword.Trim().Length)];
         SlugLocked = !string.IsNullOrWhiteSpace(s.Slug);
         if (SlugLocked)
         {
             var slug = Common.Slug.From(s.Slug, 80);
-            if (!SlugPattern().IsMatch(slug)) return Error.Validation("blog.slug", "نامک فقط حروف، عدد و خط تیره.");
+            if (!SlugPattern().IsMatch(slug)) return Error.Validation("blog.slug", "Der Slug besteht nur aus Buchstaben, Ziffern und Bindestrichen.");
             Slug = slug;
         }
         ModifiedAt = now;
@@ -171,7 +171,7 @@ public sealed partial class BlogPost : AuditableEntity
 
     public Result Submit()
     {
-        if (Status is not (PostStatus.Draft)) return Error.Conflict("blog.state", "فقط پیش‌نویس برای بازبینی فرستاده می‌شود.");
+        if (Status is not (PostStatus.Draft)) return Error.Conflict("blog.state", "Nur ein Entwurf kann zur Prüfung geschickt werden.");
         Status = PostStatus.InReview;
         return Result.Success();
     }
@@ -179,8 +179,8 @@ public sealed partial class BlogPost : AuditableEntity
     /// <summary>Publish now, or schedule for later.</summary>
     public Result Publish(DateTimeOffset now, DateTimeOffset? at)
     {
-        if (Status is PostStatus.Archived) return Error.Conflict("blog.archived", "این مطلب بایگانی شده است.");
-        if (WordCount < 30) return Error.Validation("blog.tooShort", "متن خیلی کوتاه است (کمتر از ۳۰ کلمه).");
+        if (Status is PostStatus.Archived) return Error.Conflict("blog.archived", "Dieser Beitrag ist archiviert.");
+        if (WordCount < 30) return Error.Validation("blog.tooShort", "Der Text ist zu kurz (weniger als 30 Wörter).");
         if (at is { } t && t > now.AddMinutes(1))
         {
             Status = PostStatus.Scheduled; PublishAt = t;
@@ -200,7 +200,7 @@ public sealed partial class BlogPost : AuditableEntity
 
     public Result Unpublish()
     {
-        if (Status is not (PostStatus.Published or PostStatus.Scheduled or PostStatus.InReview)) return Error.Conflict("blog.state", "این مطلب منتشر نشده است.");
+        if (Status is not (PostStatus.Published or PostStatus.Scheduled or PostStatus.InReview)) return Error.Conflict("blog.state", "Dieser Beitrag ist nicht veröffentlicht.");
         Status = PostStatus.Draft; PublishAt = null;
         return Result.Success();
     }

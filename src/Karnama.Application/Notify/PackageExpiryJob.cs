@@ -51,17 +51,17 @@ public sealed class PackageExpiryJob(IAppDbContext db, Notifier notifier, TimePr
         foreach (var p in packages)
         {
             if (!clients.TryGetValue(p.ClientId, out var c)) continue;
-            var name = p.PackageName.Get("fa");
+            var name = p.PackageName.Get("de");
             if (p.EndIfOver(now))
             {
                 ended.Add(p);
-                await Both(c, "package.ended", $"پکیج «{name}» تمام شد", "برای ادامه‌ی کار، از صفحه‌ی پروفایل درخواست تمدید بدهید.", true, $"pkg:{p.Id:N}:ended");
+                await Both(c, "package.ended", $"Das Paket „{name}“ ist abgelaufen", "Um weiterzuarbeiten, fragen Sie im Profil eine Verlängerung an.", true, $"pkg:{p.Id:N}:ended");
                 continue;
             }
             var daysLeft = Iran.Today(p.EndsAt).DayNumber - today.DayNumber;
             if (!p.NeedsExpiryNotice(daysLeft, thresholds, out var t)) continue;
-            var title = t == 0 ? $"امروز آخرین روز پکیج «{name}» است" : $"پکیج «{name}» {t} روز دیگر تمام می‌شود";
-            await Both(c, "package.expiring", title, "برای تمدید، از صفحه‌ی پروفایل «درخواست تمدید» را بزنید.", t <= 3, $"pkg:{p.Id:N}:{t}");
+            var title = t == 0 ? $"Heute ist der letzte Tag des Pakets „{name}“" : $"Das Paket „{name}“ endet in {t} Tagen";
+            await Both(c, "package.expiring", title, "Zum Verlängern tippen Sie im Profil auf „Verlängerung anfragen“.", t <= 3, $"pkg:{p.Id:N}:{t}");
         }
 
         if (settings.ContractEndPasswords && ended.Count > 0) sent += await ContractEndAsync(ended, clients, now, ct);
@@ -75,8 +75,8 @@ public sealed class PackageExpiryJob(IAppDbContext db, Notifier notifier, TimePr
                 .Where(o => o.ClientPackageId == p.Id && o.Status != OrderStatus.Rejected && o.Status != OrderStatus.Cancelled)
                 .GroupBy(o => o.ServiceTypeId).Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(g => g.Key, g => g.N, ct);
             foreach (var q in quotas.Where(q => q.Count > 0 && used.GetValueOrDefault(q.ServiceTypeId) >= q.Count))
-                await Both(c, "package.quotaUsedUp", $"سهمیه‌ی «{q.ServiceName ?? "خدمت"}» در پکیج «{p.PackageName.Get("fa")}» تمام شد",
-                    "برای سفارش بیشتر، پکیج را ارتقا دهید یا تمدید کنید.", false, $"pkg:{p.Id:N}:quota:{q.ServiceTypeId:N}");
+                await Both(c, "package.quotaUsedUp", $"Kontingent „{q.ServiceName ?? "Leistung"}“ im Paket „{p.PackageName.Get("de")}“ ist abgelaufen",
+                    "Für weitere Aufträge upgraden oder verlängern Sie das Paket.", false, $"pkg:{p.Id:N}:quota:{q.ServiceTypeId:N}");
         }
 
         await db.SaveChangesAsync(ct);
@@ -96,11 +96,11 @@ public sealed class PackageExpiryJob(IAppDbContext db, Notifier notifier, TimePr
         foreach (var id in clientIds.Except(stillActive).Intersect(withSecrets))
         {
             if (!clients.TryGetValue(id, out var c)) continue;
-            sent += await notifier.NotifyAsync(keepers, "credentials.contractEnded", $"قرارداد {c.BusinessName} تمام شد: رمزهای ذخیره‌شده‌اش را پاک کنید",
-                "اگر تمدید نمی‌شود، از صفحه‌ی مشتری رمزها را حذف کنید.", "/clients", true, $"contract-end:{id:N}:{Iran.Today(now):yyyyMMdd}", ct);
+            sent += await notifier.NotifyAsync(keepers, "credentials.contractEnded", $"Der Vertrag mit {c.BusinessName} ist beendet: gespeicherte Passwörter löschen",
+                "Falls nicht verlängert wird, löschen Sie die Passwörter auf der Kundenseite.", "/clients", true, $"contract-end:{id:N}:{Iran.Today(now):yyyyMMdd}", ct);
             if (c.PortalUserId is { } portal)
-                sent += await notifier.NotifyAsync([portal], "credentials.changePassword", "قرارداد تمام شد؛ برای امنیت رمز حساب‌هایتان را عوض کنید",
-                    "رمزهایی که به آژانس داده بودید را در خود اینستاگرام عوض کنید و اگر آژانس را در Business Suite اضافه کرده بودید، دسترسی را بردارید.",
+                sent += await notifier.NotifyAsync([portal], "credentials.changePassword", "Der Vertrag ist beendet; ändern Sie zur Sicherheit die Passwörter Ihrer Konten",
+                    "Ändern Sie die Passwörter, die Sie der Agentur gegeben haben, direkt in Instagram, und entziehen Sie der Agentur den Zugriff, falls Sie sie in der Business Suite hinzugefügt hatten.",
                     "/profile", true, $"contract-end:{id:N}:{Iran.Today(now):yyyyMMdd}", ct);
         }
         return sent;

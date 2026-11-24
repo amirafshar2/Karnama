@@ -3,7 +3,7 @@
 import { qa, pick, key, check, eq } from "../lib.mjs";
 
 export const id = "S09";
-export const title = "عصر — استراحت، تایمر، خروج، فراموشی خروج، درخواست اصلاح";
+export const title = "Nachmittag – Pause, Timer, Gehen, vergessenes Gehen, Korrekturantrag";
 
 const userId = (actor) => JSON.parse(Buffer.from(actor.token.split(".")[1], "base64url").toString()).sub;
 const tehranDay = (offset = 0) => qa.tehran(12, 0, offset).slice(0, 10);
@@ -71,11 +71,11 @@ export async function run(rec, { crowd }) {
     await qa.setClock(qa.tehran(13, 0));
     await (await as(E1)).post(`/api/v1/attendance/timer/${item.id}`, {}); // timer runs again after the break
     await qa.setClock(qa.tehran(16, 0));
-    const r = await (await as(E4)).post("/api/v1/attendance/clock-out", ev(key(), { note: "وقت دکتر" }));
+    const r = await (await as(E4)).post("/api/v1/attendance/clock-out", ev(key(), { note: "Arzttermin" }));
     eq(r.shift, null, "no open shift after clock-out");
     const s = await shiftOf(E4);
     check(near(s.earlyLeaveMinutes, 60), `early leave minutes = 60 (got ${s.earlyLeaveMinutes})`);
-    eq(s.earlyLeaveReason, "وقت دکتر", "early leave reason");
+    eq(s.earlyLeaveReason, "Arzttermin", "early leave reason");
     check(s.clockOutAt, "closed");
   });
 
@@ -121,7 +121,7 @@ export async function run(rec, { crowd }) {
     eq((await me(E3)).shift, null, "worker no longer has an open shift");
   });
 
-  await rec.step("2.9.h", "forgotten clock-out warns the worker and the admin (PROMPT.md §6.6 «هشدار»)", async () => {
+  await rec.step("2.9.h", "forgotten clock-out warns the worker and the admin (PROMPT.md §6.6 «Warnung»)", async () => {
     const w = await (await as(E3)).get("/api/v1/notifications");
     const kinds = w.items.map((n) => n.kind);
     check(kinds.some((k) => /attendance|shift|forgot|clock/i.test(k)), `worker got a forgotten-clock-out notification (kinds: ${kinds.join(",") || "none"})`);
@@ -138,17 +138,17 @@ export async function run(rec, { crowd }) {
   let corr;
   await rec.step("2.9.j", "correction request validation: nothing given, out before in, future time → refused", async () => {
     const a = await as(E3);
-    check(INVALID.includes(await a.refused("POST", "/api/v1/attendance/corrections", { day, reason: "خالی" }, INVALID)), "no times");
+    check(INVALID.includes(await a.refused("POST", "/api/v1/attendance/corrections", { day, reason: "Leer" }, INVALID)), "no times");
     check(INVALID.includes(await a.refused("POST", "/api/v1/attendance/corrections",
-      { day, clockIn: qa.tehran(18, 0), clockOut: qa.tehran(17, 0), reason: "برعکس" }, INVALID)), "out before in");
+      { day, clockIn: qa.tehran(18, 0), clockOut: qa.tehran(17, 0), reason: "Umgekehrt" }, INVALID)), "out before in");
     check(INVALID.includes(await a.refused("POST", "/api/v1/attendance/corrections",
-      { day, clockOut: qa.tehran(23, 30), reason: "آینده" }, INVALID)), "future");
+      { day, clockOut: qa.tehran(23, 30), reason: "Zukunft" }, INVALID)), "future");
     check(INVALID.includes(await a.refused("POST", "/api/v1/attendance/corrections",
       { day, clockOut: qa.tehran(18, 30), reason: "x" }, INVALID)), "short reason");
   });
 
   await rec.step("2.9.k", "worker asks to correct the forgotten clock-out to 18:30 → pending; a worker can't decide (403)", async () => {
-    corr = await (await as(E3)).post("/api/v1/attendance/corrections", { day, clockOut: qa.tehran(18, 30), reason: "یادم رفت خروج بزنم؛ ۱۸:۳۰ رفتم" });
+    corr = await (await as(E3)).post("/api/v1/attendance/corrections", { day, clockOut: qa.tehran(18, 30), reason: "Ich habe vergessen, auf Gehen zu tippen; ich bin um 18:30 gegangen" });
     eq(corr.status, "pending", "status");
     const mine = await (await as(E3)).get("/api/v1/attendance/corrections");
     check(mine.some((c) => c.id === corr.id) && mine.every((c) => c.userId === corr.userId), "worker sees only own corrections");
@@ -160,7 +160,7 @@ export async function run(rec, { crowd }) {
 
   await rec.step("2.9.l", "manager approves → shift ends 18:30, review cleared, appended as a Correction event; deciding twice → 409", async () => {
     const mgr = await as(managerP);
-    const r = await mgr.post(`/api/v1/attendance/corrections/${corr.id}/decide`, { approve: true, note: "تأیید" });
+    const r = await mgr.post(`/api/v1/attendance/corrections/${corr.id}/decide`, { approve: true, note: "Bestätigen" });
     eq(r.status, "approved", "status");
     const s = await shiftOf(E3);
     check(near((new Date(s.clockOutAt) - new Date(qa.tehran(18, 30))) / 60000, 0), `clock-out corrected to 18:30 (${s.clockOutAt})`);
@@ -170,10 +170,10 @@ export async function run(rec, { crowd }) {
   });
 
   await rec.step("2.9.m", "a rejected correction leaves the shift unchanged", async () => {
-    const c = await (await as(E4)).post("/api/v1/attendance/corrections", { day, clockOut: qa.tehran(17, 0), reason: "تا ۱۷ بودم" });
-    const r = await (await as(managerP)).post(`/api/v1/attendance/corrections/${c.id}/decide`, { approve: false, note: "ساعت ۱۶ رفتی" });
+    const c = await (await as(E4)).post("/api/v1/attendance/corrections", { day, clockOut: qa.tehran(17, 0), reason: "Ich war bis 17 Uhr da" });
+    const r = await (await as(managerP)).post(`/api/v1/attendance/corrections/${c.id}/decide`, { approve: false, note: "Du bist um 16 Uhr gegangen" });
     eq(r.status, "rejected", "status");
-    eq(r.decisionNote, "ساعت ۱۶ رفتی", "note");
+    eq(r.decisionNote, "Du bist um 16 Uhr gegangen", "note");
     const s = await shiftOf(E4);
     check(near((new Date(s.clockOutAt) - new Date(qa.tehran(16, 0))) / 60000, 0), `clock-out still 16:00 (${s.clockOutAt})`);
   });
@@ -181,7 +181,7 @@ export async function run(rec, { crowd }) {
   await rec.step("2.9.n", "correction for a whole missed day (yesterday 09:00–17:00) creates the shift on approval", async () => {
     const yday = tehranDay(-1);
     const c = await (await as(MISSED)).post("/api/v1/attendance/corrections",
-      { day: yday, clockIn: qa.tehran(9, 0, -1), clockOut: qa.tehran(17, 0, -1), reason: "گوشی‌ام خاموش بود، کل روز دفتر بودم" });
+      { day: yday, clockIn: qa.tehran(9, 0, -1), clockOut: qa.tehran(17, 0, -1), reason: "Mein Handy war aus, ich war den ganzen Tag im Büro" });
     await (await as(managerP)).post(`/api/v1/attendance/corrections/${c.id}/decide`, { approve: true });
     const uid = userId(await as(MISSED));
     const shifts = await (await as(managerP)).get(`/api/v1/attendance/shifts?userId=${uid}&from=${yday}&to=${yday}`);
@@ -195,7 +195,7 @@ export async function run(rec, { crowd }) {
     const a = await as(MISSED);
     await a.post("/api/v1/attendance/clock-in", ev());
     const d2 = tehranDay(-2);
-    const c = await a.post("/api/v1/attendance/corrections", { day: d2, clockIn: qa.tehran(9, 0, -2), reason: "شنبه ساعت ۹ آمدم، برنامه خطا داد" });
+    const c = await a.post("/api/v1/attendance/corrections", { day: d2, clockIn: qa.tehran(9, 0, -2), reason: "Ich kam am Montag um 9 Uhr, die App hat einen Fehler gemeldet" });
     await (await as(managerP)).call("POST", `/api/v1/attendance/corrections/${c.id}/decide`, { approve: true }, { expect: [200, 400, 409, 422] });
     const inv = (await qa.invariants()).find((i) => i.name === "one-open-shift-per-user");
     const uid = userId(a);

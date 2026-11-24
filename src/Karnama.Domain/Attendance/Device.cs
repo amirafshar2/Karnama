@@ -7,7 +7,7 @@ public enum DeviceKind { Adms = 1, FileImport = 2 }
 
 /// <summary>
 /// Toggle: every punch flips in/out (devices without in/out keys always send status 0).
-/// StatusKey: the person presses "ورود"/"خروج" on the device and its status code decides.
+/// StatusKey: the person presses "Kommen"/"Gehen" on the device and its status code decides.
 /// </summary>
 public enum PunchMode { Toggle = 1, StatusKey = 2 }
 
@@ -47,7 +47,7 @@ public sealed class BiometricDevice : Entity
         var s = (serial ?? "").Trim().ToUpperInvariant();
         if (kind == DeviceKind.FileImport && s.Length == 0) s = "FILE-" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
         if (s.Length is < 4 or > 40 || !s.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
-            return Error.Validation("devices.serial", "شماره‌ی سریال دستگاه را دقیق وارد کنید (۴ تا ۴۰ حرف و عدد انگلیسی).");
+            return Error.Validation("devices.serial", "Geben Sie die Seriennummer des Geräts genau ein (4 bis 40 lateinische Buchstaben und Ziffern).");
         d.Serial = s;
         var r = d.Update(name, mode, location, allowedIps, true);
         return r.IsSuccess ? d : r.Error!;
@@ -56,9 +56,9 @@ public sealed class BiometricDevice : Entity
     public Result Update(string name, PunchMode mode, string? location, IEnumerable<string>? allowedIps, bool isActive)
     {
         var n = (name ?? "").Trim();
-        if (n.Length is 0 or > 60) return Error.Validation("devices.name", "نام دستگاه الزامی است (حداکثر ۶۰ کاراکتر).");
+        if (n.Length is 0 or > 60) return Error.Validation("devices.name", "Der Gerätename ist Pflicht (höchstens 60 Zeichen).");
         var ips = (allowedIps ?? []).Select(x => x.Trim()).Where(x => x.Length > 0).Distinct().Take(20).ToList();
-        if (ips.Any(x => x.Length > 50)) return Error.Validation("devices.ips", "نشانی IP خیلی بلند است.");
+        if (ips.Any(x => x.Length > 50)) return Error.Validation("devices.ips", "Die IP-Adresse ist zu lang.");
         Name = n;
         Mode = mode;
         Location = string.IsNullOrWhiteSpace(location) ? null : location.Trim()[..Math.Min(location.Trim().Length, 80)];
@@ -107,7 +107,7 @@ public sealed class DevicePin : Entity
     public static Result<DevicePin> Create(string pin, Guid userId)
     {
         var p = Normalize(pin);
-        if (p is null) return Error.Validation("devices.pin", "شماره‌ی کاربر روی دستگاه فقط عدد است (حداکثر ۹ رقم).");
+        if (p is null) return Error.Validation("devices.pin", "Die Benutzernummer am Gerät besteht nur aus Ziffern (höchstens 9).");
         return new DevicePin { Pin = p, UserId = userId };
     }
 

@@ -16,15 +16,15 @@ public sealed partial class UpdateBrandValidator : AbstractValidator<UpdateBrand
 
     public UpdateBrandValidator()
     {
-        RuleFor(x => x.Name).MaximumLength(80).WithMessage("نام برند حداکثر ۸۰ کاراکتر است.");
-        RuleFor(x => x.Tagline).MaximumLength(160).WithMessage("شعار حداکثر ۱۶۰ کاراکتر است.");
-        RuleFor(x => x.Colors).NotNull().WithMessage("رنگ‌ها را انتخاب کنید.");
+        RuleFor(x => x.Name).MaximumLength(80).WithMessage("Der Markenname darf höchstens 80 Zeichen haben.");
+        RuleFor(x => x.Tagline).MaximumLength(160).WithMessage("Der Slogan darf höchstens 160 Zeichen haben.");
+        RuleFor(x => x.Colors).NotNull().WithMessage("Wählen Sie die Farben.");
         RuleFor(x => x.Colors.Primary).Must(c => c is not null && Hex().IsMatch(c)).When(x => x.Colors is not null)
-            .WithMessage("رنگ اصلی باید به شکل #RRGGBB باشد (مثلاً #3B6CFF).");
+            .WithMessage("Die Hauptfarbe muss im Format #RRGGBB sein (z. B. #3B6CFF).");
         RuleFor(x => x.Colors.Dark).Must(c => c is not null && Hex().IsMatch(c)).When(x => x.Colors is not null)
-            .WithMessage("رنگ تیره باید به شکل #RRGGBB باشد (مثلاً #12141A).");
+            .WithMessage("Die dunkle Farbe muss im Format #RRGGBB sein (z. B. #12141A).");
         RuleFor(x => x.Colors.Emphasis).Must(c => c is null || Hex().IsMatch(c)).When(x => x.Colors is not null)
-            .WithMessage("رنگ تأکید باید به شکل #RRGGBB باشد.");
+            .WithMessage("Die Akzentfarbe muss im Format #RRGGBB sein.");
     }
 }
 

@@ -42,7 +42,7 @@ public sealed class ClientCredential : Entity
     public Result Update(string handle, bool businessSuite, CredentialSource source, Guid? actor, DateTimeOffset now)
     {
         var h = (handle ?? "").Trim().TrimStart('@');
-        if (h.Length is 0 or > 100) return Error.Validation("credentials.handle", "نام کاربری الزامی است (حداکثر ۱۰۰ کاراکتر).");
+        if (h.Length is 0 or > 100) return Error.Validation("credentials.handle", "Der Benutzername ist Pflicht (höchstens 100 Zeichen).");
         Handle = h;
         BusinessSuiteAccess = businessSuite;
         Touch(source, actor, now);

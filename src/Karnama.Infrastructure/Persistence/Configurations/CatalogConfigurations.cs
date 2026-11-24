@@ -139,7 +139,7 @@ internal sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         b.Property(x => x.BusinessName).HasMaxLength(120).IsRequired();
         b.Property(x => x.Industry).HasMaxLength(60);
         b.Property(x => x.ContactName).HasMaxLength(100);
-        b.Property(x => x.Mobile).HasMaxLength(11).IsRequired();
+        b.Property(x => x.Mobile).HasMaxLength(15).IsRequired();
         b.Property(x => x.City).HasMaxLength(60);
         b.Property(x => x.InternalNote).HasMaxLength(2000);
         b.Property(x => x.Version).IsRowVersion();

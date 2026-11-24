@@ -88,12 +88,12 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
     public async Task<Result<IReadOnlyList<PortalMessageDto>>> MessagesAsync(Guid orderId, CancellationToken ct)
     {
         if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
-        if (!await db.Orders.AnyAsync(o => o.Id == orderId && o.ClientId == clientId, ct)) return Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+        if (!await db.Orders.AnyAsync(o => o.Id == orderId && o.ClientId == clientId, ct)) return Error.NotFound("orders.notFound", "Auftrag nicht gefunden.");
         var uid = me.UserId;
         var rows = await db.WorkComments.AsNoTracking().Where(c => c.OrderId == orderId && c.ClientId == clientId && c.Visibility == CommentVisibility.Client)
             .OrderBy(c => c.CreatedAt).ToListAsync(ct);
         // Staff messages are signed with the agency's name, not the person's.
-        return rows.Select(c => new PortalMessageDto(c.Id, c.FromClient ? c.AuthorName : "آژانس", c.AuthorId == uid, c.Body, c.CreatedAt)).ToList();
+        return rows.Select(c => new PortalMessageDto(c.Id, c.FromClient ? c.AuthorName : "Agentur", c.AuthorId == uid, c.Body, c.CreatedAt)).ToList();
     }
 
     /// <summary>The client writes to the agency about one of its orders. It reaches the admins (only admins talk to clients).</summary>
@@ -101,11 +101,11 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
     {
         if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
         var items = await db.WorkItems.Where(x => x.OrderId == orderId && x.ClientId == clientId).OrderBy(x => x.StageOrder).ToListAsync(ct);
-        if (items.Count == 0) return Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+        if (items.Count == 0) return Error.NotFound("orders.notFound", "Auftrag nicht gefunden.");
         var now = clock.GetUtcNow();
         // A cheap brake on a stuck button or a script: 30 messages an hour per client is far above real use.
         if (await db.WorkComments.CountAsync(c => c.ClientId == clientId && c.FromClient && c.CreatedAt > now.AddHours(-1), ct) >= 30)
-            return Error.Validation("portal.tooMany", "پیام‌ها زیاد شد؛ کمی بعد دوباره بفرستید.");
+            return Error.Validation("portal.tooMany", "Zu viele Nachrichten; senden Sie etwas später erneut.");
         // Attach to the stage in progress (first not finished), else the last stage.
         var w = items.FirstOrDefault(x => x.Status is not (WorkStatus.Done or WorkStatus.Cancelled)) ?? items[^1];
         var name = await db.Clients.Where(c => c.Id == clientId).Select(c => c.BusinessName).FirstAsync(ct);
@@ -115,7 +115,7 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
         changes.Record("work", w.Id, clientId, w.AssigneeId, null, "comments");
         var body = c.Value!.Body.Length <= 140 ? c.Value!.Body : c.Value!.Body[..140] + "…";
         await notifier.NotifyAsync(await notifier.StaffWithAsync(Domain.Identity.Permissions.OrdersManage, Domain.Identity.PermissionScope.All, ct),
-            "portal.message", $"پیام {name} درباره‌ی سفارش {w.OrderNumber}", body, $"/work?open={w.Id}", false, $"msg:{c.Value!.Id:N}", ct);
+            "portal.message", $"Nachricht von {name} zum Auftrag {w.OrderNumber}", body, $"/work?open={w.Id}", false, $"msg:{c.Value!.Id:N}", ct);
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
         return new PortalMessageDto(c.Value!.Id, name, true, c.Value!.Body, now);
@@ -126,11 +126,11 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
     {
         if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
         var w = await db.WorkItems.FirstOrDefaultAsync(x => x.Id == workItemId && x.ClientId == clientId, ct);
-        if (w is null) return Error.NotFound("work.notFound", "موردی پیدا نشد.");
+        if (w is null) return Error.NotFound("work.notFound", "Nichts gefunden.");
         // Only content waiting for the client can be decided. A finished item stays finished: its stars feed the worker's score.
-        if (!w.IsOpen) return Error.Conflict("work.closed", "این کار بسته شده است.");
-        if (w.Status != WorkStatus.ClientReview) return Error.Forbidden("work.transition", "این مورد منتظر تأیید شما نیست.");
-        if (!r.Approve && string.IsNullOrWhiteSpace(r.Note)) return Error.Validation("portal.note", "بنویسید چه چیزی باید تغییر کند.");
+        if (!w.IsOpen) return Error.Conflict("work.closed", "Diese Aufgabe ist geschlossen.");
+        if (w.Status != WorkStatus.ClientReview) return Error.Forbidden("work.transition", "Dieser Eintrag wartet nicht auf Ihre Freigabe.");
+        if (!r.Approve && string.IsNullOrWhiteSpace(r.Note)) return Error.Validation("portal.note", "Beschreiben Sie, was geändert werden soll.");
         var now = clock.GetUtcNow();
         var moved = w.MoveTo(r.Approve ? WorkStatus.Done : WorkStatus.ChangesRequested, WorkActor.Client, now);
         if (moved.IsFailure) return moved.Error!;
@@ -163,7 +163,7 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
         }
         audit.Add(r.Approve ? "portal.approved" : "portal.changesRequested", nameof(WorkItem), w.Id.ToString());
         var who = (await notifier.StaffWithAsync(Domain.Identity.Permissions.WorkReview, Domain.Identity.PermissionScope.All, ct)).Concat(w.AssigneeId is { } a ? [a] : []);
-        await notifier.NotifyAsync(who, r.Approve ? "portal.approved" : "portal.changes", r.Approve ? $"مشتری تأیید کرد: {w.Title}" : $"مشتری اصلاح خواست: {w.Title}",
+        await notifier.NotifyAsync(who, r.Approve ? "portal.approved" : "portal.changes", r.Approve ? $"Der Kunde hat freigegeben: {w.Title}" : $"Der Kunde hat eine Überarbeitung angefordert: {w.Title}",
             r.Note, $"/work?open={w.Id}", !r.Approve, $"portal:{w.Id:N}:{w.RevisionCount}:{r.Approve}", ct);
         changes.Record("work", w.Id, clientId, w.AssigneeId, null, "status", "comments");
         await db.SaveChangesAsync(ct);
@@ -179,14 +179,14 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
     {
         if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
         var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.ClientId == clientId, ct);
-        if (order is null) return Error.NotFound("orders.notFound", "سفارش پیدا نشد.");
+        if (order is null) return Error.NotFound("orders.notFound", "Auftrag nicht gefunden.");
         var res = order.CancelByClient();
         if (res.IsFailure) return res.Error!;
         db.MarkModified(order);
         var name = await db.Clients.Where(c => c.Id == clientId).Select(c => c.BusinessName).FirstAsync(ct);
         audit.Add("orders.cancelledByClient", nameof(Order), order.Id.ToString(), new { order.Number });
         await notifier.NotifyAsync(await notifier.StaffWithAsync(Domain.Identity.Permissions.OrdersManage, Domain.Identity.PermissionScope.All, ct),
-            "order.cancelledByClient", $"{name} سفارش #{order.Number} را لغو کرد", order.Title, "/orders", false, $"order-cancel:{order.Id:N}", ct);
+            "order.cancelledByClient", $"{name} hat Auftrag #{order.Number} storniert", order.Title, "/orders", false, $"order-cancel:{order.Id:N}", ct);
         changes.Record("order", order.Id, clientId, null, null, "status");
         await db.SaveChangesAsync(ct);
         await changes.PublishAsync(ct);
@@ -216,21 +216,21 @@ public sealed class PortalService(IAppDbContext db, ICurrentUser me, WorkAccess 
 
     private static string RenewKey(Guid clientId, DateTimeOffset now) => $"renew:{clientId:N}:{Attendance.Iran.Today(now):yyyyMMdd}";
 
-    /// <summary>«درخواست تمدید»: tells the managers right away (important); once per day per client.</summary>
+    /// <summary>«Verlängerung anfragen»: tells the managers right away (important); once per day per client.</summary>
     public async Task<Result<RenewResultDto>> RequestRenewalAsync(RenewRequest r, CancellationToken ct)
     {
         if (await ClientAsync(ct) is not { } clientId) return Error.Forbidden();
-        if (r.Note is { Length: > 500 }) return Error.Validation("portal.noteTooLong", "توضیح حداکثر ۵۰۰ کاراکتر است.");
+        if (r.Note is { Length: > 500 }) return Error.Validation("portal.noteTooLong", "Die Beschreibung darf höchstens 500 Zeichen haben.");
         var now = clock.GetUtcNow();
         var key = RenewKey(clientId, now);
         if (await db.Notifications.AsNoTracking().AnyAsync(n => n.EventKey == key, ct)) return new RenewResultDto(true);
         var client = await db.Clients.AsNoTracking().FirstAsync(c => c.Id == clientId, ct);
         var managers = await notifier.StaffWithAsync(Domain.Identity.Permissions.PackagesAssign, Domain.Identity.PermissionScope.All, ct);
         var note = string.IsNullOrWhiteSpace(r.Note) ? null : r.Note.Trim();
-        await notifier.NotifyAsync(managers, "package.renewRequested", $"{client.BusinessName} درخواست تمدید پکیج داد", note, "/clients", true, key, ct);
+        await notifier.NotifyAsync(managers, "package.renewRequested", $"{client.BusinessName} hat eine Paketverlängerung angefragt", note, "/clients", true, key, ct);
         // The client's own copy marks "asked today" (and shows in their bell).
         if (me.UserId is { } uid)
-            await notifier.NotifyAsync([uid], "package.renewRequested", "درخواست تمدید شما ثبت شد", "آژانس به‌زودی با شما تماس می‌گیرد.", "/profile", false, key, ct);
+            await notifier.NotifyAsync([uid], "package.renewRequested", "Ihre Verlängerungsanfrage wurde erfasst", "Die Agentur meldet sich in Kürze bei Ihnen.", "/profile", false, key, ct);
         audit.Add("portal.renewRequested", nameof(Client), clientId.ToString(), new { note });
         await db.SaveChangesAsync(ct);
         return new RenewResultDto(false);

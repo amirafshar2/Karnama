@@ -48,8 +48,8 @@ public sealed class LeadRequestValidator : AbstractValidator<LeadRequest>
 {
     public LeadRequestValidator()
     {
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(60).WithMessage("نام را بنویسید.");
-        RuleFor(x => x.Phone).NotEmpty().MaximumLength(20).WithMessage("شماره‌ی موبایل را بنویسید.");
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(60).WithMessage("Geben Sie den Namen ein.");
+        RuleFor(x => x.Phone).NotEmpty().MaximumLength(20).WithMessage("Geben Sie die Handynummer ein.");
         RuleFor(x => x.Business).MaximumLength(80);
         RuleFor(x => x.Message).MaximumLength(1000);
         RuleFor(x => x.Source).MaximumLength(200);
@@ -75,7 +75,7 @@ public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteC
         var testimonials = cases.Where(x => x.Quote != null && x.QuoteBy != null).Take(6)
             .Select(x => new SiteTestimonial(x.Quote!, x.QuoteBy!, x.BusinessName, x.Slug)).ToList();
         return new SiteHome(c, new SiteStats(clients, deliveries, median),
-            services.Select(s => new SiteService(s.Name.Get("fa"), s.Description, s.Icon)).ToList(),
+            services.Select(s => new SiteService(s.Name.Get("de"), s.Description, s.Icon)).ToList(),
             c.ShowCases ? cases.Take(6).Select(Card).ToList() : [], packages, testimonials, Hero(c, cases));
     }
 
@@ -100,7 +100,7 @@ public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteC
             .Where(p => p.ShowOnSite && p.Status == PackageStatus.Active && (p.SaleFrom == null || p.SaleFrom <= now) && (p.SaleTo == null || p.SaleTo > now))
             .OrderBy(p => p.SortOrder).Take(12).ToListAsync(ct);
         var names = await ServiceNamesAsync(ct);
-        return rows.Select(p => new SitePackageCard(p.Name.Get("fa"), p.Slug, p.ShortDescription.Get("fa"), p.Price, p.CompareAtPrice, ActiveSpecial(p, now), p.Period, p.ValidityDays,
+        return rows.Select(p => new SitePackageCard(p.Name.Get("de"), p.Slug, p.ShortDescription.Get("de"), p.Price, p.CompareAtPrice, ActiveSpecial(p, now), p.Period, p.ValidityDays,
             p.Badge, Url(p.CoverImage), p.Quotas.Select(q => $"{q.Count} {names.GetValueOrDefault(q.ServiceTypeId)}").Take(5).ToList())).ToList();
     }
 
@@ -108,7 +108,7 @@ public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteC
         p.SpecialPrice is { } s && (p.SpecialFrom == null || p.SpecialFrom <= now) && (p.SpecialTo == null || p.SpecialTo > now) ? s : null;
 
     private async Task<Dictionary<Guid, string>> ServiceNamesAsync(CancellationToken ct) =>
-        (await db.ServiceTypes.IgnoreQueryFilters().AsNoTracking().ToListAsync(ct)).ToDictionary(s => s.Id, s => s.Name.Get("fa"));
+        (await db.ServiceTypes.IgnoreQueryFilters().AsNoTracking().ToListAsync(ct)).ToDictionary(s => s.Id, s => s.Name.Get("de"));
 
     public async Task<IReadOnlyList<SitePackageCard>> PackagesAsync(CancellationToken ct) => await PackageCardsAsync(ct);
 
@@ -119,8 +119,8 @@ public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteC
         var p = await db.Packages.AsNoTracking().Include(x => x.Quotas).FirstOrDefaultAsync(x => x.Slug == slug && x.ShowOnSite && x.Status == PackageStatus.Active, ct);
         if (p is null) return null;
         var names = await ServiceNamesAsync(ct);
-        return new SitePackage(p.Name.Get("fa"), p.Slug, p.ShortDescription.Get("fa"), p.DescriptionHtml, p.Price, p.CompareAtPrice, ActiveSpecial(p, now), p.Period, p.ValidityDays,
-            p.Badge, Url(p.CoverImage), p.Quotas.Select(q => $"{q.Count} {names.GetValueOrDefault(q.ServiceTypeId)}").ToList(), p.Features.Select(f => f.Get("fa")).ToList(),
+        return new SitePackage(p.Name.Get("de"), p.Slug, p.ShortDescription.Get("de"), p.DescriptionHtml, p.Price, p.CompareAtPrice, ActiveSpecial(p, now), p.Period, p.ValidityDays,
+            p.Badge, Url(p.CoverImage), p.Quotas.Select(q => $"{q.Count} {names.GetValueOrDefault(q.ServiceTypeId)}").ToList(), p.Features.Select(f => f.Get("de")).ToList(),
             p.Faq, p.DefaultManagement, p.ConsultSessions, p.RevisionsPerItem, p.DeliveryHours, p.SeoTitle, p.SeoDescription);
     }
 
@@ -151,13 +151,13 @@ public sealed class PublicSiteService(IAppDbContext db, IMediaStore media, SiteC
     public async Task<Result> LeadAsync(LeadRequest r, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(r.Website)) return Result.Success();   // honeypot: bots fill every field; pretend it worked
-        if (!PhoneNumber.TryNormalize(r.Phone, out var phone)) return Error.Validation("leads.phone", "شماره‌ی موبایل درست نیست (مثلاً ۰۹۱۲۳۴۵۶۷۸۹).");
+        if (!PhoneNumber.TryNormalize(r.Phone, out var phone)) return Error.Validation("leads.phone", "Die Handynummer ist ungültig (z. B. 01512 3456789).");
         var name = (r.Name ?? "").Trim();
-        if (name.Length is < 2 or > 60) return Error.Validation("leads.name", "نام را بنویسید.");
+        if (name.Length is < 2 or > 60) return Error.Validation("leads.name", "Geben Sie den Namen ein.");
         // The same phone within an hour is one request (double taps, impatient visitors).
         var hourAgo = clock.GetUtcNow().AddHours(-1);
         if (await db.Leads.AnyAsync(l => l.Phone == phone && l.CreatedAt > hourAgo, ct)) return Result.Success();
-        await crm.IngestAsync(name, phone, r.Business, r.Message, r.Source, "فرم سایت", null, ct);
+        await crm.IngestAsync(name, phone, r.Business, r.Message, r.Source, "Website-Formular", null, ct);
         return Result.Success();
     }
 }
@@ -187,13 +187,13 @@ public sealed class CaseStudyService(IAppDbContext db, ICurrentUser me, IMediaSt
         foreach (var img in new[] { r.Logo }.Concat((r.Shots ?? []).Select(s => s.Image)).Where(x => x is not null))
         {
             var opened = media.OpenPublic(img!);
-            if (opened is null) return Error.Validation("cases.image", "یکی از عکس‌ها پیدا نشد؛ دوباره آپلود کنید.");
+            if (opened is null) return Error.Validation("cases.image", "Eines der Fotos wurde nicht gefunden; laden Sie es erneut hoch.");
             opened.Value.Stream.Dispose();
         }
         if (r.ConsentFile is { } cf)
         {
             var opened = media.OpenPrivate(cf);
-            if (opened is null) return Error.Validation("cases.consentFile", "فایل رضایت پیدا نشد؛ دوباره آپلود کنید.");
+            if (opened is null) return Error.Validation("cases.consentFile", "Einwilligungsdatei nicht gefunden; laden Sie sie erneut hoch.");
             opened.Value.Stream.Dispose();
         }
         var spec = new CaseStudy.Spec(r.BusinessName, r.Slug, r.Industry, r.City, r.Logo, r.Handle, r.From, r.To, r.Services ?? [], r.Summary,
@@ -204,7 +204,7 @@ public sealed class CaseStudyService(IAppDbContext db, ICurrentUser me, IMediaSt
         {
             c = (await db.CaseStudies.FirstOrDefaultAsync(x => x.Id == cid, ct))!;
             if (c is null) return Error.NotFound();
-            if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+            if (r.Version is not { } v) return Error.Validation("common.versionRequired", "Die Datensatzversion fehlt; laden Sie die Seite neu.");
             db.SetOriginalVersion(c, v);
             var u = c.Update(spec);
             if (u.IsFailure) return u.Error!;
@@ -216,7 +216,7 @@ public sealed class CaseStudyService(IAppDbContext db, ICurrentUser me, IMediaSt
             c = created.Value!;
             db.CaseStudies.Add(c);
         }
-        if (await db.CaseStudies.AnyAsync(x => x.Slug == c.Slug && x.Id != c.Id, ct)) return Error.Conflict("cases.slugTaken", "نمونه‌کاری با همین نامک هست؛ نامک دیگری بنویسید.");
+        if (await db.CaseStudies.AnyAsync(x => x.Slug == c.Slug && x.Id != c.Id, ct)) return Error.Conflict("cases.slugTaken", "Es gibt bereits eine Referenz mit diesem Slug; wählen Sie einen anderen.");
         audit.Add(id is null ? "cases.created" : "cases.updated", nameof(CaseStudy), c.Id.ToString());
         await db.SaveChangesAsync(ct);
         await cache.EvictAsync(ct);

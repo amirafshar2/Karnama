@@ -28,7 +28,7 @@ public sealed class AttendancePolicy : Entity
     public Result Update(string name, string rule, IReadOnlyList<Guid> roleIds, IReadOnlyList<Guid> userIds, bool isDefault)
     {
         name = name.Trim();
-        if (name.Length is 0 or > 100) return Error.Validation("policies.name", "نام سیاست الزامی است.");
+        if (name.Length is 0 or > 100) return Error.Validation("policies.name", "Der Name der Richtlinie ist Pflicht.");
         if (PolicyRule.Parse(rule) is { IsFailure: true } bad) return bad.Error!;
         Name = name;
         Rule = rule.Trim();
@@ -65,7 +65,7 @@ public abstract record PolicyRule
     public static Result<PolicyRule> Parse(string text)
     {
         var tokens = Tokenize(text ?? "");
-        if (tokens.Count is 0 or > 50) return Error.Validation("policies.rule", "قانون خالی یا خیلی طولانی است.");
+        if (tokens.Count is 0 or > 50) return Error.Validation("policies.rule", "Die Regel ist leer oder zu lang.");
         var pos = 0;
         PolicyRule? Expr() { var l = Term(); while (l is not null && pos < tokens.Count && tokens[pos] == "|") { pos++; var r = Term(); if (r is null) return null; l = new Or(l, r); } return l; }
         PolicyRule? Term() { var l = Factor(); while (l is not null && pos < tokens.Count && tokens[pos] == "&") { pos++; var r = Factor(); if (r is null) return null; l = new And(l, r); } return l; }
@@ -78,7 +78,7 @@ public abstract record PolicyRule
         }
         var rule = Expr();
         return rule is null || pos != tokens.Count
-            ? Error.Validation("policies.rule", "قانون معتبر نیست. مثال: OfficeNetwork & (RotatingQr | BiometricDevice)")
+            ? Error.Validation("policies.rule", "Die Regel ist ungültig. Beispiel: OfficeNetwork & (RotatingQr | BiometricDevice)")
             : rule;
     }
 
@@ -106,9 +106,9 @@ public sealed class AttendancePlace : Entity
     private AttendancePlace() { Name = string.Empty; }
     public static Result<AttendancePlace> Create(string name, double lat, double lng, int radiusMeters)
     {
-        if (string.IsNullOrWhiteSpace(name)) return Error.Validation("places.name", "نام مکان الزامی است.");
-        if (lat is < -90 or > 90 || lng is < -180 or > 180) return Error.Validation("places.coords", "مختصات معتبر نیست.");
-        if (radiusMeters is < 20 or > 5000) return Error.Validation("places.radius", "شعاع باید بین ۲۰ تا ۵۰۰۰ متر باشد.");
+        if (string.IsNullOrWhiteSpace(name)) return Error.Validation("places.name", "Der Name des Orts ist Pflicht.");
+        if (lat is < -90 or > 90 || lng is < -180 or > 180) return Error.Validation("places.coords", "Die Koordinaten sind ungültig.");
+        if (radiusMeters is < 20 or > 5000) return Error.Validation("places.radius", "Der Radius muss zwischen 20 und 5000 Metern liegen.");
         return new AttendancePlace { Name = name.Trim(), Latitude = lat, Longitude = lng, RadiusMeters = radiusMeters };
     }
     public string Name { get; private set; }

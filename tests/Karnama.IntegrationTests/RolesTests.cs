@@ -26,8 +26,8 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
 
         var created = await admin.PostAsJsonAsync("/api/v1/roles", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "گرافیست", ["en"] = "Designer" },
-            description = "طراحی پست",
+            name = new Dictionary<string, string> { ["de"] = "Grafiker", ["en"] = "Designer" },
+            description = "Post-Design",
             permissions = new[] { new { code = "work.view", scope = "assigned" }, new { code = "work.run", scope = "assigned" } },
         }, Http.Json);
         created.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -37,7 +37,7 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
 
         var updated = await admin.PutAsJsonAsync($"/api/v1/roles/{id}", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "گرافیست ارشد" },
+            name = new Dictionary<string, string> { ["de"] = "Senior-Grafiker" },
             permissions = new[] { new { code = "work.view", scope = "all" } },
             version,
         }, Http.Json);
@@ -48,7 +48,7 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         // Read back from the database: grants were really replaced (one scope changed, one added, one removed).
         var addOne = await admin.PutAsJsonAsync($"/api/v1/roles/{id}", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "گرافیست ارشد" },
+            name = new Dictionary<string, string> { ["de"] = "Senior-Grafiker" },
             permissions = new[] { new { code = "work.view", scope = "all" }, new { code = "attendance.self", scope = "own" } },
             version = newVersion,
         }, Http.Json);
@@ -61,7 +61,7 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
 
         var stale = await admin.PutAsJsonAsync($"/api/v1/roles/{id}", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "قدیمی" },
+            name = new Dictionary<string, string> { ["de"] = "Alt" },
             permissions = Array.Empty<object>(),
             version,
         }, Http.Json);
@@ -85,15 +85,15 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         var admin = _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
         var bad = await admin.PostAsJsonAsync("/api/v1/roles", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "x" },
+            name = new Dictionary<string, string> { ["de"] = "x" },
             permissions = new[] { new { code = "settings.manage", scope = "own" } },
         }, Http.Json);
         bad.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await bad.JsonAsync()).GetProperty("title").GetString().Should().Contain("مجاز نیست");
+        (await bad.JsonAsync()).GetProperty("title").GetString().Should().Contain("nicht erlaubt");
 
         var empty = await admin.PostAsJsonAsync("/api/v1/roles", new { name = new Dictionary<string, string>(), permissions = Array.Empty<object>() }, Http.Json);
         empty.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await empty.JsonAsync()).GetProperty("title").GetString().Should().Be("نام نقش الزامی است.");
+        (await empty.JsonAsync()).GetProperty("title").GetString().Should().Be("Der Rollenname ist Pflicht.");
     }
 
     [Fact]
@@ -124,15 +124,15 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     public async Task A_roles_manager_cannot_escalate_through_roles()
     {
         var admin = _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
-        var rolesOnly = await admin.CreateRoleAsync("فقط نقش‌ها", ("roles.manage", "all"));
-        var (_, access, _) = await _f.StaffLoginAsync("09127771001", rolesOnly);
+        var rolesOnly = await admin.CreateRoleAsync("Nur Rollen", ("roles.manage", "all"));
+        var (_, access, _) = await _f.StaffLoginAsync("015127771001", rolesOnly);
         var u = _f.CreateClient().WithToken(access);
 
         // Raise their own role (QA S12 2.12.k).
         var own = await (await u.GetAsync($"/api/v1/roles/{rolesOnly}")).JsonAsync();
         var raise = await u.PutAsJsonAsync($"/api/v1/roles/{rolesOnly}", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "فقط نقش‌ها" },
+            name = new Dictionary<string, string> { ["de"] = "Nur Rollen" },
             permissions = new[] { new { code = "roles.manage", scope = "all" }, new { code = "users.manage", scope = "all" } },
             version = own.GetProperty("version").GetUInt32(),
         }, Http.Json);
@@ -142,18 +142,18 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         // A new role stronger than themselves.
         var stronger = await u.PostAsJsonAsync("/api/v1/roles", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "قوی‌تر" },
+            name = new Dictionary<string, string> { ["de"] = "Stärker" },
             permissions = new[] { new { code = "roles.manage", scope = "all" }, new { code = "settings.manage", scope = "all" } },
         }, Http.Json);
         stronger.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await stronger.JsonAsync()).GetProperty("code").GetString().Should().Be("roles.tooStrong");
 
         // Someone else's role: no adding grants, no touching a role with grants they don't hold, no deleting it.
-        var workers = await admin.CreateRoleAsync("کارگرها", ("work.view", "assigned"));
+        var workers = await admin.CreateRoleAsync("Mitarbeiter", ("work.view", "assigned"));
         var w = await (await admin.GetAsync($"/api/v1/roles/{workers}")).JsonAsync();
         var add = await u.PutAsJsonAsync($"/api/v1/roles/{workers}", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "کارگرها" },
+            name = new Dictionary<string, string> { ["de"] = "Mitarbeiter" },
             permissions = new[] { new { code = "work.view", scope = "assigned" }, new { code = "users.manage", scope = "all" } },
             version = w.GetProperty("version").GetUInt32(),
         }, Http.Json);
@@ -164,14 +164,14 @@ public sealed class RolesTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         // Within their own grants they can still work: create, then edit a role they don't hold.
         var created = await u.PostAsJsonAsync("/api/v1/roles", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "دستیار نقش" },
+            name = new Dictionary<string, string> { ["de"] = "Rollenassistent" },
             permissions = new[] { new { code = "roles.manage", scope = "all" } },
         }, Http.Json);
         created.StatusCode.Should().Be(HttpStatusCode.Created);
         var c = await created.JsonAsync();
         var edit = await u.PutAsJsonAsync($"/api/v1/roles/{c.GetProperty("id").GetGuid()}", new
         {
-            name = new Dictionary<string, string> { ["fa"] = "دستیار نقش ۲" },
+            name = new Dictionary<string, string> { ["de"] = "Rollenassistent 2" },
             permissions = new[] { new { code = "roles.manage", scope = "all" } },
             version = c.GetProperty("version").GetUInt32(),
         }, Http.Json);

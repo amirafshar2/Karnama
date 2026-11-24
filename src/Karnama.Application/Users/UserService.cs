@@ -19,9 +19,9 @@ public sealed class UpsertUserValidator : AbstractValidator<UpsertUserRequest>
 {
     public UpsertUserValidator()
     {
-        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(100).WithMessage("نام باید بین ۱ تا ۱۰۰ کاراکتر باشد.");
-        RuleFor(x => x.Phone).Must(p => PhoneNumber.TryNormalize(p, out _)).WithMessage("شماره‌ی موبایل معتبر نیست (مثل ۰۹۱۲۱۲۳۴۵۶۷).");
-        RuleFor(x => x.RoleIds).NotNull().WithMessage("نقش‌ها را انتخاب کنید.");
+        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(100).WithMessage("Der Name muss zwischen 1 und 100 Zeichen haben.");
+        RuleFor(x => x.Phone).Must(p => PhoneNumber.TryNormalize(p, out _)).WithMessage("Die Handynummer ist ungültig (z. B. 01512 3456789).");
+        RuleFor(x => x.RoleIds).NotNull().WithMessage("Wählen Sie die Rollen.");
     }
 }
 
@@ -51,14 +51,14 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<UserListItemDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var u = await db.Users.IgnoreQueryFilters().AsNoTracking().Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == id && x.Kind == UserKind.Staff, ct);
-        return u is null ? Error.NotFound("users.notFound", "کاربر پیدا نشد.") : ToDto(u, await RoleNamesAsync(ct));
+        return u is null ? Error.NotFound("users.notFound", "Benutzer nicht gefunden.") : ToDto(u, await RoleNamesAsync(ct));
     }
 
     public async Task<Result<UserListItemDto>> CreateAsync(UpsertUserRequest r, CancellationToken ct)
     {
         PhoneNumber.TryNormalize(r.Phone, out var phone);
         if (await db.Users.IgnoreQueryFilters().AnyAsync(u => u.Phone == phone && !u.IsDeleted, ct))
-            return Error.Conflict("users.phoneTaken", "این شماره برای کاربر دیگری ثبت شده است.");
+            return Error.Conflict("users.phoneTaken", "Diese Nummer ist bereits für einen anderen Benutzer registriert.");
         var created = User.Create(phone, r.DisplayName, UserKind.Staff, isDemo: me.IsDemo);
         if (created.IsFailure) return created.Error!;
         var user = created.Value;
@@ -74,13 +74,13 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<UserListItemDto>> UpdateAsync(Guid id, UpsertUserRequest r, CancellationToken ct)
     {
         var user = await db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id && u.Kind == UserKind.Staff, ct);
-        if (user is null) return Error.NotFound("users.notFound", "کاربر پیدا نشد.");
+        if (user is null) return Error.NotFound("users.notFound", "Benutzer nicht gefunden.");
         var guard = await GuardAsync(user, ct);
         if (guard.IsFailure) return guard.Error!;
 
         PhoneNumber.TryNormalize(r.Phone, out var phone);
         if (phone != user.Phone)
-            return Error.Validation("users.phoneLocked", "شماره‌ی ورود قابل تغییر نیست؛ برای شماره‌ی جدید کاربر تازه بسازید و این را غیرفعال کنید.");
+            return Error.Validation("users.phoneLocked", "Die Anmeldenummer lässt sich nicht ändern; legen Sie für eine neue Nummer einen neuen Benutzer an und deaktivieren Sie diesen.");
 
         var beforeRoles = user.Roles.Select(x => x.RoleId).ToList();
         var renamed = user.Rename(r.DisplayName);
@@ -106,8 +106,8 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
     {
         var user = await db.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id && u.Kind == UserKind.Staff, ct);
-        if (user is null) return Error.NotFound("users.notFound", "کاربر پیدا نشد.");
-        if (user.Id == me.UserId) return Error.Conflict("users.self", "نمی‌توانید حساب خودتان را حذف کنید.");
+        if (user is null) return Error.NotFound("users.notFound", "Benutzer nicht gefunden.");
+        if (user.Id == me.UserId) return Error.Conflict("users.self", "Sie können Ihr eigenes Konto nicht löschen.");
         var guard = await GuardAsync(user, ct);
         if (guard.IsFailure) return guard;
         var last = await LastOwnerCheckAsync(user, removingOwner: true, ct);
@@ -125,10 +125,10 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<UserListItemDto>> RestoreAsync(Guid id, CancellationToken ct)
     {
         var user = await db.Users.IgnoreQueryFilters().Include(u => u.Roles).FirstOrDefaultAsync(u => u.Id == id && u.Kind == UserKind.Staff, ct);
-        if (user is null) return Error.NotFound("users.notFound", "کاربر پیدا نشد.");
+        if (user is null) return Error.NotFound("users.notFound", "Benutzer nicht gefunden.");
         var guard = await GuardAsync(user, ct);
         if (guard.IsFailure) return guard.Error!;
-        if (await db.Users.AnyAsync(u => u.Phone == user.Phone, ct)) return Error.Conflict("users.phoneTaken", "این شماره برای کاربر دیگری ثبت شده است.");
+        if (await db.Users.AnyAsync(u => u.Phone == user.Phone, ct)) return Error.Conflict("users.phoneTaken", "Diese Nummer ist bereits für einen anderen Benutzer registriert.");
         user.SoftRestore();
         user.Activate();
         audit.Add("users.restored", nameof(User), id.ToString());
@@ -140,16 +140,16 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     {
         var users = await db.Users.AsNoTracking().Include(u => u.Roles).Where(u => u.Kind == UserKind.Staff).OrderBy(u => u.DisplayName).ToListAsync(ct);
         var roles = await RoleNamesAsync(ct);
-        return excel.Export("Users", ["نام", "موبایل", "نقش‌ها", "فعال", "ورود دومرحله‌ای"],
-            users.Select(u => (IReadOnlyList<object?>)[u.DisplayName, u.Phone, string.Join("، ", u.Roles.Select(r => roles.GetValueOrDefault(r.RoleId)?.Name)), u.IsActive ? "بله" : "نه", u.TwoFactorEnabled ? "بله" : "نه"]));
+        return excel.Export("Users", ["Name", "Handy", "Rollen", "Aktiv", "Zwei-Faktor-Anmeldung"],
+            users.Select(u => (IReadOnlyList<object?>)[u.DisplayName, u.Phone, string.Join(", ", u.Roles.Select(r => roles.GetValueOrDefault(r.RoleId)?.Name)), u.IsActive ? "Ja" : "Nein", u.TwoFactorEnabled ? "Ja" : "Nein"]));
     }
 
     /// <summary>Demo sessions may only change demo accounts; nobody but an Owner touches an Owner.</summary>
     private async Task<Result> GuardAsync(User target, CancellationToken ct)
     {
-        if (me.IsDemo && !target.IsDemo) return Error.Forbidden("users.demoGuard", "در حالت نمایشی فقط حساب‌های نمونه قابل تغییرند.");
+        if (me.IsDemo && !target.IsDemo) return Error.Forbidden("users.demoGuard", "Im Demo-Modus können nur die Beispielkonten geändert werden.");
         if (await PermissionLoader.IsOwnerAsync(db, target.Id, ct) && !await CallerIsOwnerAsync(ct))
-            return Error.Forbidden("users.ownerOnly", "فقط مالک می‌تواند حساب یک مالک را تغییر دهد.");
+            return Error.Forbidden("users.ownerOnly", "Nur ein Inhaber kann das Konto eines Inhabers ändern.");
         return Result.Success();
     }
 
@@ -159,8 +159,8 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     {
         var wanted = roleIds.Distinct().ToList();
         var roles = await db.Roles.Where(r => wanted.Contains(r.Id)).Select(r => new { r.Id, r.SystemKey }).ToListAsync(ct);
-        if (roles.Count != wanted.Count) return Error.Validation("users.unknownRole", "یکی از نقش‌ها وجود ندارد.");
-        if (roles.Any(r => r.SystemKey == SystemRoles.Client)) return Error.Validation("users.clientRole", "نقش «مشتری» از صفحه‌ی مشتری‌ها داده می‌شود.");
+        if (roles.Count != wanted.Count) return Error.Validation("users.unknownRole", "Eine der Rollen existiert nicht.");
+        if (roles.Any(r => r.SystemKey == SystemRoles.Client)) return Error.Validation("users.clientRole", "Die Rolle „Kunde“ wird über die Kundenseite vergeben.");
 
         var ownerRoleId = await db.Roles.Where(r => r.SystemKey == SystemRoles.Owner).Select(r => r.Id).FirstAsync(ct);
         var callerIsOwner = await CallerIsOwnerAsync(ct);
@@ -170,17 +170,17 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         {
             // No self-promotion: a non-owner can't change their own roles, and can only grant or take away
             // roles whose every permission they hold themselves at the same scope or wider.
-            if (user.Id == me.UserId) return Error.Forbidden("users.selfRoles", "نقش‌های خودتان را فقط مالک می‌تواند تغییر دهد.");
+            if (user.Id == me.UserId) return Error.Forbidden("users.selfRoles", "Ihre eigenen Rollen kann nur der Inhaber ändern.");
             var grants = await db.Roles.Where(r => changed.Contains(r.Id)).SelectMany(r => r.Permissions.Select(p => new { p.Code, p.Scope })).ToListAsync(ct);
             if (grants.Any(g => !me.Has(g.Code, g.Scope)))
-                return Error.Forbidden("users.roleTooStrong", "این نقش دسترسی‌هایی دارد که خودتان ندارید؛ فقط مالک می‌تواند آن را بدهد یا بگیرد.");
+                return Error.Forbidden("users.roleTooStrong", "Diese Rolle hat Berechtigungen, die Sie selbst nicht haben; nur der Inhaber kann sie vergeben oder entziehen.");
         }
         var hadOwner = user.Roles.Any(r => r.RoleId == ownerRoleId);
         var wantsOwner = wanted.Contains(ownerRoleId);
         if (hadOwner != wantsOwner)
         {
             if (!callerIsOwner)
-                return Error.Forbidden("users.ownerOnly", "فقط مالک می‌تواند نقش «مالک» را بدهد یا بگیرد.");
+                return Error.Forbidden("users.ownerOnly", "Nur ein Inhaber kann die Rolle „Inhaber“ vergeben oder entziehen.");
             if (hadOwner && !wantsOwner)
             {
                 var last = await LastOwnerCheckAsync(user, removingOwner: true, ct);
@@ -204,7 +204,7 @@ public sealed class UserService(IAppDbContext db, ICurrentUser me, IAuditWriter 
                             join ur in db.UserRoles on u.Id equals ur.UserId
                             where ur.RoleId == ownerRoleId && u.Id != user.Id && u.IsActive && !u.IsDemo
                             select u.Id).AnyAsync(ct);
-        return others ? Result.Success() : Error.Conflict("users.lastOwner", "حداقل یک مالک فعال لازم است؛ اول مالک دیگری تعیین کنید.");
+        return others ? Result.Success() : Error.Conflict("users.lastOwner", "Mindestens ein aktiver Inhaber ist nötig; bestimmen Sie zuerst einen anderen Inhaber.");
     }
 
     private async Task<Dictionary<Guid, UserRoleRef>> RoleNamesAsync(CancellationToken ct)

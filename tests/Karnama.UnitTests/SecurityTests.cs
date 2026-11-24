@@ -55,10 +55,10 @@ public class OtpCodeServiceTests
     public void Hash_is_bound_to_challenge_and_phone()
     {
         var id = Guid.NewGuid();
-        var h = _svc.Hash(id, "09121234567", "123456");
-        _svc.Matches(h, _svc.Hash(id, "09121234567", "123456")).Should().BeTrue();
-        _svc.Matches(h, _svc.Hash(Guid.NewGuid(), "09121234567", "123456")).Should().BeFalse();
-        _svc.Matches(h, _svc.Hash(id, "09351234567", "123456")).Should().BeFalse();
+        var h = _svc.Hash(id, "015121234567", "123456");
+        _svc.Matches(h, _svc.Hash(id, "015121234567", "123456")).Should().BeTrue();
+        _svc.Matches(h, _svc.Hash(Guid.NewGuid(), "015121234567", "123456")).Should().BeFalse();
+        _svc.Matches(h, _svc.Hash(id, "015151234567", "123456")).Should().BeFalse();
         h.Should().NotContain("123456");
     }
 }

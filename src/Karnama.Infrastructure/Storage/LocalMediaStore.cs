@@ -32,7 +32,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
     public async Task<Result<string>> SaveImageAsync(Stream content, long length, string folder, CancellationToken ct, string? stableName = null)
     {
         if (length <= 0 || length > MaxImageBytes)
-            return Error.Validation("media.tooLarge", "حجم عکس باید کمتر از ۲ مگابایت باشد.");
+            return Error.Validation("media.tooLarge", "Das Foto muss kleiner als 2 MB sein.");
 
         var buffer = new byte[length];
         var read = 0;
@@ -42,11 +42,11 @@ internal sealed partial class LocalMediaStore : IMediaStore
             if (n == 0) break;
             read += n;
         }
-        if (read != length) return Error.Validation("media.incomplete", "فایل کامل نرسید. دوباره امتحان کنید.");
+        if (read != length) return Error.Validation("media.incomplete", "Die Datei kam nicht vollständig an. Versuchen Sie es erneut.");
 
         var ext = Sniff(buffer);
         if (ext is null)
-            return Error.Validation("media.badType", "فقط عکس PNG، JPG یا WebP قبول می‌شود (SVG مجاز نیست).");
+            return Error.Validation("media.badType", "Es werden nur PNG-, JPG- oder WebP-Bilder akzeptiert (SVG ist nicht erlaubt).");
 
         var id = $"{folder}/{NameOf(stableName)}.{ext}";
         var path = Path.Combine(_root, id);
@@ -80,7 +80,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
     public async Task<Result<string>> SaveVideoAsync(Stream content, long length, string folder, CancellationToken ct, string? stableName = null)
     {
         if (length <= 0 || length > MaxVideoBytes)
-            return Error.Validation("media.videoTooLarge", "حجم ویدیو باید کمتر از ۱۸ مگابایت باشد.");
+            return Error.Validation("media.videoTooLarge", "Das Video muss kleiner als 18 MB sein.");
         var head = new byte[16];
         var got = 0;
         while (got < head.Length)
@@ -90,7 +90,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
             got += n;
         }
         var ext = SniffVideo(head.AsSpan(0, got));
-        if (ext is null) return Error.Validation("media.badVideo", "فقط ویدیوی MP4 یا WebM قبول می‌شود.");
+        if (ext is null) return Error.Validation("media.badVideo", "Es werden nur MP4- oder WebM-Videos akzeptiert.");
 
         var id = $"{folder}/{NameOf(stableName)}.{ext}";
         var path = Path.Combine(_root, id);
@@ -113,7 +113,7 @@ internal sealed partial class LocalMediaStore : IMediaStore
         if (total != length)
         {
             File.Delete(part);
-            return Error.Validation("media.incomplete", "فایل کامل نرسید. دوباره امتحان کنید.");
+            return Error.Validation("media.incomplete", "Die Datei kam nicht vollständig an. Versuchen Sie es erneut.");
         }
         Publish(part, path);
         return id;

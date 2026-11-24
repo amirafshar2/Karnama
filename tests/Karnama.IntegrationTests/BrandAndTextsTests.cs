@@ -26,11 +26,11 @@ public sealed class BrandAndTextsTests(DemoAppFixture app) : IClassFixture<DemoA
         (await bad.JsonAsync()).GetProperty("title").GetString().Should().Contain("#RRGGBB");
 
         var ok = await admin.PutAsJsonAsync("/api/v1/settings/brand",
-            new { name = "آژانس M", tagline = "شعار", colors = new { primary = "#feff00", dark = "#0a0a0a" } });
+            new { name = "Agentur M", tagline = "Slogan", colors = new { primary = "#feff00", dark = "#0a0a0a" } });
         ok.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var pub = await (await _f.CreateClient().GetAsync("/api/v1/public/brand")).JsonAsync();
-        pub.GetProperty("name").GetString().Should().Be("آژانس M");
+        pub.GetProperty("name").GetString().Should().Be("Agentur M");
         pub.GetProperty("colors").GetProperty("primary").GetString().Should().Be("#FEFF00");
     }
 
@@ -60,17 +60,17 @@ public sealed class BrandAndTextsTests(DemoAppFixture app) : IClassFixture<DemoA
     public async Task Texts_override_the_bundle_and_reset_restores_default()
     {
         var editor = _f.CreateClient().WithToken(await _f.DemoTokenAsync("editor"));
-        (await editor.PutAsJsonAsync("/api/v1/translations/fa/login.title", new { value = "x" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await editor.PutAsJsonAsync("/api/v1/translations/de/login.title", new { value = "x" })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         var admin = _f.CreateClient().WithToken(await _f.DemoTokenAsync("admin"));
-        (await admin.PutAsJsonAsync("/api/v1/translations/fa/login.title", new { value = "ورود همکاران" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var bundle = await (await _f.CreateClient().GetAsync("/api/v1/i18n/fa")).JsonAsync();
-        bundle.GetProperty("texts").GetProperty("login.title").GetString().Should().Be("ورود همکاران");
+        (await admin.PutAsJsonAsync("/api/v1/translations/de/login.title", new { value = "Anmeldung für Mitarbeiter" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var bundle = await (await _f.CreateClient().GetAsync("/api/v1/i18n/de")).JsonAsync();
+        bundle.GetProperty("texts").GetProperty("login.title").GetString().Should().Be("Anmeldung für Mitarbeiter");
 
-        (await admin.PutAsJsonAsync("/api/v1/translations/fa/bad%20key!", new { value = "x" })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await admin.PutAsJsonAsync("/api/v1/translations/de/bad%20key!", new { value = "x" })).StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
-        (await admin.DeleteAsync("/api/v1/translations/fa/login.title")).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var after = await (await _f.CreateClient().GetAsync("/api/v1/i18n/fa")).JsonAsync();
+        (await admin.DeleteAsync("/api/v1/translations/de/login.title")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var after = await (await _f.CreateClient().GetAsync("/api/v1/i18n/de")).JsonAsync();
         after.GetProperty("texts").TryGetProperty("login.title", out _).Should().BeFalse();
     }
 
@@ -85,9 +85,9 @@ public sealed class BrandAndTextsTests(DemoAppFixture app) : IClassFixture<DemoA
             await cache.RemoveByTagAsync(Karnama.Application.Localization.LocalizationService.CacheTag);
             var first = _f.Services.CreateAsyncScope();
             using var gone = new CancellationTokenSource();
-            var a = first.ServiceProvider.GetRequiredService<Karnama.Application.Localization.LocalizationService>().GetBundleAsync("fa", gone.Token);
+            var a = first.ServiceProvider.GetRequiredService<Karnama.Application.Localization.LocalizationService>().GetBundleAsync("de", gone.Token);
             await using var second = _f.Services.CreateAsyncScope();
-            var b = second.ServiceProvider.GetRequiredService<Karnama.Application.Localization.LocalizationService>().GetBundleAsync("fa", CancellationToken.None);
+            var b = second.ServiceProvider.GetRequiredService<Karnama.Application.Localization.LocalizationService>().GetBundleAsync("de", CancellationToken.None);
             gone.Cancel();
             await first.DisposeAsync();
             try { await a; } catch (OperationCanceledException) { /* the closed page */ }

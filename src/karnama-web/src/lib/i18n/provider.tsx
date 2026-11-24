@@ -10,7 +10,7 @@ const BUILT_IN_LOADERS: Record<string, () => Promise<Partial<Record<TextKey, str
   en: () => import("./en").then((m) => m.en),
 };
 const FALLBACK_LANGUAGES: Language[] = [
-  { code: "fa", name: "فارسی", direction: "rtl", calendar: "persian", digits: "persian", isDefault: true },
+  { code: "de", name: "Deutsch", direction: "ltr", calendar: "gregorian", digits: "latin", isDefault: true },
   { code: "en", name: "English", direction: "ltr", calendar: "gregorian", digits: "latin", isDefault: false },
 ];
 const STORAGE_KEY = "karnama.lang";
@@ -45,7 +45,7 @@ function localeFor(lang: Language) {
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [languages, setLanguages] = useState<Language[]>(FALLBACK_LANGUAGES);
-  const [lang, setLangState] = useState<string>("fa");
+  const [lang, setLangState] = useState<string>("de");
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [builtIn, setBuiltIn] = useState<Partial<Record<TextKey, string>>>({});
 
@@ -135,7 +135,7 @@ export function useI18n() {
 
 /**
  * Some engines return Persian-calendar dates in an odd order with a Latin comma ("۱۴۰۵ آبان ۳, یکشنبه").
- * For full dates in RTL languages we assemble "یکشنبه ۳ آبان ۱۴۰۵" from parts.
+ * For full dates in RTL languages we assemble "Sonntag, 25. Oktober 2026" from parts.
  */
 function formatDate(locale: string, lang: Language, date: Date, opts?: Intl.DateTimeFormatOptions) {
   const options = opts ?? { weekday: "long", day: "numeric", month: "long", year: "numeric" };
@@ -145,7 +145,7 @@ function formatDate(locale: string, lang: Language, date: Date, opts?: Intl.Date
   const day = [part("weekday"), part("day"), part("month"), part("year")].filter(Boolean).join(" ");
   if (!options.hour) return day;
   const time = new Intl.DateTimeFormat(locale, { hour: options.hour, minute: options.minute ?? "2-digit", hourCycle: "h23" }).format(date);
-  return `${day}، ${time}`;
+  return `${day}, ${time}`;
 }
 
 /** Turns Persian/Arabic digits into ASCII (for inputs). */

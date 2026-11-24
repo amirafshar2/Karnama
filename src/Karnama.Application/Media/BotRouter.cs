@@ -13,7 +13,7 @@ namespace Karnama.Application.Media;
 /// </summary>
 public sealed partial class BotRouter(BotUpdateService links, MediaService media, IAppDbContext db, Crm.CrmService crm)
 {
-    [GeneratedRegex(@"(?:\+98|0098|0)?9\d{9}")]
+    [GeneratedRegex(@"(?:\+49|0049|0)1[5-7]\d(?:[ /-]?\d){7,8}")]
     private static partial Regex MobileInText();
 
     /// <returns>A plain-text reply for that chat, or null.</returns>
@@ -30,11 +30,11 @@ public sealed partial class BotRouter(BotUpdateService links, MediaService media
         var latin = Auth.Digits.ToLatin(text);
         var phone = u.ContactPhone ?? (MobileInText().Match(latin) is { Success: true } match ? match.Value : null);
         if (phone is not null && !PhoneNumber.TryNormalize(phone, out _)) phone = null;
-        var lead = await crm.IngestAsync(u.FromName ?? (m == Messenger.Telegram ? "کاربر تلگرام" : "کاربر بله"), phone, null,
-            text.Length > 0 ? text : null, m == Messenger.Telegram ? "telegram" : "bale", "ربات", u.ChatId, ct);
+        var lead = await crm.IngestAsync(u.FromName ?? (m == Messenger.Telegram ? "Telegram-Nutzer" : "Bale-Nutzer"), phone, null,
+            text.Length > 0 ? text : null, m == Messenger.Telegram ? "telegram" : "bale", "Bot", u.ChatId, ct);
         if (lead is null) return (u.ChatId, null);
         return (u.ChatId, lead.Phone is null
-            ? "پیامتان رسید ✅ همکاران ما به‌زودی پاسخ می‌دهند. اگر مایلید، شماره‌ی موبایلتان را بنویسید تا با شما تماس بگیریم."
-            : "ممنون، پیامتان رسید ✅ همکاران ما به‌زودی با شما تماس می‌گیرند.");
+            ? "Ihre Nachricht ist angekommen ✅ Unser Team antwortet in Kürze. Wenn Sie möchten, hinterlassen Sie Ihre Handynummer, damit wir Sie anrufen."
+            : "Danke, Ihre Nachricht ist angekommen ✅ Unser Team meldet sich in Kürze bei Ihnen.");
     }
 }

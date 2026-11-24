@@ -2,7 +2,11 @@
 
 **Web-App + Android-App**, mit denen eine Social-Media-Agentur ihren ganzen Arbeitstag an einem Ort organisiert: Kundenaufträge, Aufgaben des Teams, Arbeitszeit, Abwesenheit und Urlaub, Verkaufspakete, Veröffentlichungsplan, Vertrieb (CRM) und Kundenportal. Alle Änderungen erscheinen sofort live bei allen Beteiligten.
 
-> 🇮🇷 Die Oberfläche ist auf Persisch (RTL, persischer Kalender) und vollständig mehrsprachig. Eine persische Projektbeschreibung steht in [`README.fa.md`](README.fa.md).
+**🔗 Live-Demo:** [karnama.amirrezaafshar.de](https://karnama.amirrezaafshar.de) – Anmeldung per Klick auf eine Rolle (Admin, Cutter, Texter, Kunde, Vertrieb), ohne Telefonnummer oder Registrierung. Die Demo setzt sich bei jedem Neustart mit frischen Beispieldaten zurück.
+
+**📱 Android-App:** [karnama.apk herunterladen](https://github.com/amirafshar2/Karnama/releases/download/android-latest/karnama.apk) – verbindet sich mit derselben Demo-API.
+
+> 🇩🇪 Diese Version ist auf Deutsch (Euro, gregorianischer Kalender, Zeitzone Europe/Berlin, deutsche Handynummern) und mit fiktiven Beispieldaten. Die ursprüngliche persische Version (RTL, persischer Kalender) liegt im Branch [`persisch`](https://github.com/amirafshar2/Karnama/tree/persisch); die Oberfläche bleibt vollständig mehrsprachig.
 
 ---
 
@@ -93,7 +97,7 @@ dotnet test                        # Tests
 
 Android: `cd mobile && npx cap sync android && npx cap open android`
 
-**Demo online:** Das Blueprint [`render.yaml`](render.yaml) startet eine Demo-Instanz (Beispieldaten, Login per Klick je Rolle) auf Render – Anleitung in [`deploy/RENDER.md`](deploy/RENDER.md). Für den echten Betrieb gibt es Docker Compose mit Caddy: [`deploy/README.md`](deploy/README.md).
+**Demo online:** [karnama.amirrezaafshar.de](https://karnama.amirrezaafshar.de) (eigener Server, Docker + Caddy). Alternativ startet das Blueprint [`render.yaml`](render.yaml) eine Demo-Instanz (Beispieldaten, Login per Klick je Rolle) auf Render – Anleitung in [`deploy/RENDER.md`](deploy/RENDER.md). Für den echten Betrieb gibt es Docker Compose mit Caddy: [`deploy/README.md`](deploy/README.md).
 
 ## Dokumentation
 

@@ -40,8 +40,8 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
         await Db(async db =>
         {
             if (await db.Users.AnyAsync(u => u.Phone == phone)) return 0;
-            var role = (await db.Roles.ToListAsync()).First(r => r.Name.Get("fa") == "مدیر").Id;
-            var user = User.Create(phone, "مدیر تست", UserKind.Staff).Value!;
+            var role = (await db.Roles.ToListAsync()).First(r => r.Name.Get("de") == "Manager").Id;
+            var user = User.Create(phone, "Test-Manager", UserKind.Staff).Value!;
             user.AssignRole(role);
             db.Users.Add(user);
             return await db.SaveChangesAsync();
@@ -56,8 +56,8 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
     [Fact]
     public async Task Reveal_needs_a_fresh_sms_code_shows_the_password_once_and_is_audited_and_reported_to_the_owner()
     {
-        var (manager, phone) = await RealManagerAsync("09351110001");
-        var cafe = await ClientIdAsync("کافه نمونه");
+        var (manager, phone) = await RealManagerAsync("015151110001");
+        var cafe = await ClientIdAsync("Café Beispiel");
         var list = await Ok(await manager.GetAsync($"/api/v1/clients/{cafe}/credentials"));
         var cred = list.EnumerateArray().Single(x => x.GetProperty("hasSecret").GetBoolean());
         var id = cred.GetProperty("id").GetGuid();
@@ -108,7 +108,7 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
     [Fact]
     public async Task Workers_never_see_or_open_credentials()
     {
-        var cafe = await ClientIdAsync("کافه نمونه");
+        var cafe = await ClientIdAsync("Café Beispiel");
         var editor = await As("editor");
         (await editor.GetAsync($"/api/v1/clients/{cafe}/credentials")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var id = await Db(db => db.ClientCredentials.Where(c => c.ClientId == cafe).Select(c => c.Id).FirstAsync());
@@ -121,7 +121,7 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
     {
         var instagram = await InstagramAsync();
         var admin = await As("admin");
-        var shop = await ClientIdAsync("کتاب‌فروشی نمونه");
+        var shop = await ClientIdAsync("Buchhandlung Beispiel");
         var other = await Ok(await admin.PostAsJsonAsync($"/api/v1/clients/{shop}/credentials",
             new { platformId = instagram, handle = "book_shop_test", businessSuiteAccess = false, secret = new { password = "Other-Secret-9" } }));
         var otherId = other.GetProperty("id").GetGuid();
@@ -148,7 +148,7 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
         var secret = await Ok(await admin.PostAsJsonAsync($"/api/v1/credentials/{cafeCred.GetProperty("id").GetGuid()}/reveal", new { challengeId = start.GetProperty("challengeId").GetGuid(), code = demoCode }));
         secret.GetProperty("password").GetString().Should().Be("Changed-By-Client-7");
         secret.GetProperty("recoveryEmail").GetString().Should().Be("new@example.com");
-        secret.GetProperty("twoFactorNote").GetString().Should().Contain("خانم رضایی", "fields left out keep their stored value");
+        secret.GetProperty("twoFactorNote").GetString().Should().Contain("Frau Reiter", "fields left out keep their stored value");
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
     {
         var admin = await As("admin");
         var instagram = await InstagramAsync();
-        var a = await ClientIdAsync("گل‌فروشی نمونه");
+        var a = await ClientIdAsync("Blumenladen Beispiel");
         var x = await Ok(await admin.PostAsJsonAsync($"/api/v1/clients/{a}/credentials", new { platformId = instagram, handle = "flower_one", businessSuiteAccess = false, secret = new { password = "First-1" } }));
         var y = await Ok(await admin.PostAsJsonAsync($"/api/v1/clients/{a}/credentials", new { platformId = instagram, handle = "flower_two", businessSuiteAccess = false, secret = new { password = "Second-2" } }));
         await Db(async db =>
@@ -186,7 +186,7 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
     {
         var admin = await As("admin");
         await Ok(await admin.PutAsJsonAsync("/api/v1/settings/package-notices", new { daysBefore = new[] { 10, 2 }, onEndDay = true, quotaUsedUp = true, contractEndPasswords = true }));
-        var cafe = await ClientIdAsync("کافه نمونه");
+        var cafe = await ClientIdAsync("Café Beispiel");
         var pkg = await Db(db => db.ClientPackages.Where(p => p.ClientId == cafe && p.Status == ClientPackageStatus.Active).Select(p => new { p.Id, p.EndsAt }).FirstAsync());
 
         async Task<int> RunAsync()
@@ -196,7 +196,7 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
         }
         Task<int> Count(string kind) => Db(db => db.Notifications.CountAsync(n => n.EventKey.StartsWith($"pkg:{pkg.Id:N}") && n.Kind == kind));
         Task<int> PortalCount(string kind) => Db(db => (from n in db.Notifications join u in db.Users on n.UserId equals u.Id
-                                                         where u.Phone == "09000000004" && n.Kind == kind select n).CountAsync());
+                                                         where u.Phone == "015100000004" && n.Kind == kind select n).CountAsync());
 
         // The clock can't jump days (tokens would not be valid yet), so the package's end moves instead.
         Task MoveEnd(TimeSpan fromNow) => Db(db => db.ClientPackages.Where(p => p.Id == pkg.Id)
@@ -235,11 +235,11 @@ public sealed class CredentialTests(DemoAppFixture app) : IClassFixture<DemoAppF
     {
         var client = await As("client");
         var profile = await Ok(await client.GetAsync("/api/v1/portal/profile"));
-        profile.GetProperty("businessName").GetString().Should().Be("کافه نمونه");
+        profile.GetProperty("businessName").GetString().Should().Be("Café Beispiel");
         profile.GetProperty("history").GetArrayLength().Should().BeGreaterThan(0);
-        profile.GetRawText().Should().NotContain("یادداشت داخلی", "internal notes never reach the client");
+        profile.GetRawText().Should().NotContain("Interne Notiz", "internal notes never reach the client");
 
-        var first = await Ok(await client.PostAsJsonAsync("/api/v1/portal/renew", new { note = "همین پکیج را تمدید کنید" }));
+        var first = await Ok(await client.PostAsJsonAsync("/api/v1/portal/renew", new { note = "Dieses Paket verlängern" }));
         first.GetProperty("alreadyRequested").GetBoolean().Should().BeFalse();
         var second = await Ok(await client.PostAsJsonAsync("/api/v1/portal/renew", new { note = (string?)null }));
         second.GetProperty("alreadyRequested").GetBoolean().Should().BeTrue();

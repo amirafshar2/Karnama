@@ -7,12 +7,12 @@ namespace Karnama.UnitTests;
 public class PhoneNumberTests
 {
     [Theory]
-    [InlineData("09121234567", "09121234567")]
-    [InlineData("+989121234567", "09121234567")]
-    [InlineData("00989121234567", "09121234567")]
-    [InlineData("9121234567", "09121234567")]
-    [InlineData("۰۹۱۲ ۱۲۳ ۴۵۶۷", "09121234567")]
-    [InlineData("٠٩١٢١٢٣٤٥٦٧", "09121234567")]
+    [InlineData("015121234567", "015121234567")]
+    [InlineData("+4915121234567", "015121234567")]
+    [InlineData("004915121234567", "015121234567")]
+    [InlineData("15121234567", "015121234567")]
+    [InlineData("0151 2123 4567", "015121234567")]
+    [InlineData("01761234567", "01761234567")]
     public void Normalizes_valid_numbers(string input, string expected)
     {
         PhoneNumber.TryNormalize(input, out var result).Should().BeTrue();
@@ -23,22 +23,22 @@ public class PhoneNumberTests
     [InlineData("")]
     [InlineData("0212345678")]
     [InlineData("0912123456")]
-    [InlineData("09121234567a")]
+    [InlineData("015121234567a")]
     [InlineData("08121234567")]
     public void Rejects_invalid_numbers(string input) => PhoneNumber.TryNormalize(input, out _).Should().BeFalse();
 
     [Fact]
-    public void Mask_hides_middle_digits() => PhoneNumber.Mask("09121234567").Should().Be("0912***4567");
+    public void Mask_hides_middle_digits() => PhoneNumber.Mask("015121234567").Should().Be("0151***4567");
 }
 
 public class RoleTests
 {
-    private static LocalizedText Name(string fa) => LocalizedText.Of("fa", fa);
+    private static LocalizedText Name(string fa) => LocalizedText.Of("de", fa);
 
     [Fact]
     public void Create_accepts_allowed_scopes()
     {
-        var r = Role.Create(Name("تدوینگر"), null, [new(Permissions.WorkView, PermissionScope.Assigned), new(Permissions.WorkRun, PermissionScope.Assigned)]);
+        var r = Role.Create(Name("Cutter"), null, [new(Permissions.WorkView, PermissionScope.Assigned), new(Permissions.WorkRun, PermissionScope.Assigned)]);
         r.IsSuccess.Should().BeTrue();
         r.Value.Permissions.Should().HaveCount(2);
     }
@@ -61,12 +61,12 @@ public class RoleTests
     [Fact]
     public void System_role_cannot_be_deleted_and_grants_are_fixed()
     {
-        var owner = Role.CreateSystem(SystemRoles.Owner, Name("مالک"), [new(Permissions.RolesManage, PermissionScope.All)]);
+        var owner = Role.CreateSystem(SystemRoles.Owner, Name("Inhaber"), [new(Permissions.RolesManage, PermissionScope.All)]);
         owner.Delete(null, DateTimeOffset.UtcNow).Error!.Code.Should().Be("roles.systemCannotDelete");
 
-        owner.Update(Name("مالک اصلی"), null, []).IsSuccess.Should().BeTrue();
+        owner.Update(Name("Hauptinhaber"), null, []).IsSuccess.Should().BeTrue();
         owner.Permissions.Should().ContainSingle(p => p.Code == Permissions.RolesManage);
-        owner.Name.Get("fa").Should().Be("مالک اصلی");
+        owner.Name.Get("de").Should().Be("Hauptinhaber");
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class OtpChallengeTests
     [Fact]
     public void Fresh_challenge_is_usable_for_two_minutes()
     {
-        var c = OtpChallenge.Create(Guid.NewGuid(), "09121234567", "h", Now);
+        var c = OtpChallenge.Create(Guid.NewGuid(), "015121234567", "h", Now);
         c.CheckUsable(Now.AddSeconds(119)).IsSuccess.Should().BeTrue();
         c.CheckUsable(Now.AddMinutes(2)).Error!.Code.Should().Be("auth.otpExpired");
     }
@@ -121,7 +121,7 @@ public class UserTests
     public void Locks_out_after_ten_failures_for_fifteen_minutes()
     {
         var now = DateTimeOffset.UtcNow;
-        var user = User.Create("09121234567", "امیر", UserKind.Staff).Value;
+        var user = User.Create("015121234567", "Amir", UserKind.Staff).Value;
         for (var i = 0; i < User.MaxFailedLogins - 1; i++) user.RegisterFailedLogin(now);
         user.IsLockedOut(now).Should().BeFalse();
 
@@ -133,7 +133,7 @@ public class UserTests
     [Fact]
     public void Totp_step_cannot_be_reused()
     {
-        var user = User.Create("09121234567", "امیر", UserKind.Staff).Value;
+        var user = User.Create("015121234567", "Amir", UserKind.Staff).Value;
         user.AcceptTwoFactorStep(100).IsSuccess.Should().BeTrue();
         user.AcceptTwoFactorStep(100).IsFailure.Should().BeTrue();
         user.AcceptTwoFactorStep(99).IsFailure.Should().BeTrue();
@@ -144,7 +144,7 @@ public class UserTests
     public void Rejects_bad_phone_and_name()
     {
         User.Create("123", "x", UserKind.Staff).IsFailure.Should().BeTrue();
-        User.Create("09121234567", " ", UserKind.Staff).IsFailure.Should().BeTrue();
+        User.Create("015121234567", " ", UserKind.Staff).IsFailure.Should().BeTrue();
     }
 }
 
@@ -153,26 +153,26 @@ public class LocalizedTextTests
     [Fact]
     public void Falls_back_to_default_language_then_any()
     {
-        var t = new LocalizedText(new Dictionary<string, string> { ["fa"] = "سلام", ["en"] = "Hello" });
+        var t = new LocalizedText(new Dictionary<string, string> { ["de"] = "Hallo", ["en"] = "Hello" });
         t.Get("en").Should().Be("Hello");
-        t.Get("ar").Should().Be("سلام");
-        LocalizedText.Of("en", "Hi").Get("fa").Should().Be("Hi");
+        t.Get("ar").Should().Be("Hallo");
+        LocalizedText.Of("en", "Hi").Get("de").Should().Be("Hi");
     }
 
     [Fact]
     public void Drops_empty_values_and_normalizes_codes()
     {
-        var t = new LocalizedText(new Dictionary<string, string> { ["FA"] = " نام ", ["en"] = "  " });
-        t.Values.Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, string>("fa", "نام"));
+        var t = new LocalizedText(new Dictionary<string, string> { ["DE"] = " Name ", ["en"] = "  " });
+        t.Values.Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, string>("de", "Name"));
     }
 }
 
 public class SlugTests
 {
     [Theory]
-    [InlineData("مدیریت پیج نقره‌ای", "مدیریت-پیج-نقره-ای")]
-    [InlineData("  Gold Package!! ۲۰۲۶ ", "gold-package-2026")]
-    [InlineData("كيك و قهوه", "کیک-و-قهوه")]
+    [InlineData("Seitenbetreuung Silber", "seitenbetreuung-silber")]
+    [InlineData("  Gold Package!! 2026 ", "gold-package-2026")]
+    [InlineData("Kuchen und Kaffee", "kuchen-und-kaffee")]
     [InlineData("a//b__c", "a-b-c")]
     public void Makes_readable_slugs(string input, string expected) => Slug.From(input).Should().Be(expected);
 }
@@ -211,7 +211,7 @@ public class AttendanceDomainTests
     [Fact]
     public void Kiosk_and_place_distance()
     {
-        var p = Karnama.Domain.Attendance.AttendancePlace.Create("دفتر", 29.61, 52.53, 100).Value!;
+        var p = Karnama.Domain.Attendance.AttendancePlace.Create("Büro", 29.61, 52.53, 100).Value!;
         p.DistanceMeters(29.61, 52.53).Should().BeLessThan(1);
         p.DistanceMeters(29.611, 52.53).Should().BeInRange(100, 120);
     }

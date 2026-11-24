@@ -32,7 +32,7 @@ public sealed class LocalizationService(DbScope scope, HybridCache cache)
         code = code.Trim().ToLowerInvariant();
         var languages = await GetLanguagesAsync(ct);
         if (languages.All(l => l.Code != code)) return null;
-        var defaultCode = languages.FirstOrDefault(l => l.IsDefault)?.Code ?? "fa";
+        var defaultCode = languages.FirstOrDefault(l => l.IsDefault)?.Code ?? "de";
 
         return await cache.GetOrCreateAsync($"i18n:bundle:{code}", async token =>
         {

@@ -36,13 +36,13 @@ public sealed class Client : AuditableEntity
     public Result Update(ClientSpec s)
     {
         if (string.IsNullOrWhiteSpace(s.BusinessName) || s.BusinessName.Trim().Length > 120)
-            return Error.Validation("clients.nameRequired", "نام کسب‌وکار الزامی است (حداکثر ۱۲۰ کاراکتر).");
+            return Error.Validation("clients.nameRequired", "Der Firmenname ist Pflicht (höchstens 120 Zeichen).");
         if (!PhoneNumber.TryNormalize(s.Mobile, out var mobile))
-            return Error.Validation("clients.invalidMobile", "شماره‌ی موبایل معتبر نیست (مثل ۰۹۱۲۱۲۳۴۵۶۷).");
-        if (s.InternalNote is { Length: > 2000 }) return Error.Validation("clients.noteTooLong", "یادداشت حداکثر ۲۰۰۰ کاراکتر است.");
-        if (s.Accounts.Count > 20) return Error.Validation("clients.tooManyAccounts", "حداکثر ۲۰ حساب شبکه.");
+            return Error.Validation("clients.invalidMobile", "Die Handynummer ist ungültig (z. B. 01512 3456789).");
+        if (s.InternalNote is { Length: > 2000 }) return Error.Validation("clients.noteTooLong", "Die Notiz darf höchstens 2000 Zeichen haben.");
+        if (s.Accounts.Count > 20) return Error.Validation("clients.tooManyAccounts", "Höchstens 20 Netzwerkkonten.");
         if (s.Accounts.Any(a => string.IsNullOrWhiteSpace(a.Handle) || a.Handle.Length > 100))
-            return Error.Validation("clients.invalidHandle", "آیدی هر حساب الزامی است (حداکثر ۱۰۰ کاراکتر).");
+            return Error.Validation("clients.invalidHandle", "Die ID jedes Kontos ist Pflicht (höchstens 100 Zeichen).");
 
         BusinessName = s.BusinessName.Trim();
         Industry = Clean(s.Industry);
@@ -114,9 +114,9 @@ public sealed class ClientPackage : AuditableEntity
     public static Result<ClientPackage> Assign(Guid clientId, Package package, DateTimeOffset startsAt, string quotasJson, DateTimeOffset now, string? note)
     {
         if (package.IsDeleted || package.Status != PackageStatus.Active)
-            return Error.Validation("clientPackages.inactive", "این پکیج فعال نیست.");
+            return Error.Validation("clientPackages.inactive", "Dieses Paket ist nicht aktiv.");
         if (!package.IsOnSale(startsAt) && !package.IsOnSale(now))
-            return Error.Validation("clientPackages.notOnSale", "این پکیج در این تاریخ قابل فروش نیست.");
+            return Error.Validation("clientPackages.notOnSale", "Dieses Paket kann an diesem Datum nicht verkauft werden.");
         return new ClientPackage
         {
             ClientId = clientId,
@@ -167,7 +167,7 @@ public sealed class ClientPackage : AuditableEntity
 
     public Result Cancel()
     {
-        if (Status != ClientPackageStatus.Active) return Error.Conflict("clientPackages.notActive", "این پکیج فعال نیست.");
+        if (Status != ClientPackageStatus.Active) return Error.Conflict("clientPackages.notActive", "Dieses Paket ist nicht aktiv.");
         Status = ClientPackageStatus.Cancelled;
         return Result.Success();
     }

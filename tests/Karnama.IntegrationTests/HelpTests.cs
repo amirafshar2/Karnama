@@ -29,23 +29,23 @@ public sealed class HelpTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var editor = await As("editor");
         var client = await As("client");
         var staffList = (await Ok(await editor.GetAsync("/api/v1/help"))).EnumerateArray().ToList();
-        staffList.Should().Contain(a => a.GetProperty("slug").GetString() == "ورود-و-خروج");
+        staffList.Should().Contain(a => a.GetProperty("slug").GetString() == "kommen-und-gehen");
         staffList.Should().NotContain(a => a.GetProperty("audience").GetString() == "clients");
         var clientList = (await Ok(await client.GetAsync("/api/v1/help"))).EnumerateArray().ToList();
-        clientList.Should().Contain(a => a.GetProperty("slug").GetString() == "تأیید-محتوا");
+        clientList.Should().Contain(a => a.GetProperty("slug").GetString() == "inhaltsfreigabe");
         clientList.Should().NotContain(a => a.GetProperty("audience").GetString() == "staff");
-        (await client.GetAsync($"/api/v1/help/{Uri.EscapeDataString("ورود-و-خروج")}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await client.GetAsync($"/api/v1/help/{Uri.EscapeDataString("kommen-und-gehen")}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         // Search finds words inside the body, not only titles.
-        (await Ok(await editor.GetAsync($"/api/v1/help?q={Uri.EscapeDataString("وای‌فای دفتر")}"))).EnumerateArray()
-            .Should().Contain(a => a.GetProperty("slug").GetString() == "ورود-و-خروج");
+        (await Ok(await editor.GetAsync($"/api/v1/help?q={Uri.EscapeDataString("Büro-WLAN")}"))).EnumerateArray()
+            .Should().Contain(a => a.GetProperty("slug").GetString() == "kommen-und-gehen");
 
         var admin = await As("admin");
-        var draft = await Ok(await admin.PostAsJsonAsync("/api/v1/help", new { title = "پیش‌نویس راهنما", category = "تست", audience = "everyone", contentJson = Doc(P("متن")), sortOrder = 1, isPublished = false }));
+        var draft = await Ok(await admin.PostAsJsonAsync("/api/v1/help", new { title = "Hilfe-Entwurf", category = "Test", audience = "everyone", contentJson = Doc(P("Text")), sortOrder = 1, isPublished = false }));
         (await editor.GetAsync($"/api/v1/help/{Uri.EscapeDataString(draft.GetProperty("slug").GetString()!)}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await editor.PostAsJsonAsync("/api/v1/help", new { title = "x", category = "y", audience = "everyone", contentJson = Doc(P("z")), sortOrder = 1, isPublished = true }))
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await admin.PostAsJsonAsync("/api/v1/help", new { title = "پیش‌نویس راهنما", category = "تست", audience = "everyone", contentJson = Doc(P("دوباره")), sortOrder = 1, isPublished = true }))
+        (await admin.PostAsJsonAsync("/api/v1/help", new { title = "Hilfe-Entwurf", category = "Test", audience = "everyone", contentJson = Doc(P("Erneut")), sortOrder = 1, isPublished = true }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
@@ -55,12 +55,12 @@ public sealed class HelpTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
         var admin = await As("admin");
         var json = Doc(
             new { type = "paragraph", content = new object[] { new { type = "text", text = "<script>alert(1)</script>" },
-                new { type = "text", text = "لینک", marks = new[] { new { type = "link", attrs = new { href = "javascript:alert(1)" } } } } } },
+                new { type = "text", text = "Link", marks = new[] { new { type = "link", attrs = new { href = "javascript:alert(1)" } } } } } },
             new { type = "iframe", attrs = new { src = "https://evil.example" } });
-        var a = await Ok(await admin.PostAsJsonAsync("/api/v1/help", new { title = "امنیت متن راهنما", category = "تست", audience = "staff", contentJson = json, sortOrder = 1, isPublished = true }));
+        var a = await Ok(await admin.PostAsJsonAsync("/api/v1/help", new { title = "Sicherheit der Hilfetexte", category = "Test", audience = "staff", contentJson = json, sortOrder = 1, isPublished = true }));
         var html = a.GetProperty("contentHtml").GetString()!;
         html.Should().NotContain("<script").And.NotContain("javascript:").And.NotContain("iframe").And.Contain("&lt;script&gt;");
-        (await admin.PostAsJsonAsync("/api/v1/help", new { title = "خراب", category = "تست", audience = "staff", contentJson = "{not json", sortOrder = 1, isPublished = true }))
+        (await admin.PostAsJsonAsync("/api/v1/help", new { title = "Defekt", category = "Test", audience = "staff", contentJson = "{not json", sortOrder = 1, isPublished = true }))
             .StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
@@ -68,7 +68,7 @@ public sealed class HelpTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Deleting_an_article_stamps_the_app_clock()
     {
         var admin = await As("admin");
-        var a = await Ok(await admin.PostAsJsonAsync("/api/v1/help", new { title = "راهنمای حذفی", category = "تست", audience = "staff", contentJson = Doc(P("متن")), sortOrder = 1, isPublished = true }));
+        var a = await Ok(await admin.PostAsJsonAsync("/api/v1/help", new { title = "Hilfe zum Löschen", category = "Test", audience = "staff", contentJson = Doc(P("Text")), sortOrder = 1, isPublished = true }));
         var id = a.GetProperty("id").GetGuid();
         (await admin.DeleteAsync($"/api/v1/help/{id}")).IsSuccessStatusCode.Should().BeTrue();
         using var scope = _f.Services.CreateScope();
@@ -82,8 +82,8 @@ public sealed class HelpTests(DemoAppFixture app) : IClassFixture<DemoAppFixture
     public async Task Page_button_finds_the_most_specific_article()
     {
         var editor = await As("editor");
-        (await Ok(await editor.GetAsync("/api/v1/help/page?key=attendance/calendar"))).GetProperty("slug").GetString().Should().Be("مرخصی-گرفتن");
-        (await Ok(await editor.GetAsync("/api/v1/help/page?key=attendance/live"))).GetProperty("slug").GetString().Should().Be("ورود-و-خروج");
+        (await Ok(await editor.GetAsync("/api/v1/help/page?key=attendance/calendar"))).GetProperty("slug").GetString().Should().Be("urlaub-nehmen");
+        (await Ok(await editor.GetAsync("/api/v1/help/page?key=attendance/live"))).GetProperty("slug").GetString().Should().Be("kommen-und-gehen");
         (await editor.GetAsync("/api/v1/help/page?key=nothing-here")).StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 }

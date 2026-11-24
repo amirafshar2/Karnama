@@ -26,7 +26,7 @@ export default function AttendanceReportPage() {
   // Default: from the 1st of the current Persian month.
   const j = toJalali(today.getFullYear(), today.getMonth() + 1, today.getDate());
   const g = toGregorian(j.jy, j.jm, 1);
-  const [from, setFrom] = useState<string | null>(`${g.gy}-${String(g.gm).padStart(2, "0")}-${String(g.gd).padStart(2, "0")}T12:00:00+03:30`);
+  const [from, setFrom] = useState<string | null>(`${g.gy}-${String(g.gm).padStart(2, "0")}-${String(g.gd).padStart(2, "0")}T12:00:00+01:00`);
   const [to, setTo] = useState<string | null>(today.toISOString());
   const range = from && to ? `from=${from.slice(0, 10)}&to=${to.slice(0, 10)}` : null;
   const rep = useQuery({ queryKey: ["att-report", range], enabled: allowed && !!range, queryFn: () => api<Row[]>(`/api/v1/leave/report?${range}`) });

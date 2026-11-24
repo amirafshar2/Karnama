@@ -38,7 +38,7 @@ public sealed class NotifyDomainTests
     public void Publish_job_flow_and_client_rules()
     {
         var at = Now.AddHours(1);
-        var j = PublishJob.Create(Guid.NewGuid(), null, Guid.NewGuid(), "cafe", PageManagement.AgencyManaged, at, "کپشن", ["#a", "a", "b c", ""], [], Now).Value!;
+        var j = PublishJob.Create(Guid.NewGuid(), null, Guid.NewGuid(), "cafe", PageManagement.AgencyManaged, at, "Caption", ["#a", "a", "b c", ""], [], Now).Value!;
         j.Hashtags.Should().Equal("a");
         PublishJob.Create(Guid.NewGuid(), null, Guid.NewGuid(), "cafe", PageManagement.AgencyManaged, Now.AddHours(-1), "x", [], [], Now).IsFailure.Should().BeTrue();
         j.MarkDue(Now).Should().BeFalse();

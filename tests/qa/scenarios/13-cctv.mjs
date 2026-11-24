@@ -15,9 +15,9 @@ export async function run(rec, { crowd }) {
   await qa.resetClock();
   const admin = await qa.login(DEMO.admin);
   // A pure viewer: a role with cctv.view only (the QA manager also has cctv.manage).
-  const role = await admin.post("/api/v1/roles", { name: { fa: `بیننده‌ی دوربین ${sfx}` }, description: "QA S13", permissions: [{ code: "cctv.view", scope: "all" }], version: null });
+  const role = await admin.post("/api/v1/roles", { name: { fa: `Kamera-Zuschauer ${sfx}` }, description: "QA S13", permissions: [{ code: "cctv.view", scope: "all" }], version: null });
   const viewerPhone = "0917" + String(Math.floor(1_000_000 + Math.random() * 8_999_999));
-  await admin.post("/api/v1/users", { displayName: `بیننده QA ${sfx}`, phone: viewerPhone, roleIds: [role.id], isActive: true });
+  await admin.post("/api/v1/users", { displayName: `Zuschauer QA ${sfx}`, phone: viewerPhone, roleIds: [role.id], isActive: true });
   const viewer = await qa.login(viewerPhone);
   const noView = await qa.login(DEMO.writer);                   // blog writer: no cctv rights
   const client = await qa.login(pick(crowd, "client", 1, 0)[0]);
@@ -30,7 +30,7 @@ export async function run(rec, { crowd }) {
   });
 
   await rec.step("2.13.b", "add camera: ethics confirmation and RTSP address required; password never returned", async () => {
-    const body = (over = {}) => ({ name: `دوربین QA ${sfx}`, location: "اتاق تدوین", sortOrder: 9, isActive: true, mainUrl: "rtsp://admin:Sup3rSecret@10.20.30.40:554/Streaming/Channels/101",
+    const body = (over = {}) => ({ name: `Kamera QA ${sfx}`, location: "Schnittraum", sortOrder: 9, isActive: true, mainUrl: "rtsp://admin:Sup3rSecret@10.20.30.40:554/Streaming/Channels/101",
       subUrl: "rtsp://admin:Sup3rSecret@10.20.30.40:554/Streaming/Channels/102", workAreaConfirmed: true, version: null, ...over });
     await admin.refused("POST", "/api/v1/cctv/cameras", body({ workAreaConfirmed: false }), [422]);
     await admin.refused("POST", "/api/v1/cctv/cameras", body({ mainUrl: "" }), [422]);

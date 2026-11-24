@@ -24,8 +24,8 @@ public sealed class PackageNoticeSettingsValidator : AbstractValidator<PackageNo
 {
     public PackageNoticeSettingsValidator()
     {
-        RuleFor(x => x.DaysBefore).NotNull().Must(d => d.Count <= 6).WithMessage("حداکثر ۶ یادآوری.");
-        RuleForEach(x => x.DaysBefore).InclusiveBetween(1, 60).WithMessage("روز یادآوری باید بین ۱ تا ۶۰ باشد.");
+        RuleFor(x => x.DaysBefore).NotNull().Must(d => d.Count <= 6).WithMessage("Höchstens 6 Erinnerungen.");
+        RuleForEach(x => x.DaysBefore).InclusiveBetween(1, 60).WithMessage("Der Erinnerungstag muss zwischen 1 und 60 liegen.");
     }
 }
 

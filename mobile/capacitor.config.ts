@@ -6,7 +6,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const config: CapacitorConfig = {
   appId: process.env.KARNAMA_APP_ID ?? "ir.karnama.app",
-  appName: process.env.KARNAMA_APP_NAME ?? "کارنما",
+  appName: process.env.KARNAMA_APP_NAME ?? "Karnama",
   webDir: "../src/karnama-web/out",
   android: {
     // Release builds never talk plain HTTP and never allow WebView debugging.

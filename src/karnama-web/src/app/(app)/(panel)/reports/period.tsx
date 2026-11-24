@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import type { TextKey } from "@/lib/i18n/registry";
 import { toGregorian, toJalali } from "@/lib/jalali";
 
-const iso = (gy: number, gm: number, gd: number) => `${gy}-${String(gm).padStart(2, "0")}-${String(gd).padStart(2, "0")}T12:00:00+03:30`;
+const iso = (gy: number, gm: number, gd: number) => `${gy}-${String(gm).padStart(2, "0")}-${String(gd).padStart(2, "0")}T12:00:00+01:00`;
 const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
 
 /** Persian-month boundaries in Gregorian ISO, so the server never has to guess the calendar. */

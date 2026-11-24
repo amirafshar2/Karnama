@@ -6,14 +6,14 @@ import { faNum, getBrand, getT, jsonLd, siteGet, SITE_URL, toman, type CaseDetai
 export const revalidate = 60;
 type Props = { params: Promise<{ slug: string }> };
 const load = (slug: string) => siteGet<CaseDetail>(`/api/v1/public/site/cases/${encodeURIComponent(decodeURIComponent(slug))}`);
-const faDate = (d: string) => new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "long", day: "numeric" }).format(new Date(d));
-const faMonth = (d: string) => new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "long" }).format(new Date(d));
+const faDate = (d: string) => new Intl.DateTimeFormat("de-DE", { year: "numeric", month: "long", day: "numeric" }).format(new Date(d));
+const faMonth = (d: string) => new Intl.DateTimeFormat("de-DE", { year: "numeric", month: "long" }).format(new Date(d));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const [c, brand, t] = await Promise.all([load(slug), getBrand(), getT()]);
   if (!c) return { robots: { index: false } };
-  const title = `${c.card.businessName} — ${t("site.cases.title")} | ${brand?.name ?? "کارنما"}`;
+  const title = `${c.card.businessName} — ${t("site.cases.title")} | ${brand?.name ?? "Karnama"}`;
   const description = c.card.summary ?? undefined;
   return { title: { absolute: title }, description, alternates: { canonical: `${SITE_URL}/cases/${c.card.slug}` }, robots: { index: !c.card.isSample, follow: true } };
 }

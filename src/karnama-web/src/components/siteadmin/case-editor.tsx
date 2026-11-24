@@ -17,11 +17,11 @@ import type { CaseItem, CaseMetric, CaseShot } from "./types";
 
 type Form = Omit<CaseItem, "id" | "slug" | "isSample" | "published" | "version"> & { slug: string };
 const empty: Form = {
-  businessName: "", slug: "", industry: null, city: "شیراز", logo: null, logoUrl: null, handle: null, from: null, to: null, services: [], summary: null,
+  businessName: "", slug: "", industry: null, city: "Stuttgart", logo: null, logoUrl: null, handle: null, from: null, to: null, services: [], summary: null,
   followersBefore: null, followersAfter: null, revenueBefore: null, revenueAfter: null, revenueAsPercent: true, metrics: [], shots: [], quote: null, quoteBy: null,
   videoUrl: null, source: null, consentObtained: false, consentFile: null, featured: false, sortOrder: 0,
 };
-const day = (iso: string | null) => (iso ? `${iso.slice(0, 10)}T00:00:00+03:30` : null);
+const day = (iso: string | null) => (iso ? `${iso.slice(0, 10)}T00:00:00+01:00` : null);
 const toDate = (v: string | null) => (v ? v.slice(0, 10) : null);
 
 async function upload(blob: Blob, consent: boolean) {
@@ -41,9 +41,9 @@ export function CaseEditor({ item, onClose, onSaved }: { item: CaseItem | null; 
   const L = (k: TextKey) => t(k);
   const set = (p: Partial<Form>) => setF({ ...f, ...p });
   const nz = (s: string) => (s.trim() === "" ? null : s);
-  // Revenue is entered in tomans and stored in rials (like every price in the app).
-  const rial = (v: number | null) => (v === null ? null : v * 10);
-  const tomanOf = (v: number | null) => (v === null ? null : Math.round(v / 10));
+  // Revenue is entered and stored in whole euros (like every price in the app).
+  const rial = (v: number | null) => v;
+  const tomanOf = (v: number | null) => v;
 
   const save = async () => {
     setBusy(true);
@@ -88,7 +88,7 @@ export function CaseEditor({ item, onClose, onSaved }: { item: CaseItem | null; 
         <JalaliDateField label={L("cases.from")} help={L("cases.fromHelp")} value={day(f.from)} onChange={(v) => set({ from: toDate(v) })} optional />
         <JalaliDateField label={L("cases.to")} help={L("cases.toHelp")} value={day(f.to)} onChange={(v) => set({ to: toDate(v) })} optional />
       </div>
-      <TextField label={L("cases.services")} help={L("cases.servicesHelp")} value={f.services.join("، ")} onChange={(v) => set({ services: v.split(/[,،]/).map((x) => x.trim()).filter(Boolean) })} optional />
+      <TextField label={L("cases.services")} help={L("cases.servicesHelp")} value={f.services.join(", ")} onChange={(v) => set({ services: v.split(/[,،]/).map((x) => x.trim()).filter(Boolean) })} optional />
       <TextArea label={L("cases.summary")} help={L("cases.summaryHelp")} value={f.summary ?? ""} onChange={(v) => set({ summary: nz(v) })} rows={3} optional />
 
       <fieldset className="space-y-4 rounded-lg border p-4">

@@ -40,7 +40,7 @@ public sealed class Camera : Entity
     public Result Update(string name, string? location, int sortOrder, bool isActive)
     {
         var n = (name ?? "").Trim();
-        if (n.Length is 0 or > 60) return Error.Validation("cctv.name", "نام دوربین الزامی است (حداکثر ۶۰ کاراکتر).");
+        if (n.Length is 0 or > 60) return Error.Validation("cctv.name", "Der Kameraname ist Pflicht (höchstens 60 Zeichen).");
         Name = n;
         Location = string.IsNullOrWhiteSpace(location) ? null : location.Trim()[..Math.Min(location.Trim().Length, 80)];
         SortOrder = sortOrder;
@@ -73,9 +73,9 @@ public sealed class Camera : Entity
     public static Result<Uri> ValidateSource(string? url)
     {
         if (string.IsNullOrWhiteSpace(url) || url.Length > 500 || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var u) || u.Scheme is not ("rtsp" or "rtsps"))
-            return Error.Validation("cctv.url", "نشانی باید با rtsp:// شروع شود؛ مثلاً rtsp://admin:رمز@192.168.1.64:554/Streaming/Channels/101");
+            return Error.Validation("cctv.url", "Die Adresse muss mit rtsp:// beginnen, z. B. rtsp://admin:passwort@192.168.1.64:554/Streaming/Channels/101");
         if (!System.Net.IPAddress.TryParse(u.Host, out var ip) || !IsPrivate(ip))
-            return Error.Validation("cctv.private", "دوربین باید نشانی داخلی دفتر داشته باشد (مثل 192.168.x.x)؛ دوربین را هرگز روی اینترنت باز نکنید.");
+            return Error.Validation("cctv.private", "Die Kamera muss eine interne Büroadresse haben (z. B. 192.168.x.x); stellen Sie eine Kamera niemals offen ins Internet.");
         return u;
     }
 

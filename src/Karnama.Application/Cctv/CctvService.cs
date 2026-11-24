@@ -48,7 +48,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
 {
     public const int IdleSeconds = 120;
     private static readonly TimeSpan TokenLife = TimeSpan.FromMinutes(5);
-    private static Error NotFound => Error.NotFound("cctv.notFound", "دوربین پیدا نشد.");
+    private static Error NotFound => Error.NotFound("cctv.notFound", "Kamera nicht gefunden.");
     private bool CanView => me.Kind == UserKind.Staff && me.Has(Permissions.CctvView, PermissionScope.All);
     private bool CanManage => me.Kind == UserKind.Staff && me.Has(Permissions.CctvManage, PermissionScope.All);
     private static string Low(string path) => path + "-low";
@@ -66,7 +66,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
     public async Task<Result<CameraDto>> SaveAsync(Guid? id, SaveCameraRequest r, CancellationToken ct)
     {
         if (!CanManage) return Error.Forbidden();
-        if (!vault.IsConfigured) return Error.Conflict("cctv.vault", "کلید رمزنگاری سرور تنظیم نشده؛ نشانی دوربین بدون رمزنگاری ذخیره نمی‌شود.");
+        if (!vault.IsConfigured) return Error.Conflict("cctv.vault", "Der Verschlüsselungsschlüssel des Servers ist nicht gesetzt; die Kameraadresse wird nicht unverschlüsselt gespeichert.");
         Camera c;
         if (id is { } given)
         {
@@ -80,8 +80,8 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
         else
         {
             // PROMPT2 §5: only work areas, never toilets or private rooms, with a visible sign.
-            if (!r.WorkAreaConfirmed) return Error.Validation("cctv.ethics", "تأیید کنید دوربین فقط در فضای کار است و تابلوی «این محیط دوربین دارد» نصب شده.");
-            if (string.IsNullOrWhiteSpace(r.MainUrl)) return Error.Validation("cctv.url", "نشانی RTSP دوربین را وارد کنید.");
+            if (!r.WorkAreaConfirmed) return Error.Validation("cctv.ethics", "Bestätigen Sie, dass die Kamera nur den Arbeitsbereich erfasst und ein Schild „Dieser Bereich wird videoüberwacht“ angebracht ist.");
+            if (string.IsNullOrWhiteSpace(r.MainUrl)) return Error.Validation("cctv.url", "Geben Sie die RTSP-Adresse der Kamera ein.");
             var created = Camera.Create(r.Name, r.Location, r.SortOrder);
             if (created.IsFailure) return created.Error!;
             c = created.Value!;
@@ -118,7 +118,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
             new { c.Name, c.Location, c.IsActive, mainChanged = main is not null, subChanged = sub is not null });
         await db.SaveChangesAsync(ct);
         if (!await PushAsync(c, ct))
-            return Error.Conflict("cctv.unreachable", "دوربین ذخیره شد ولی جعبه‌ی تصویر دفتر جواب نداد؛ وقتی وصل شد «همگام‌سازی» را بزنید.");
+            return Error.Conflict("cctv.unreachable", "Die Kamera wurde gespeichert, aber die Bildbox im Büro hat nicht geantwortet; tippen Sie auf „Synchronisieren“, sobald sie verbunden ist.");
         return Dto(c);
     }
 
@@ -163,19 +163,19 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
         return ok;
     }
 
-    private static Error Unreachable => Error.Conflict("cctv.unreachable", "جعبه‌ی تصویر دفتر جواب نمی‌دهد؛ برق و اینترنت آن را بررسی کنید.");
+    private static Error Unreachable => Error.Conflict("cctv.unreachable", "Die Bildbox im Büro antwortet nicht; prüfen Sie Strom und Internet.");
 
     /// <summary>Re-sends every camera to the box (after it was replaced or restarted).</summary>
     public async Task<Result<int>> ResyncAsync(CancellationToken ct)
     {
         if (!CanManage) return Error.Forbidden();
-        if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "جعبه‌ی تصویر دفتر هنوز راه‌اندازی نشده است.");
+        if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "Die Bildbox im Büro ist noch nicht eingerichtet.");
         if (await media.ReadyPathsAsync(ct) is null) return Unreachable;
         var cams = await db.Cameras.ToListAsync(ct);
         var failed = 0;
         foreach (var c in cams)
             if (!await PushAsync(c, ct)) failed++;
-        if (failed > 0) return Error.Conflict("cctv.unreachable", $"{failed} دوربین از {cams.Count} به جعبه‌ی تصویر نرسید؛ دوباره امتحان کنید.");
+        if (failed > 0) return Error.Conflict("cctv.unreachable", $"{failed} von {cams.Count} Kameras haben die Bildbox nicht erreicht; versuchen Sie es erneut.");
         return cams.Count;
     }
 
@@ -186,7 +186,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
         if (!CanView) return Error.Forbidden();
         var c = await db.Cameras.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
         if (c is null) return NotFound;
-        if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "جعبه‌ی تصویر دفتر هنوز راه‌اندازی نشده است.");
+        if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "Die Bildbox im Büro ist noch nicht eingerichtet.");
         var gate = cache.Lock(c.Id);
         await gate.WaitAsync(ct);
         try
@@ -197,7 +197,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
                 frame = await media.SnapshotAsync(Low(c.Path), ct);
                 cache.Put(c.Id, now, frame);
             }
-            return frame is null ? Error.Conflict("cctv.noFrame", "تصویری از این دوربین نرسید؛ شاید خاموش یا قطع است.") : frame;
+            return frame is null ? Error.Conflict("cctv.noFrame", "Von dieser Kamera kam kein Bild; vielleicht ist sie aus oder getrennt.") : frame;
         }
         finally
         {
@@ -211,7 +211,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
         if (!CanView) return Error.Forbidden();
         var c = await db.Cameras.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
         if (c is null) return NotFound;
-        if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "جعبه‌ی تصویر دفتر هنوز راه‌اندازی نشده است.");
+        if (!media.IsConfigured) return Error.Conflict("cctv.notConfigured", "Die Bildbox im Büro ist noch nicht eingerichtet.");
         if (await media.ReadyPathsAsync(ct) is null) return Unreachable;   // no token for a box that is down
         var path = high ? c.Path : Low(c.Path);
         var session = Guid.CreateVersion7();
@@ -273,7 +273,7 @@ public sealed class CctvService(IAppDbContext db, ICurrentUser me, IVault vault,
             {
                 if (c.OfflineWarnedAt is not null) continue;
                 await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.CctvManage, PermissionScope.All, ct), "cctv.offline",
-                    $"دوربین «{c.Name}» قطع شد", ready is null ? "جعبه‌ی تصویر دفتر جواب نمی‌دهد (برق یا اینترنت دفتر)." : "برق و کابل دوربین را بررسی کنید.",
+                    $"Die Kamera „{c.Name}“ ist getrennt", ready is null ? "Die Bildbox im Büro antwortet nicht (Strom oder Büro-Internet)." : "Prüfen Sie Strom und Kabel der Kamera.",
                     "/cctv", true, $"cctv-off:{c.Id:N}:{(c.LastOnlineAt ?? now).ToUnixTimeSeconds()}", ct);
                 c.OfflineWarned(now);
                 down++;

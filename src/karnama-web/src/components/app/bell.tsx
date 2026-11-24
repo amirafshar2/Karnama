@@ -47,7 +47,7 @@ export function BellButton() {
         <Bell className="size-5" aria-hidden="true" />
         {unread > 0 && (
           <span className="absolute -top-0.5 -end-0.5 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[11px] leading-5 font-bold text-white" data-testid="bell-count">
-            {unread > 99 ? "۹۹+" : formatNumber(unread)}
+            {unread > 99 ? "99+" : formatNumber(unread)}
           </span>
         )}
       </button>

@@ -4,7 +4,7 @@ using System.Text;
 namespace Karnama.Domain.Common;
 
 /// <summary>
-/// Readable Persian/English URL slugs: "مدیریت پیج نقره‌ای" → "مدیریت-پیج-نقره-ای".
+/// Readable Persian/English URL slugs: "Seitenbetreuung Silber" → "seitenbetreuung-silber".
 /// Arabic ي/ك become Persian ی/ک, Persian/Arabic digits become ASCII, spaces/ZWNJ/punctuation become single dashes.
 /// </summary>
 public static class Slug
@@ -28,7 +28,8 @@ public static class Slug
             var keep = char.IsLetterOrDigit(ch) && cat != UnicodeCategory.Format;
             if (keep)
             {
-                sb.Append(ch);
+                // German umlauts and ß become ASCII so the address stays readable everywhere (für → fuer).
+                sb.Append(ch switch { 'ä' => "ae", 'ö' => "oe", 'ü' => "ue", 'ß' => "ss", _ => ch.ToString() });
                 dash = false;
             }
             else if (!dash && sb.Length > 0)

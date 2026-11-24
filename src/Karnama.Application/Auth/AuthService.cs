@@ -28,7 +28,7 @@ public sealed class AuthService(
     public async Task<Result<RequestOtpResponse>> RequestOtpAsync(RequestOtpRequest request, CancellationToken ct)
     {
         if (!PhoneNumber.TryNormalize(request.Phone, out var phone))
-            return Error.Validation("auth.invalidPhone", "شماره‌ی موبایل معتبر نیست.");
+            return Error.Validation("auth.invalidPhone", "Die Handynummer ist ungültig.");
 
         var now = clock.GetUtcNow();
         var options = otpOptions.Value;
@@ -43,10 +43,10 @@ public sealed class AuthService(
         if (recent.Count > 0 && (now - recent[0]).TotalSeconds < options.ResendSeconds)
         {
             var wait = options.ResendSeconds - (int)(now - recent[0]).TotalSeconds;
-            return Error.TooMany("auth.otpWait", $"لطفاً {wait} ثانیه‌ی دیگر دوباره تلاش کنید.");
+            return Error.TooMany("auth.otpWait", $"Bitte versuchen Sie es in {wait} Sekunden erneut.");
         }
         if (recent.Count >= options.MaxSendsPer10Minutes)
-            return Error.TooMany("auth.otpLimit", "تعداد درخواست کد زیاد بود. ۱۰ دقیقه‌ی دیگر تلاش کنید.");
+            return Error.TooMany("auth.otpLimit", "Zu viele Code-Anfragen. Versuchen Sie es in 10 Minuten erneut.");
 
         var challengeId = Guid.CreateVersion7();
         var code = otp.GenerateCode();
@@ -90,7 +90,7 @@ public sealed class AuthService(
             .Where(c => c.Id == challenge.Id && c.ConsumedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now), ct);
         if (consumed == 0)
-            return Error.Validation("auth.otpUsed", "این کد قبلاً استفاده شده است. کد جدید بگیرید.");
+            return Error.Validation("auth.otpUsed", "Dieser Code wurde bereits verwendet. Fordern Sie einen neuen Code an.");
 
         // OTP failures never lock the account (that would let anyone lock out the owner); the per-challenge
         // cap plus 3 sends per 10 minutes already bounds guessing.
@@ -98,7 +98,7 @@ public sealed class AuthService(
         if (user is null || !user.IsActive)
         {
             await db.SaveChangesAsync(ct);
-            return Error.Unauthorized("auth.noAccount", "حسابی با این شماره فعال نیست. با مدیر آژانس تماس بگیرید.");
+            return Error.Unauthorized("auth.noAccount", "Mit dieser Nummer ist kein aktives Konto verknüpft. Wenden Sie sich an die Agenturleitung.");
         }
 
         if (await PermissionLoader.IsOwnerAsync(db, user.Id, ct))
@@ -117,12 +117,12 @@ public sealed class AuthService(
     public async Task<Result<TwoFactorSetupResponse>> BeginTwoFactorSetupAsync(TwoFactorSetupRequest request, CancellationToken ct)
     {
         var pending = tokens.ReadTwoFactorToken(request.TwoFactorToken);
-        if (pending is null) return Error.Unauthorized("auth.twoFactorExpired", "مرحله‌ی ورود منقضی شده است. دوباره وارد شوید.");
+        if (pending is null) return Error.Unauthorized("auth.twoFactorExpired", "Der Anmeldeschritt ist abgelaufen. Melden Sie sich erneut an.");
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == pending.Value.UserId && u.IsActive, ct);
-        if (user is null) return Error.Unauthorized("auth.twoFactorExpired", "مرحله‌ی ورود منقضی شده است. دوباره وارد شوید.");
+        if (user is null) return Error.Unauthorized("auth.twoFactorExpired", "Der Anmeldeschritt ist abgelaufen. Melden Sie sich erneut an.");
         if (user.TwoFactorEnabled)
-            return Error.Conflict("auth.twoFactorAlreadyEnabled", "ورود دومرحله‌ای قبلاً فعال شده است.");
+            return Error.Conflict("auth.twoFactorAlreadyEnabled", "Die Zwei-Faktor-Anmeldung ist bereits aktiviert.");
 
         var secret = totp.GenerateSecret();
         user.BeginTwoFactorEnrollment(protector.Protect(secret));
@@ -133,13 +133,13 @@ public sealed class AuthService(
     public async Task<Result<LoginResult>> VerifyTwoFactorAsync(TwoFactorVerifyRequest request, CancellationToken ct)
     {
         var pending = tokens.ReadTwoFactorToken(request.TwoFactorToken);
-        if (pending is null) return Error.Unauthorized("auth.twoFactorExpired", "مرحله‌ی ورود منقضی شده است. دوباره وارد شوید.");
+        if (pending is null) return Error.Unauthorized("auth.twoFactorExpired", "Der Anmeldeschritt ist abgelaufen. Melden Sie sich erneut an.");
 
         var now = clock.GetUtcNow();
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == pending.Value.UserId && u.IsActive, ct);
         if (user is null || user.TwoFactorSecret is null)
-            return Error.Unauthorized("auth.twoFactorExpired", "مرحله‌ی ورود منقضی شده است. دوباره وارد شوید.");
-        var locked = Error.TooMany("auth.locked", "حساب به‌خاطر تلاش‌های ناموفق موقتاً قفل است. ۱۵ دقیقه‌ی دیگر تلاش کنید.");
+            return Error.Unauthorized("auth.twoFactorExpired", "Der Anmeldeschritt ist abgelaufen. Melden Sie sich erneut an.");
+        var locked = Error.TooMany("auth.locked", "Das Konto ist wegen fehlgeschlagener Versuche vorübergehend gesperrt. Versuchen Sie es in 15 Minuten erneut.");
         var userId = user.Id;
 
         // Claim one attempt atomically (max 10 per lockout window, even with parallel requests).
@@ -160,7 +160,7 @@ public sealed class AuthService(
         {
             audit.Add(AuditActions.LoginFailed, nameof(User), userId.ToString(), new { reason = "totp" }, actorOverride: userId);
             await db.SaveChangesAsync(ct);
-            return Error.Validation("auth.totpWrong", "کد برنامه‌ی تأیید درست نیست.");
+            return Error.Validation("auth.totpWrong", "Der Code der Authenticator-App ist falsch.");
         }
         var accepted = user.AcceptTwoFactorStep(step.Value);
         if (accepted.IsFailure) return accepted.Error!;
@@ -170,7 +170,7 @@ public sealed class AuthService(
             .Where(u => u.Id == user.Id && (u.LastTwoFactorStep == null || u.LastTwoFactorStep < stepValue))
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastTwoFactorStep, stepValue), ct);
         if (stepClaimed == 0)
-            return Error.Validation("auth.totpReused", "این کد قبلاً استفاده شده است. منتظر کد بعدی بمانید.");
+            return Error.Validation("auth.totpReused", "Dieser Code wurde bereits verwendet. Warten Sie auf den nächsten Code.");
 
         if (!user.TwoFactorEnabled)
         {
@@ -188,7 +188,7 @@ public sealed class AuthService(
 
     public async Task<Result<SessionTokens>> RefreshAsync(string? rawToken, ClientKind client, CancellationToken ct)
     {
-        var invalid = Error.Unauthorized("auth.sessionExpired", "نشست شما تمام شده است. دوباره وارد شوید.");
+        var invalid = Error.Unauthorized("auth.sessionExpired", "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an.");
         if (string.IsNullOrWhiteSpace(rawToken) || rawToken.Length > 200) return invalid;
 
         var now = clock.GetUtcNow();
@@ -291,10 +291,10 @@ public sealed class AuthService(
     {
         if (!demoOptions.Value.Enabled) return Error.NotFound();
         var account = DemoAccounts.Find(request.Role);
-        if (account is null) return Error.Validation("auth.demoInvalid", "نقش نمایشی معتبر نیست.");
+        if (account is null) return Error.Validation("auth.demoInvalid", "Die Demo-Rolle ist ungültig.");
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == account.Phone && u.IsDemo && u.IsActive, ct);
-        if (user is null) return Error.NotFound("auth.demoMissing", "حساب نمایشی در این نصب وجود ندارد.");
+        if (user is null) return Error.NotFound("auth.demoMissing", "In dieser Installation gibt es kein Demo-Konto.");
 
         var session = await IssueSessionAsync(user, client, Guid.CreateVersion7(), ct);
         audit.Add(AuditActions.DemoLogin, nameof(User), user.Id.ToString(), new { role = account.Key }, actorOverride: user.Id, isDemoOverride: true);
@@ -306,7 +306,7 @@ public sealed class AuthService(
     public async Task<Result<SessionTokens>> QaLoginAsync(string phone, ClientKind client, CancellationToken ct)
     {
         if (qaOptions?.Value.Enabled != true) return Error.NotFound();
-        if (!PhoneNumber.TryNormalize(phone, out var normalized)) return Error.Validation("auth.invalidPhone", "شماره‌ی موبایل معتبر نیست.");
+        if (!PhoneNumber.TryNormalize(phone, out var normalized)) return Error.Validation("auth.invalidPhone", "Die Handynummer ist ungültig.");
         var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == normalized && u.IsActive, ct);
         if (user is null) return Error.NotFound();
         var session = await IssueSessionAsync(user, client, Guid.CreateVersion7(), ct);

@@ -30,8 +30,8 @@ export function LeaveSheet({ onClose, onSaved, canRegisterForOthers }: { onClose
     setBusy(true);
     setError(null);
     try {
-      const from = hourly ? at(fromDay, fromTime) : fromDay ? `${fromDay.slice(0, 10)}T00:00:00+03:30` : null;
-      const to = hourly ? at(fromDay, toTime) : (toDay ?? fromDay) ? `${addDays((toDay ?? fromDay)!, 1)}T00:00:00+03:30` : null;
+      const from = hourly ? at(fromDay, fromTime) : fromDay ? `${fromDay.slice(0, 10)}T00:00:00+01:00` : null;
+      const to = hourly ? at(fromDay, toTime) : (toDay ?? fromDay) ? `${addDays((toDay ?? fromDay)!, 1)}T00:00:00+01:00` : null;
       await api("/api/v1/leave/requests", { method: "POST", body: { leaveTypeId: typeId, hourly, from, to, reason, forUserId: forUser || null } });
       onSaved();
     } catch (e) {

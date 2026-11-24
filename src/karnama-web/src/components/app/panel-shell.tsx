@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 // Only iPhone/iPad Safari users ever see it, so it is not part of the first download.
 const IosInstallHint = dynamic(() => import("@/components/app/pwa").then((m) => m.IosInstallHint), { ssr: false });
-// Help ("؟" + first-run tour) loads after the page itself, so it never slows the first screen.
+// Help ("?" + first-run tour) loads after the page itself, so it never slows the first screen.
 const PageHelp = dynamic(() => import("@/components/help/page-help").then((m) => m.PageHelp), { ssr: false, loading: () => <span className="size-11" /> });
 const TourHost = dynamic(() => import("@/components/help/tour").then((m) => m.TourHost), { ssr: false });
 

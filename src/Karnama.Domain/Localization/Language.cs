@@ -23,9 +23,9 @@ public sealed class Language
     {
         code = (code ?? string.Empty).Trim().ToLowerInvariant();
         if (code.Length is < 2 or > 10 || !code.All(c => char.IsAsciiLetterLower(c) || c == '-'))
-            return Error.Validation("languages.invalidCode", "کد زبان معتبر نیست (مثل fa یا en).");
+            return Error.Validation("languages.invalidCode", "Der Sprachcode ist ungültig (z. B. de oder en).");
         if (string.IsNullOrWhiteSpace(name) || name.Length > 50)
-            return Error.Validation("languages.invalidName", "نام زبان معتبر نیست.");
+            return Error.Validation("languages.invalidName", "Der Name der Sprache ist ungültig.");
         return new Language
         {
             Code = code, Name = name.Trim(), Direction = direction, Calendar = calendar, Digits = digits,
@@ -36,8 +36,8 @@ public sealed class Language
     /// <summary>Edits a language; the default language can't be switched off (the app would have nothing to fall back to).</summary>
     public Result Update(string name, TextDirection direction, CalendarKind calendar, DigitStyle digits, bool isActive, int sortOrder)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Length > 50) return Error.Validation("languages.invalidName", "نام زبان معتبر نیست.");
-        if (IsDefault && !isActive) return Error.Conflict("languages.defaultOff", "زبان پیش‌فرض را نمی‌شود غیرفعال کرد.");
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 50) return Error.Validation("languages.invalidName", "Der Name der Sprache ist ungültig.");
+        if (IsDefault && !isActive) return Error.Conflict("languages.defaultOff", "Die Standardsprache kann nicht deaktiviert werden.");
         Name = name.Trim(); Direction = direction; Calendar = calendar; Digits = digits; IsActive = isActive; SortOrder = sortOrder;
         return Result.Success();
     }
@@ -61,14 +61,14 @@ public sealed class Translation : Entity
         var r = t.SetValue(value);
         if (r.IsFailure) return r.Error!;
         if (string.IsNullOrWhiteSpace(key) || key.Length > MaxKeyLength)
-            return Error.Validation("translations.invalidKey", "کلید ترجمه معتبر نیست.");
+            return Error.Validation("translations.invalidKey", "Der Übersetzungsschlüssel ist ungültig.");
         return t;
     }
 
     public Result SetValue(string value)
     {
         if (value is null || value.Length > MaxValueLength)
-            return Error.Validation("translations.invalidValue", "متن ترجمه خیلی طولانی است.");
+            return Error.Validation("translations.invalidValue", "Der Übersetzungstext ist zu lang.");
         Value = value;
         return Result.Success();
     }

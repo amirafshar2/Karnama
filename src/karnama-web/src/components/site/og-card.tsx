@@ -20,7 +20,7 @@ export async function ogCard(title: string, brand: Brand | null, kicker?: string
         <div style={{ display: "flex", flexDirection: "row-reverse", flexWrap: "wrap", columnGap: size * 0.28, fontSize: size, lineHeight: 1.45, color: ink }}>{words(title)}</div>
         <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", columnGap: 18 }}>
           <div style={{ width: 56, height: 12, background: colors.primary, borderRadius: 6 }} />
-          <div style={{ display: "flex", flexDirection: "row-reverse", columnGap: 12, fontSize: 34, color: colors.primary }}>{words(brand?.name ?? "کارنما")}</div>
+          <div style={{ display: "flex", flexDirection: "row-reverse", columnGap: 12, fontSize: 34, color: colors.primary }}>{words(brand?.name ?? "Karnama")}</div>
         </div>
       </div>
     ),

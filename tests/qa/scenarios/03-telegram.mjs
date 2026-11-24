@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 import { qa, pick, check, eq } from "../lib.mjs";
 
 export const id = "S03";
-export const title = "ربات تلگرام (Mock Gateway) — فایل فیلمبردار، صندوق فایل‌ها، سپردن به تدوینگر، کاربر وصل‌نشده";
+export const title = "Telegram-Bot (Mock Gateway) – Datei vom Kameramann, Dateieingang, Zuweisung an Cutter, nicht verbundener Nutzer";
 
 const SECRET = process.env.QA_TG_SECRET ?? "qa-telegram-gateway-secret-0123456789abcdef";
 const PORT = Number(process.env.QA_TG_PORT ?? 5193);
@@ -102,7 +102,7 @@ export async function run(rec, { crowd }) {
     });
 
     await rec.step("2.3.a", "webhook refuses unsigned, wrongly signed and stale (replayed) updates", async () => {
-      const u = textUpdate(chat.stranger, "سلام");
+      const u = textUpdate(chat.stranger, "Hallo");
       eq((await postUpdate(u, { unsigned: true })).status, 401, "unsigned");
       eq((await postUpdate(u, { secret: "wrong-secret-wrong-secret-wrong-secret" })).status, 401, "wrong key");
       eq((await postUpdate(u, { skewSeconds: -600 })).status, 401, "timestamp 10 minutes old");
@@ -123,7 +123,7 @@ export async function run(rec, { crowd }) {
       const reply = r.replies.find((c) => c.path === "/v1/send" && c.json?.chatId === chat.video);
       check(reply, `gateway got the link confirmation (calls: ${JSON.stringify(r.replies).slice(0, 300)}) — is the API started with Messengers__TelegramGatewayUrl=http://127.0.0.1:${PORT}/ ?`);
       check(reply.signed, "outbound call is HMAC-signed with the shared key");
-      check(reply.json.text.includes("اتصال انجام شد"), `confirmation text (${reply.json.text})`);
+      check(reply.json.text.includes("Verbunden"), `confirmation text (${reply.json.text})`);
       check((await video.get("/api/v1/notifications/prefs")).linked.includes("telegram"), "prefs show telegram linked");
       await link(editor, chat.editor);
       await link(manager, chat.manager);
@@ -133,7 +133,7 @@ export async function run(rec, { crowd }) {
       const before = gw.calls.length;
       await postUpdate(textUpdate(chat.stranger, `/start ${videoCode}`));
       const reply = gw.calls.slice(before).find((c) => c.json?.chatId === chat.stranger);
-      check(reply && reply.json.text.includes("معتبر نیست"), `stranger told the code is invalid (${JSON.stringify(reply?.json)})`);
+      check(reply && reply.json.text.includes("Ungültig"), `stranger told the code is invalid (${JSON.stringify(reply?.json)})`);
       const targets = await manager.get("/api/v1/media/targets");
       check(targets.staff.find((s) => s.id === ids.video)?.linked, "videographer still linked");
     });
@@ -143,8 +143,8 @@ export async function run(rec, { crowd }) {
     const videoUpdate = {
       update_id: nextUpdate(),
       message: {
-        message_id: videoMessageId, date: sentAt, chat: { id: chat.video, type: "private" }, from: { id: chat.video, first_name: "فیلمبردار" },
-        caption: `راش کافه ${tag}`,
+        message_id: videoMessageId, date: sentAt, chat: { id: chat.video, type: "private" }, from: { id: chat.video, first_name: "Kameramann" },
+        caption: `Café-Rohmaterial ${tag}`,
         video: { file_id: `BAAC-${tag}`, file_unique_id: `u-${tag}`, file_size: 152_000_000, duration: 185, mime_type: "video/mp4", thumbnail: { file_id: `th-${tag}`, file_unique_id: `tu-${tag}` } },
       },
     };
@@ -175,7 +175,7 @@ export async function run(rec, { crowd }) {
       eq((await findAsset(tag)).length, 1, "no duplicate MediaAsset");
       const dup = outboxLike(`Telegram:dup:${again.update_id}`);
       eq(dup.length, 1, "duplicate notice queued");
-      check(dup[0].payload.args.text.includes("قبلاً"), "duplicate notice text");
+      check(dup[0].payload.args.text.includes("Früher"), "duplicate notice text");
     });
 
     await rec.step("2.3.d", "archive copy (copyMessage → archive channel) and the 'which work?' question are queued; inbox holders notified in-app", async () => {
@@ -204,14 +204,14 @@ export async function run(rec, { crowd }) {
       const later = ask.flat().find((b) => b.callback_data.startsWith("l|"));
       const u1 = callback(chat.video, later.callback_data);
       await postUpdate(u1);
-      check(answerOf(u1)?.includes("بعداً"), `later acknowledged (${answerOf(u1)})`);
+      check(answerOf(u1)?.includes("Später"), `later acknowledged (${answerOf(u1)})`);
       const assignButton = `a|${shortId(asset.id)}`;
       const u2 = callback(chat.editor, assignButton);
       await postUpdate(u2);
-      check(answerOf(u2)?.includes("اجازه"), `editor has no permission (${answerOf(u2)})`);
+      check(answerOf(u2)?.includes("Berechtigung"), `editor has no permission (${answerOf(u2)})`);
       const u3 = callback(chat.stranger, assignButton);
       await postUpdate(u3);
-      check(answerOf(u3)?.includes("معتبر نیست"), `stranger's button invalid (${answerOf(u3)})`);
+      check(answerOf(u3)?.includes("Ungültig"), `stranger's button invalid (${answerOf(u3)})`);
       eq((await manager.get(`/api/v1/media/${asset.id}`)).assignedToId, null, "still unassigned");
     });
 
@@ -249,7 +249,7 @@ export async function run(rec, { crowd }) {
       eq(p.method, "copyMessage", "copy, never re-upload");
       eq(p.purpose, "deliver", "purpose");
       eq(p.args.chat_id, chat.editor, "to the editor's chat");
-      check(p.args.caption.includes("برای کار"), `caption names the work (${p.args.caption})`);
+      check(p.args.caption.includes("Für die Aufgabe"), `caption names the work (${p.args.caption})`);
       check(!/09\d{9}|۰۹[۰-۹]{9}/.test(p.args.caption), "no phone number in caption");
       eq(deliver[0].status, 0, "pending in the outbox until the Worker sends it");
       const n = await editor.get("/api/v1/notifications");
@@ -262,29 +262,29 @@ export async function run(rec, { crowd }) {
       const u = {
         update_id: nextUpdate(),
         message: {
-          message_id: 77, date: Math.floor(Date.now() / 1000), chat: { id: chat.stranger, type: "private" }, from: { id: chat.stranger, first_name: "ناشناس" },
-          caption: `ناشناس ${tag}`, document: { file_id: `doc-${tag}`, file_unique_id: `ud-${tag}`, file_size: 1000, file_name: "x.zip" },
+          message_id: 77, date: Math.floor(Date.now() / 1000), chat: { id: chat.stranger, type: "private" }, from: { id: chat.stranger, first_name: "Unbekannt" },
+          caption: `Unbekannt ${tag}`, document: { file_id: `doc-${tag}`, file_unique_id: `ud-${tag}`, file_size: 1000, file_name: "x.zip" },
         },
       };
       eq((await postUpdate(u)).status, 200, "quiet 200");
-      eq((await findAsset(`ناشناس ${tag}`)).length, 0, "no MediaAsset");
+      eq((await findAsset(`Unbekannt ${tag}`)).length, 0, "no MediaAsset");
       const reply = outboxLike(`Telegram:unlinked:${u.update_id}`);
       eq(reply.length, 1, "one reply queued");
       eq(reply[0].payload.args.chat_id, chat.stranger, "to that chat");
-      check(reply[0].payload.args.text.includes("وصل"), `polite text (${reply[0].payload.args.text})`);
+      check(reply[0].payload.args.text.includes("Verbunden"), `polite text (${reply[0].payload.args.text})`);
     });
 
     await rec.step("2.3.h", "/stop unlinks; a file sent afterwards is treated as from a stranger", async () => {
       const before = gw.calls.length;
       await postUpdate(textUpdate(chat.video, "/stop"));
-      check(gw.calls.slice(before).some((c) => c.json?.chatId === chat.video && c.json.text.includes("قطع")), "unlink confirmed");
+      check(gw.calls.slice(before).some((c) => c.json?.chatId === chat.video && c.json.text.includes("Getrennt")), "unlink confirmed");
       check(!(await video.get("/api/v1/notifications/prefs")).linked.includes("telegram"), "prefs no longer linked");
       const u = structuredClone(videoUpdate);
       u.update_id = nextUpdate();
-      u.message.caption = `بعد از قطع ${tag}`;
+      u.message.caption = `nach Abbruch ${tag}`;
       u.message.video.file_unique_id = `u2-${tag}`;
       await postUpdate(u);
-      eq((await findAsset(`بعد از قطع ${tag}`)).length, 0, "not stored");
+      eq((await findAsset(`nach Abbruch ${tag}`)).length, 0, "not stored");
       eq(outboxLike(`Telegram:unlinked:${u.update_id}`).length, 1, "told to link");
     });
 

@@ -8,14 +8,14 @@ test.describe("N11: cameras", () => {
     await navTo(page, mobile, "cctv");
     await expect(page.getByTestId("cctv-not-configured")).toBeVisible();
     await page.getByTestId("cctv-add").click();
-    await page.getByTestId("cctv-name").fill(`سالن ${info.project.name}`);
+    await page.getByTestId("cctv-name").fill(`Saal ${info.project.name}`);
     await page.getByTestId("cctv-main").fill("rtsp://viewer:pass@192.168.1.64:554/Streaming/Channels/101");
     await page.getByTestId("cctv-editor-save").click();
-    await expect(page.getByText("فقط در فضای کار")).toBeVisible();
+    await expect(page.getByText("Nur im Arbeitsbereich")).toBeVisible();
     await page.getByTestId("cctv-ethics").click();
     await shot(page, info, "n11-camera-form");
     await page.getByTestId("cctv-editor-save").click();
-    await expect(page.getByTestId("cctv-grid")).toContainText(`سالن ${info.project.name}`);
+    await expect(page.getByTestId("cctv-grid")).toContainText(`Saal ${info.project.name}`);
     await expect(page.getByTestId("cctv-grid")).not.toContainText("pass@");
     await shot(page, info, "n11-grid");
   });

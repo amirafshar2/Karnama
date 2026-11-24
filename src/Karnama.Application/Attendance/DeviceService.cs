@@ -34,7 +34,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
     public const int MaxBodyBytes = 256 * 1024;
     private const int MaxImportRows = 20_000;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private static Error NotFound => Error.NotFound("devices.notFound", "دستگاه پیدا نشد.");
+    private static Error NotFound => Error.NotFound("devices.notFound", "Gerät nicht gefunden.");
     private bool CanManage => me.Kind == UserKind.Staff && me.Has(Permissions.DevicesManage, PermissionScope.All);
 
     // ===================== ADMS protocol (anonymous; the serial number + allowed address are the gate) =====================
@@ -53,7 +53,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
         var address = ip?.ToString();
         if (d.LastIp is { } previous && address is not null && previous != address)
             await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.DevicesManage, PermissionScope.All, ct), "devices.address",
-                $"دستگاه «{d.Name}» از نشانی تازه‌ای وصل شد", $"{previous} → {address}. اگر اینترنت دفتر عوض نشده، بررسی کنید.", "/attendance/devices", true,
+                $"Das Gerät „{d.Name}“ hat sich von einer neuen Adresse verbunden", $"{previous} → {address}. Falls sich das Büro-Internet nicht geändert hat, prüfen Sie es bitte.", "/attendance/devices", true,
                 $"device-ip:{d.Id:N}:{address}:{Iran.Today(now):yyyyMMdd}", ct);
         d.Seen(now, address);
         return d;
@@ -116,7 +116,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
             {
                 d.SkewWarned(now);
                 await notifier.NotifyAsync(await notifier.StaffWithAsync(Permissions.DevicesManage, PermissionScope.All, ct), "devices.skew",
-                    $"ساعت دستگاه «{d.Name}» {Math.Abs(skew) / 60} دقیقه {(skew > 0 ? "جلو" : "عقب")} است", "در صفحه‌ی دستگاه‌ها «همگام‌سازی ساعت» را بزنید.",
+                    $"Die Uhr des Geräts „{d.Name}“ geht {Math.Abs(skew) / 60} Minuten {(skew > 0 ? "vor" : "nach")}", "Tippen Sie auf der Geräteseite auf „Uhrzeit synchronisieren“.",
                     "/attendance/devices", true, $"device-skew:{d.Id:N}:{Iran.Today(now):yyyyMMdd}", ct);
             }
         }
@@ -177,7 +177,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
         {
             if (!map.TryGetValue(group.Key, out var userId) || !activeIds.Contains(userId))
             {
-                foreach (var p in group) p.Applied(null, PunchOutcome.UnknownPin, "این شماره به هیچ همکاری وصل نیست");
+                foreach (var p in group) p.Applied(null, PunchOutcome.UnknownPin, "Diese Nummer ist keinem Mitarbeiter zugeordnet");
                 continue;
             }
             if (fromFile) await ApplyFileDaysAsync(userId, group.ToList(), d, ct);
@@ -192,12 +192,12 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
         var last = await db.AttendanceEvents.Where(e => e.UserId == userId).MaxAsync(e => (DateTimeOffset?)e.At, ct);
         if (last is { } l && p.At < l)
         {
-            p.Applied(userId, PunchOutcome.OutOfOrder, "قدیمی‌تر از آخرین ثبت این همکار — مدیر بررسی کند");
+            p.Applied(userId, PunchOutcome.OutOfOrder, "Älter als die letzte Buchung dieses Mitarbeiters – der Manager soll prüfen");
             return;
         }
         if (last is { } l2 && p.At - l2 < TimeSpan.FromMinutes(2))
         {
-            p.Applied(userId, PunchOutcome.Ignored, "دو بار پشت‌سرهم زده شد");
+            p.Applied(userId, PunchOutcome.Ignored, "Zweimal direkt hintereinander gedrückt");
             return;
         }
         var open = await db.Shifts.FirstOrDefaultAsync(s => s.UserId == userId && s.Status == ShiftStatus.Open, ct)
@@ -207,12 +207,12 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
             : Toggle();
         PunchOutcome Toggle() => open is null ? PunchOutcome.ClockIn : open.OnBreak ? PunchOutcome.BreakEnd : PunchOutcome.ClockOut;
 
-        var methods = new List<MethodResult> { new("BiometricDevice", true, $"دستگاه «{d.Name}»") };
+        var methods = new List<MethodResult> { new("BiometricDevice", true, $"Gerät „{d.Name}“") };
         var key = $"dev:{d.Id:N}:{p.Pin}:{p.At.ToUnixTimeSeconds()}";
         switch (action)
         {
             case PunchOutcome.ClockIn:
-                if (open is not null) { p.Applied(userId, PunchOutcome.Ignored, "ورود از قبل ثبت شده بود"); return; }
+                if (open is not null) { p.Applied(userId, PunchOutcome.Ignored, "Das Kommen war bereits erfasst"); return; }
                 var (trust, reason) = await TrustAsync(userId, methods, ct);
                 var day = Iran.Today(p.At);
                 var shift = Shift.Open(userId, day, p.At, methods, trust, reason is not null, reason, false, await LateAsync(userId, day, p.At, ct));
@@ -222,7 +222,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
                 changes.Record("presence", userId, null, userId, null, "clockIn");
                 break;
             case PunchOutcome.ClockOut:
-                if (open is null) { p.Applied(userId, PunchOutcome.Ignored, "خروج بدون ورود"); return; }
+                if (open is null) { p.Applied(userId, PunchOutcome.Ignored, "Gehen ohne Kommen"); return; }
                 var (t2, r2) = await TrustAsync(userId, methods, ct);
                 var closed = open.Close(p.At, methods, t2, r2 is not null, r2, false, await EarlyAsync(userId, open.Day, p.At, ct), null);
                 if (closed.IsFailure) { p.Applied(userId, PunchOutcome.Ignored, closed.Error!.Message); return; }
@@ -231,7 +231,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
                 changes.Record("presence", userId, null, userId, null, "clockOut");
                 break;
             case PunchOutcome.BreakStart or PunchOutcome.BreakEnd:
-                if (open is null) { p.Applied(userId, PunchOutcome.Ignored, "استراحت بدون ورود"); return; }
+                if (open is null) { p.Applied(userId, PunchOutcome.Ignored, "Pause ohne Kommen"); return; }
                 var b = action == PunchOutcome.BreakStart ? open.StartBreak(p.At) : open.EndBreak(p.At);
                 if (b.IsFailure) { p.Applied(userId, PunchOutcome.Ignored, b.Error!.Message); return; }
                 db.AttendanceEvents.Add(new AttendanceEvent(userId, open.Id, action == PunchOutcome.BreakStart ? AttendanceEventKind.BreakStart : AttendanceEventKind.BreakEnd,
@@ -250,20 +250,20 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
     {
         var created = 0;
         var now = clock.GetUtcNow();
-        var methods = new List<MethodResult> { new("BiometricDevice", true, $"فایل دستگاه «{d.Name}»") };
+        var methods = new List<MethodResult> { new("BiometricDevice", true, $"Gerätedatei „{d.Name}“") };
         foreach (var day in punches.GroupBy(p => Iran.Today(p.At)))
         {
             var list = day.OrderBy(p => p.At).ToList();
             if (await db.Shifts.AnyAsync(s => s.UserId == userId && s.Day == day.Key, ct) || db.Shifts.Local.Any(s => s.UserId == userId && s.Day == day.Key))
             {
-                foreach (var p in list) p.Applied(userId, PunchOutcome.Ignored, "برای این روز شیفت ثبت شده بود");
+                foreach (var p in list) p.Applied(userId, PunchOutcome.Ignored, "Für diesen Tag war eine Schicht erfasst");
                 continue;
             }
             var first = list[0];
             var lastPunch = list[^1];
             var (trust, reason) = await TrustAsync(userId, methods, ct);
             var single = list.Count == 1 || lastPunch.At - first.At < TimeSpan.FromMinutes(5);
-            var shift = Shift.Open(userId, day.Key, first.At, methods, trust, reason is not null || single, single ? "فقط یک ثبت در فایل بود — خروج را مدیر وارد کند" : reason, false,
+            var shift = Shift.Open(userId, day.Key, first.At, methods, trust, reason is not null || single, single ? "In der Datei war nur eine Buchung – das Gehen muss der Manager eintragen" : reason, false,
                 await LateAsync(userId, day.Key, first.At, ct));
             db.Shifts.Add(shift);
             db.AttendanceEvents.Add(new AttendanceEvent(userId, shift.Id, AttendanceEventKind.ClockIn, first.At, now, first.At,
@@ -276,7 +276,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
                     $"file:{d.Id:N}:{lastPunch.Pin}:{lastPunch.At.ToUnixTimeSeconds()}", JsonSerializer.Serialize(methods, Json), trust, null, me.UserId));
                 lastPunch.Applied(userId, PunchOutcome.ClockOut);
             }
-            foreach (var p in list.Where(p => p.Outcome == PunchOutcome.Pending)) p.Applied(userId, PunchOutcome.Ignored, "ثبت میانی روز");
+            foreach (var p in list.Where(p => p.Outcome == PunchOutcome.Pending)) p.Applied(userId, PunchOutcome.Ignored, "Zwischenbuchung des Tages");
             created++;
         }
         return created;
@@ -290,9 +290,9 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
         var p = policies.FirstOrDefault(x => x.UserIds.Contains(userId)) ?? policies.FirstOrDefault(x => x.RoleIds.Any(roleIds.Contains)) ?? policies.FirstOrDefault(x => x.IsDefault);
         var text = p?.Rule ?? "BiometricDevice";
         var rule = PolicyRule.Parse(text);
-        if (rule.IsFailure) return (Trust.Yellow, "قانون ورود معتبر نیست");
+        if (rule.IsFailure) return (Trust.Yellow, "Die Check-in-Regel ist ungültig");
         var passed = rule.Value!.Evaluate(name => methods.Any(m => m.Method == name && m.Passed));
-        return passed ? (Trust.Green, null) : (Trust.Yellow, $"قانون ورود ({text}) فقط با دستگاه برقرار نشد");
+        return passed ? (Trust.Green, null) : (Trust.Yellow, $"Die Check-in-Regel ({text}) war nur mit dem Gerät nicht erfüllt");
     }
 
     private async Task<WorkSchedule?> ScheduleAsync(Guid userId, CancellationToken ct) =>
@@ -350,7 +350,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
             var c = BiometricDevice.Create(r.Name, r.Serial ?? "", r.Kind, r.Mode, r.Location, r.AllowedIps);
             if (c.IsFailure) return c.Error!;
             d = c.Value!;
-            if (await db.BiometricDevices.AnyAsync(x => x.Serial == d.Serial, ct)) return Error.Conflict("devices.serialExists", "دستگاهی با این شماره‌ی سریال ثبت شده است.");
+            if (await db.BiometricDevices.AnyAsync(x => x.Serial == d.Serial, ct)) return Error.Conflict("devices.serialExists", "Ein Gerät mit dieser Seriennummer ist bereits erfasst.");
             db.BiometricDevices.Add(d);
         }
         audit.Add(id is null ? "devices.created" : "devices.updated", nameof(BiometricDevice), d.Id.ToString(), new { d.Name, d.Serial, d.Kind, d.Mode, d.AllowedIps, d.IsActive });
@@ -396,9 +396,9 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
         if (created.IsFailure) return created.Error!;
         var pin = created.Value!;
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == r.UserId && u.Kind == UserKind.Staff, ct);
-        if (user is null) return Error.Validation("devices.user", "همکار را انتخاب کنید.");
-        if (await db.DevicePins.AnyAsync(p => p.Pin == pin.Pin, ct)) return Error.Conflict("devices.pinTaken", "این شماره قبلاً به همکار دیگری وصل شده است.");
-        if (await db.DevicePins.AnyAsync(p => p.UserId == r.UserId, ct)) return Error.Conflict("devices.userHasPin", "این همکار شماره‌ی دستگاه دارد؛ اول آن را حذف کنید.");
+        if (user is null) return Error.Validation("devices.user", "Wählen Sie einen Mitarbeiter.");
+        if (await db.DevicePins.AnyAsync(p => p.Pin == pin.Pin, ct)) return Error.Conflict("devices.pinTaken", "Diese Nummer ist bereits einem anderen Mitarbeiter zugeordnet.");
+        if (await db.DevicePins.AnyAsync(p => p.UserId == r.UserId, ct)) return Error.Conflict("devices.userHasPin", "Dieser Mitarbeiter hat eine Gerätenummer; löschen Sie diese zuerst.");
         db.DevicePins.Add(pin);
         audit.Add("devices.pinMapped", nameof(DevicePin), pin.Id.ToString(), new { pin.Pin, r.UserId });
         await db.SaveChangesAsync(ct);
@@ -421,7 +421,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
     {
         if (!CanManage) return Error.Forbidden();
         var p = await db.DevicePins.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (p is null) return Error.NotFound("devices.pinNotFound", "این نگاشت پیدا نشد.");
+        if (p is null) return Error.NotFound("devices.pinNotFound", "Diese Zuordnung wurde nicht gefunden.");
         db.DevicePins.Remove(p);
         audit.Add("devices.pinRemoved", nameof(DevicePin), p.Id.ToString(), new { p.Pin, p.UserId });
         await db.SaveChangesAsync(ct);
@@ -456,9 +456,9 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
     {
         if (!CanManage) return Error.Forbidden();
         var rows = sheets.Read(content, fileName, MaxImportRows + 1, 20);
-        if (rows is null || rows.Count == 0) return Error.Validation("devices.file", "فایل خوانده نشد. خروجی Excel (xlsx) یا CSV نرم‌افزار دستگاه را بفرستید.");
+        if (rows is null || rows.Count == 0) return Error.Validation("devices.file", "Datei konnte nicht gelesen werden. Schicken Sie den Excel- (xlsx) oder CSV-Export der Gerätesoftware.");
         var hasHeader = rows[0].Any(c => c.Length > 0 && !c.Any(char.IsDigit));
-        var headers = hasHeader ? rows[0] : rows[0].Select((_, i) => $"ستون {i + 1}").ToList();
+        var headers = hasHeader ? rows[0] : rows[0].Select((_, i) => $"Spalte {i + 1}").ToList();
         var data = rows.Skip(hasHeader ? 1 : 0).ToList();
         return new ImportPreviewDto(headers, data.Take(10).ToList(), data.Count, Suggest(headers, data, hasHeader));
     }
@@ -473,9 +473,9 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
             for (var i = 0; i < headers.Count; i++) if (sample.Count > 0 && sample.All(r => i < r.Count && byValue(r[i]))) return i;
             return -1;
         }
-        var date = Find(h => h.Contains("تاریخ") || h.Contains("date") || h.Contains("زمان"), v => ParseDate(v) is not null);
-        var time = Find(h => h.Contains("ساعت") || h == "time" || h.Contains("time"), v => TimeOnly.TryParse(Digits(v), CultureInfo.InvariantCulture, out _) && !v.Contains('/') && !v.Contains('-'));
-        var pin = Find(h => h.Contains("شماره") || h.Contains("کد") || h.Contains("pin") || h.Contains("id") || h.Contains("پرسنلی"), v => DevicePin.Normalize(Digits(v)) is not null);
+        var date = Find(h => h.Contains("datum") || h.Contains("date") || h == "zeit", v => ParseDate(v) is not null);
+        var time = Find(h => h.Contains("uhr") || h == "time" || h.Contains("time"), v => TimeOnly.TryParse(Digits(v), CultureInfo.InvariantCulture, out _) && !v.Contains('/') && !v.Contains('-'));
+        var pin = Find(h => h.Contains("nummer") || h.Contains("code") || h.Contains("pin") || h.Contains("id") || h.Contains("personal"), v => DevicePin.Normalize(Digits(v)) is not null);
         if (time == date) time = -1;
         return new ImportMapping(Math.Max(pin, 0), Math.Max(date, 0), time < 0 ? null : time, null, hasHeader);
     }
@@ -484,9 +484,9 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
     {
         if (!CanManage) return Error.Forbidden();
         var d = await db.BiometricDevices.FirstOrDefaultAsync(x => x.Id == deviceId && x.Kind == DeviceKind.FileImport, ct);
-        if (d is null) return Error.Validation("devices.importDevice", "اول یک دستگاه از نوع «وارد کردن فایل» بسازید.");
+        if (d is null) return Error.Validation("devices.importDevice", "Legen Sie zuerst ein Gerät vom Typ „Datei importieren“ an.");
         var rows = sheets.Read(content, fileName, MaxImportRows + 1, 20);
-        if (rows is null || rows.Count == 0) return Error.Validation("devices.file", "فایل خوانده نشد.");
+        if (rows is null || rows.Count == 0) return Error.Validation("devices.file", "Datei konnte nicht gelesen werden.");
         var now = clock.GetUtcNow();
         var problems = new List<string>();
         var punches = new List<DevicePunch>();
@@ -502,13 +502,13 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
             if (pin is null || at is null)
             {
                 invalid++;
-                if (problems.Count < 10) problems.Add($"ردیف {line}: شماره یا تاریخ خوانده نشد");
+                if (problems.Count < 10) problems.Add($"Zeile {line}: Nummer oder Datum nicht lesbar");
                 continue;
             }
             if (at > now.AddMinutes(10) || at < now.AddYears(-1))
             {
                 invalid++;
-                if (problems.Count < 10) problems.Add($"ردیف {line}: تاریخ خارج از یک سال گذشته است");
+                if (problems.Count < 10) problems.Add($"Zeile {line}: Datum liegt mehr als ein Jahr zurück");
                 continue;
             }
             var status = m.Status is { } s && int.TryParse(Digits(Cell(s)), out var st) ? st : -1;
@@ -537,11 +537,12 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
     /// <summary>"2026-10-25 08:01[:00]", "2026/10/25 08:01", or Persian "1405/08/03 08:01" (year below 1500 = Jalali), as Iran time.</summary>
     public static DateTimeOffset? ParseDate(string text)
     {
-        var t = Digits(text).Replace('-', '/').Replace('T', ' ');
+        var t = Digits(text).Replace('-', '/').Replace('.', '/').Replace('T', ' ');
         var parts = t.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length is 0 or > 2) return null;
         var ymd = parts[0].Split('/');
         if (ymd.Length != 3 || !int.TryParse(ymd[0], out var y) || !int.TryParse(ymd[1], out var mo) || !int.TryParse(ymd[2], out var dd)) return null;
+        if (ymd[0].Length <= 2 && ymd[2].Length == 4) (y, dd) = (dd, y);   // German order: 25.10.2026
         var time = TimeOnly.MinValue;
         if (parts.Length == 2 && !TimeOnly.TryParse(parts[1], CultureInfo.InvariantCulture, out time)) return null;
         try
@@ -576,7 +577,7 @@ public sealed class DeviceService(IAppDbContext db, ICurrentUser me, AttendanceS
         var to = await notifier.StaffWithAsync(Permissions.DevicesManage, PermissionScope.All, ct);
         foreach (var d in silent)
         {
-            await notifier.NotifyAsync(to, "devices.offline", $"دستگاه «{d.Name}» وصل نیست", "برق و اینترنت دستگاه را بررسی کنید؛ همکارها فعلاً از اپ ورود بزنند.",
+            await notifier.NotifyAsync(to, "devices.offline", $"Das Gerät „{d.Name}“ ist nicht verbunden", "Prüfen Sie Strom und Internet des Geräts; die Kollegen checken solange über die App ein.",
                 "/attendance/devices", true, $"device-offline:{d.Id:N}:{d.LastSeenAt!.Value.ToUnixTimeSeconds()}", ct);
             d.OfflineWarned(now);
         }

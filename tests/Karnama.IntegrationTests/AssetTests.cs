@@ -44,27 +44,27 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     {
         var admin = await As("admin");
         var editor = await As("editor");
-        var ali = await UserId("09000000002");
-        var a = await NewAsset(admin, "دوربین تست تحویل");
+        var ali = await UserId("015100000002");
+        var a = await NewAsset(admin, "Test-Kamera Übergabe");
         a.GetProperty("asset").GetProperty("tag").GetString().Should().StartWith("KN-");
 
         var h = await Ok(await admin.PostAsJsonAsync($"/api/v1/assets/{Id(a)}/handover",
-            new { userId = ali, expectedReturn = DateTime.UtcNow.AddDays(5).ToString("yyyy-MM-dd"), condition = "سالم", accessories = new[] { "باتری ×۲", "بند" }, version = Version(a) }));
+            new { userId = ali, expectedReturn = DateTime.UtcNow.AddDays(5).ToString("yyyy-MM-dd"), condition = "Unbeschädigt", accessories = new[] { "Akku ×2", "Gurt" }, version = Version(a) }));
         h.GetProperty("current").GetProperty("state").GetString().Should().Be("pendingAcceptance");
         var assignment = Current(h);
 
-        // Only the receiver accepts; the worker sees it in "پیش من".
+        // Only the receiver accepts; the worker sees it in "Bei mir".
         (await admin.PostAsync($"/api/v1/assets/assignments/{assignment}/accept", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await Ok(await editor.GetAsync("/api/v1/assets/mine"))).GetProperty("holding").EnumerateArray().Should().Contain(x => x.GetProperty("id").GetGuid() == Id(a));
         var accepted = await Ok(await editor.PostAsync($"/api/v1/assets/assignments/{assignment}/accept", null));
         accepted.GetProperty("current").GetProperty("state").GetString().Should().Be("active");
         accepted.GetProperty("current").GetProperty("acceptedAt").ValueKind.Should().Be(JsonValueKind.String);
 
-        await Ok(await editor.PostAsJsonAsync($"/api/v1/assets/assignments/{assignment}/return", new { condition = "خط روی لنز", damage = "درپوش لنز گم شد" }));
+        await Ok(await editor.PostAsJsonAsync($"/api/v1/assets/assignments/{assignment}/return", new { condition = "Kratzer auf der Linse", damage = "Objektivdeckel verloren" }));
         var done = await Ok(await admin.PostAsJsonAsync($"/api/v1/assets/assignments/{assignment}/return/confirm", new { status = "inRepair" }));
         done.GetProperty("asset").GetProperty("status").GetString().Should().Be("inRepair");
         done.GetProperty("asset").GetProperty("holderId").ValueKind.Should().Be(JsonValueKind.Null);
-        done.GetProperty("past")[0].GetProperty("damage").GetString().Should().Be("درپوش لنز گم شد");
+        done.GetProperty("past")[0].GetProperty("damage").GetString().Should().Be("Objektivdeckel verloren");
         done.GetProperty("history").EnumerateArray().Select(e => e.GetProperty("kind").GetString()).Should()
             .ContainInOrder("returned", "returnSubmitted", "accepted", "handedOver", "created");
         (await Db(db => db.AuditLogs.CountAsync(x => x.Action == "assets.returned" && x.EntityId == Id(a).ToString()))).Should().Be(1);
@@ -76,9 +76,9 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     public async Task Two_simultaneous_hand_overs_of_one_asset_only_one_wins()
     {
         var admin = await As("admin");
-        var a = await NewAsset(admin, "لپ‌تاپ همزمانی");
-        var ali = await UserId("09000000002");
-        var maryam = await UserId("09000000003");
+        var a = await NewAsset(admin, "Laptop Synchronisierung");
+        var ali = await UserId("015100000002");
+        var maryam = await UserId("015100000003");
         var other = await As("admin");
         var results = await Task.WhenAll(
             admin.PostAsJsonAsync($"/api/v1/assets/{Id(a)}/handover", new { userId = ali, version = Version(a) }),
@@ -105,8 +105,8 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     {
         var admin = await As("admin");
         var writer = await As("writer");
-        var ali = await UserId("09000000002");
-        var a = await NewAsset(admin, "میکروفون دید");
+        var ali = await UserId("015100000002");
+        var a = await NewAsset(admin, "Mikrofon erkannt");
         var h = await Ok(await admin.PostAsJsonAsync($"/api/v1/assets/{Id(a)}/handover", new { userId = ali, version = Version(a) }));
 
         (await writer.GetAsync($"/api/v1/assets/{Id(a)}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -116,12 +116,12 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         (await writer.PostAsJsonAsync("/api/v1/assets", new { name = "x", categoryId = AssetDefaults.Camera })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await (await As("editor")).PostAsJsonAsync($"/api/v1/assets/{Id(a)}/handover", new { userId = ali, version = 0 })).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await (await As("client")).GetAsync("/api/v1/assets/mine")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await admin.PostAsJsonAsync("/api/v1/assets", new { name = "تکراری", categoryId = AssetDefaults.Camera, tag = a.GetProperty("asset").GetProperty("tag").GetString() }))
+        (await admin.PostAsJsonAsync("/api/v1/assets", new { name = "Doppelt", categoryId = AssetDefaults.Camera, tag = a.GetProperty("asset").GetProperty("tag").GetString() }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await admin.DeleteAsync($"/api/v1/assets/{Id(a)}")).StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         // The holder sees the item but not the manager's internal note or the price.
-        await Ok(await admin.PutAsJsonAsync($"/api/v1/assets/{Id(a)}", new { name = "میکروفون دید", categoryId = AssetDefaults.Camera, note = "از فروشگاه X با تخفیف", purchasePrice = 5_000_000, version = Version(h) }));
+        await Ok(await admin.PutAsJsonAsync($"/api/v1/assets/{Id(a)}", new { name = "Mikrofon erkannt", categoryId = AssetDefaults.Camera, note = "Bei Shop X im Angebot", purchasePrice = 5_000_000, version = Version(h) }));
         var mine = await Ok(await (await As("editor")).GetAsync($"/api/v1/assets/{Id(a)}"));
         mine.GetProperty("note").ValueKind.Should().Be(JsonValueKind.Null);
         mine.GetProperty("purchasePrice").ValueKind.Should().Be(JsonValueKind.Null);
@@ -133,9 +133,9 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         var admin = await As("admin");
         var editor = await As("editor");
         var writer = await As("writer");
-        var ali = await UserId("09000000002");
-        var maryam = await UserId("09000000003");
-        var a = await NewAsset(admin, "گیمبال انتقال");
+        var ali = await UserId("015100000002");
+        var maryam = await UserId("015100000003");
+        var a = await NewAsset(admin, "Gimbal Übergabe");
         var h = await Ok(await admin.PostAsJsonAsync($"/api/v1/assets/{Id(a)}/handover", new { userId = ali, version = Version(a) }));
         await Ok(await editor.PostAsync($"/api/v1/assets/assignments/{Current(h)}/accept", null));
 
@@ -143,7 +143,7 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
         var offered = await Ok(await editor.PostAsJsonAsync($"/api/v1/assets/assignments/{Current(h)}/transfer", new { userId = maryam }));
         offered.GetProperty("current").GetProperty("transferToId").GetGuid().Should().Be(maryam);
         (await Ok(await writer.GetAsync("/api/v1/assets/mine"))).GetProperty("incoming").EnumerateArray().Should().Contain(x => x.GetProperty("id").GetGuid() == Id(a));
-        var moved = await Ok(await writer.PostAsJsonAsync($"/api/v1/assets/assignments/{Current(h)}/transfer/accept", new { condition = "سالم" }));
+        var moved = await Ok(await writer.PostAsJsonAsync($"/api/v1/assets/assignments/{Current(h)}/transfer/accept", new { condition = "Unbeschädigt" }));
         moved.GetProperty("asset").GetProperty("holderId").GetGuid().Should().Be(maryam);
         moved.GetProperty("current").GetProperty("state").GetString().Should().Be("active");
         (await Db(db => db.AssetAssignments.CountAsync(x => x.AssetId == Id(a) && (x.State == AssignmentState.Active || x.State == AssignmentState.PendingAcceptance)))).Should().Be(1);
@@ -154,7 +154,7 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     public async Task Photos_must_be_images_and_stay_private()
     {
         var admin = await As("admin");
-        var a = await NewAsset(admin, "لنز عکس");
+        var a = await NewAsset(admin, "Fotoobjektiv");
         static MultipartFormDataContent Form(byte[] bytes)
         {
             var f = new MultipartFormDataContent();
@@ -183,7 +183,7 @@ public sealed class AssetTests(DemoAppFixture app) : IClassFixture<DemoAppFixtur
     [Fact]
     public async Task Alerts_overdue_and_warranty_once_per_day()
     {
-        var ali = await UserId("09000000002");
+        var ali = await UserId("015100000002");
         async Task<int> Run()
         {
             using var scope = _f.Services.CreateScope();

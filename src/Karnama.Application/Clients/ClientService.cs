@@ -34,10 +34,10 @@ public sealed class UpsertClientValidator : AbstractValidator<UpsertClientReques
 {
     public UpsertClientValidator()
     {
-        RuleFor(x => x.BusinessName).NotEmpty().MaximumLength(120).WithMessage("نام کسب‌وکار الزامی است (حداکثر ۱۲۰ کاراکتر).");
+        RuleFor(x => x.BusinessName).NotEmpty().MaximumLength(120).WithMessage("Der Firmenname ist Pflicht (höchstens 120 Zeichen).");
         // Empty is allowed for staff who can't see the number (the service keeps the stored one; the domain still requires it).
-        RuleFor(x => x.Mobile).Must(m => string.IsNullOrEmpty(m) || PhoneNumber.TryNormalize(m, out _)).WithMessage("شماره‌ی موبایل معتبر نیست (مثل ۰۹۱۲۱۲۳۴۵۶۷).");
-        RuleFor(x => x.InternalNote).MaximumLength(2000).WithMessage("یادداشت حداکثر ۲۰۰۰ کاراکتر است.");
+        RuleFor(x => x.Mobile).Must(m => string.IsNullOrEmpty(m) || PhoneNumber.TryNormalize(m, out _)).WithMessage("Die Handynummer ist ungültig (z. B. 01512 3456789).");
+        RuleFor(x => x.InternalNote).MaximumLength(2000).WithMessage("Die Notiz darf höchstens 2000 Zeichen haben.");
         RuleFor(x => x.Status).IsInEnum();
     }
 }
@@ -87,7 +87,7 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     public async Task<Result<ClientDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var c = await Visible(true).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        return c is null ? Error.NotFound("clients.notFound", "مشتری پیدا نشد.") : await ToDtoAsync(c, ct);
+        return c is null ? Error.NotFound("clients.notFound", "Kunde nicht gefunden.") : await ToDtoAsync(c, ct);
     }
 
     public async Task<Result<ClientDto>> CreateAsync(UpsertClientRequest r, CancellationToken ct)
@@ -105,8 +105,8 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     public async Task<Result<ClientDto>> UpdateAsync(Guid id, UpsertClientRequest r, CancellationToken ct)
     {
         var c = await db.Clients.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (c is null) return Error.NotFound("clients.notFound", "مشتری پیدا نشد.");
-        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        if (c is null) return Error.NotFound("clients.notFound", "Kunde nicht gefunden.");
+        if (r.Version is not { } v) return Error.Validation("common.versionRequired", "Die Datensatzversion fehlt; laden Sie die Seite neu.");
         db.SetOriginalVersion(c, v);
         var check = await CheckPlatformsAsync(r, ct);
         if (check.IsFailure) return check.Error!;
@@ -123,7 +123,7 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
     {
         var c = await db.Clients.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (c is null) return Error.NotFound("clients.notFound", "مشتری پیدا نشد.");
+        if (c is null) return Error.NotFound("clients.notFound", "Kunde nicht gefunden.");
         c.Delete(me.UserId, clock.GetUtcNow());
         audit.Add("clients.deleted", nameof(Client), id.ToString());
         await db.SaveChangesAsync(ct);
@@ -133,7 +133,7 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     public async Task<Result<ClientDto>> RestoreAsync(Guid id, CancellationToken ct)
     {
         var c = await db.Clients.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (c is null) return Error.NotFound("clients.notFound", "مشتری پیدا نشد.");
+        if (c is null) return Error.NotFound("clients.notFound", "Kunde nicht gefunden.");
         c.Restore();
         audit.Add("clients.restored", nameof(Client), id.ToString());
         await db.SaveChangesAsync(ct);
@@ -144,12 +144,12 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     public async Task<Result<ClientDto>> EnablePortalAsync(Guid id, CancellationToken ct)
     {
         var c = await db.Clients.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (c is null) return Error.NotFound("clients.notFound", "مشتری پیدا نشد.");
+        if (c is null) return Error.NotFound("clients.notFound", "Kunde nicht gefunden.");
         if (c.PortalUserId is null)
         {
             var existing = await db.Users.FirstOrDefaultAsync(u => u.Phone == c.Mobile, ct);
             if (existing is not null && existing.Kind != UserKind.Client)
-                return Error.Conflict("clients.phoneIsStaff", "این شماره برای یکی از همکاران ثبت شده؛ برای مشتری شماره‌ی دیگری بگذارید.");
+                return Error.Conflict("clients.phoneIsStaff", "Diese Nummer gehört einem Mitarbeiter; nehmen Sie für den Kunden eine andere Nummer.");
             var clientRole = await db.Roles.FirstAsync(r => r.SystemKey == SystemRoles.Client, ct);
             var user = existing;
             if (user is null)
@@ -176,12 +176,12 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
         var result = await db.InTransactionAsync<Result>(async token =>
         {
             var client = await Visible(false).FirstOrDefaultAsync(x => x.Id == clientId, token);
-            if (client is null) return Error.NotFound("clients.notFound", "مشتری پیدا نشد.");
+            if (client is null) return Error.NotFound("clients.notFound", "Kunde nicht gefunden.");
             var package = await db.Packages.Include(p => p.Quotas).FirstOrDefaultAsync(p => p.Id == r.PackageId, token);
-            if (package is null) return Error.NotFound("packages.notFound", "پکیج پیدا نشد.");
+            if (package is null) return Error.NotFound("packages.notFound", "Paket nicht gefunden.");
             if (package.Capacity is { } cap &&
                 await db.ClientPackages.CountAsync(cp => cp.PackageId == package.Id && cp.Status == ClientPackageStatus.Active, token) >= cap)
-                return Error.Conflict("clientPackages.full", "ظرفیت این پکیج پر است.");
+                return Error.Conflict("clientPackages.full", "Die Kapazität dieses Pakets ist ausgeschöpft.");
 
             var names = (await db.ServiceTypes.IgnoreQueryFilters().AsNoTracking().Select(s => new { s.Id, s.Name }).ToListAsync(token))
                 .ToDictionary(x => x.Id, x => x.Name.Get(me.LanguageCode));
@@ -200,7 +200,7 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     {
         if (!me.Has(Permissions.PackagesAssign, PermissionScope.All)) return Error.Forbidden();
         var cp = await db.ClientPackages.FirstOrDefaultAsync(x => x.Id == clientPackageId && x.ClientId == clientId, ct);
-        if (cp is null) return Error.NotFound("clientPackages.notFound", "پکیج مشتری پیدا نشد.");
+        if (cp is null) return Error.NotFound("clientPackages.notFound", "Kundenpaket nicht gefunden.");
         var r = cp.Cancel();
         if (r.IsFailure) return r.Error!;
         audit.Add("clientPackages.cancelled", nameof(ClientPackage), clientPackageId.ToString(), new { clientId });
@@ -211,11 +211,11 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     public async Task<byte[]> ExportAsync(CancellationToken ct)
     {
         var rows = await Visible(false).AsNoTracking().OrderBy(c => c.BusinessName).ToListAsync(ct);
-        var headers = new List<string> { "کسب‌وکار", "صنف", "شخص رابط", "شهر", "وضعیت", "حساب‌ها" };
-        if (CanSeeContact) headers.Insert(3, "موبایل");
+        var headers = new List<string> { "Unternehmen", "Branche", "Ansprechpartner", "Stadt", "Status", "Konten" };
+        if (CanSeeContact) headers.Insert(3, "Handy");
         return excel.Export("Clients", headers, rows.Select(c =>
         {
-            var row = new List<object?> { c.BusinessName, c.Industry, c.ContactName, c.City, c.Status.ToString(), string.Join("، ", c.Accounts.Select(a => "@" + a.Handle)) };
+            var row = new List<object?> { c.BusinessName, c.Industry, c.ContactName, c.City, c.Status.ToString(), string.Join(", ", c.Accounts.Select(a => "@" + a.Handle)) };
             if (CanSeeContact) row.Insert(3, c.Mobile);
             return (IReadOnlyList<object?>)row;
         }));
@@ -225,7 +225,7 @@ public sealed class ClientService(IAppDbContext db, ICurrentUser me, IAuditWrite
     {
         var ids = (r.Accounts ?? []).Select(a => a.PlatformId).Distinct().ToList();
         if (ids.Count > 0 && await db.Platforms.CountAsync(p => ids.Contains(p.Id), ct) != ids.Count)
-            return Error.Validation("clients.unknownPlatform", "یکی از شبکه‌ها وجود ندارد.");
+            return Error.Validation("clients.unknownPlatform", "Eines der Netzwerke existiert nicht.");
         return Result.Success();
     }
 

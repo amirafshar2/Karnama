@@ -38,12 +38,12 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
     private async Task<(HttpClient Client, Guid Id)> SecondMarketerAsync()
     {
         if (Second.TryGetValue(_f, out var cached)) return (_f.CreateClient().WithToken(cached.Token), cached.Id);
-        var phone = "09351230099";
+        var phone = "015151230099";
         var id = await Db(async db =>
         {
             if (await db.Users.FirstOrDefaultAsync(u => u.Phone == phone) is { } existing) return existing.Id;
-            var role = (await db.Roles.ToListAsync()).First(r => r.Name.Get("fa") == "بازاریاب").Id;
-            var user = Karnama.Domain.Identity.User.Create(phone, "بازاریاب دوم", Karnama.Domain.Identity.UserKind.Staff).Value!;
+            var role = (await db.Roles.ToListAsync()).First(r => r.Name.Get("de") == "Vertrieb").Id;
+            var user = Karnama.Domain.Identity.User.Create(phone, "Zweiter Vertriebsmitarbeiter", Karnama.Domain.Identity.UserKind.Staff).Value!;
             user.AssignRole(role);
             db.Users.Add(user);
             await db.SaveChangesAsync();
@@ -62,22 +62,22 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
     public async Task A_marketer_sees_only_own_leads_and_another_marketers_lead_is_404()
     {
         var marketer = await As("marketer");
-        var mine = await Ok(await marketer.PostAsJsonAsync("/api/v1/crm/leads", new { name = "سرنخ من", phone = "09381110001", business = "کافی‌شاپ" }));
+        var mine = await Ok(await marketer.PostAsJsonAsync("/api/v1/crm/leads", new { name = "Mein Lead", phone = "015181110001", business = "Coffeeshop" }));
         var myId = mine.GetProperty("lead").GetProperty("id").GetGuid();
-        mine.GetProperty("lead").GetProperty("ownerId").GetGuid().Should().Be(await UserAsync("09000000008"), "a marketer's new lead is theirs");
+        mine.GetProperty("lead").GetProperty("ownerId").GetGuid().Should().Be(await UserAsync("015100000008"), "a marketer's new lead is theirs");
 
         var (other, _) = await SecondMarketerAsync();
         (await other.GetAsync($"/api/v1/crm/leads/{myId}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await other.PutAsJsonAsync($"/api/v1/crm/leads/{myId}", new { name = "x", phone = "09381110001" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await other.PutAsJsonAsync($"/api/v1/crm/leads/{myId}", new { name = "x", phone = "015181110001" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await other.PostAsJsonAsync($"/api/v1/crm/leads/{myId}/calls", new { direction = "outgoing", durationSeconds = 10, outcome = "interested" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await other.PostAsync($"/api/v1/crm/leads/{myId}/convert", null)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         var board = await Ok(await other.GetAsync("/api/v1/crm/board"));
         board.EnumerateArray().Should().NotContain(l => l.GetProperty("id").GetGuid() == myId);
 
         // Same phone by the other marketer: refused without revealing whose it is.
-        var dup = await other.PostAsJsonAsync("/api/v1/crm/leads", new { name = "تکراری", phone = "0938 111 0001" });
+        var dup = await other.PostAsJsonAsync("/api/v1/crm/leads", new { name = "Doppelt", phone = "0151 8111 0001" });
         dup.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await dup.Content.ReadAsStringAsync()).Should().NotContain("سرنخ من");
+        (await dup.Content.ReadAsStringAsync()).Should().NotContain("Mein Lead");
 
         // Workers and clients have no CRM at all.
         (await (await As("editor")).GetAsync("/api/v1/crm/board")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -91,10 +91,10 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
     {
         var admin = await As("admin");
         var (_, second) = await SecondMarketerAsync();
-        var first = await UserAsync("09000000008");
+        var first = await UserAsync("015100000008");
         var ids = new List<Guid>();
         for (var i = 0; i < 4; i++)
-            ids.Add((await Ok(await admin.PostAsJsonAsync("/api/v1/crm/leads", new { name = $"چرخشی {i}", phone = $"0938222000{i}", ownerId = (Guid?)null }))).GetProperty("lead").GetProperty("id").GetGuid());
+            ids.Add((await Ok(await admin.PostAsJsonAsync("/api/v1/crm/leads", new { name = $"Rotierend {i}", phone = $"01518222000{i}", ownerId = (Guid?)null }))).GetProperty("lead").GetProperty("id").GetGuid());
         (await Ok(await admin.PostAsJsonAsync("/api/v1/crm/round-robin", new { leadIds = ids }))).GetProperty("assigned").GetInt32().Should().Be(4);
         var owners = await Db(db => db.Leads.Where(l => ids.Contains(l.Id)).OrderBy(l => l.CreatedAt).Select(l => l.OwnerId!.Value).ToListAsync());
         owners.Distinct().Should().BeEquivalentTo(new[] { first, second });
@@ -110,16 +110,16 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
     {
         var admin = await As("admin");
         var (_, second) = await SecondMarketerAsync();
-        var first = await UserAsync("09000000008");
+        var first = await UserAsync("015100000008");
         async Task<Guid> NewLead(string phone, Guid? owner) =>
-            (await Ok(await admin.PostAsJsonAsync("/api/v1/crm/leads", new { name = "انتخابی " + phone[^2..], phone, ownerId = owner }))).GetProperty("lead").GetProperty("id").GetGuid();
-        var free = await NewLead("09382440001", null);
-        var owned = await NewLead("09382440002", first);
-        var lost = await NewLead("09382440003", first);
+            (await Ok(await admin.PostAsJsonAsync("/api/v1/crm/leads", new { name = "Auswahl " + phone[^2..], phone, ownerId = owner }))).GetProperty("lead").GetProperty("id").GetGuid();
+        var free = await NewLead("015182440001", null);
+        var owned = await NewLead("015182440002", first);
+        var lost = await NewLead("015182440003", first);
         var stages = await Ok(await admin.GetAsync("/api/v1/crm/stages"));
         var lostStage = stages.EnumerateArray().First(s => s.GetProperty("kind").GetString() == "lost").GetProperty("id").GetGuid();
-        await Ok(await admin.PostAsJsonAsync($"/api/v1/crm/leads/{lost}/move", new { stageId = lostStage, lostReason = "بودجه نداشت" }));
-        var won = await NewLead("09382440004", first);
+        await Ok(await admin.PostAsJsonAsync($"/api/v1/crm/leads/{lost}/move", new { stageId = lostStage, lostReason = "Kein Budget" }));
+        var won = await NewLead("015182440004", first);
         await Ok(await admin.PostAsync($"/api/v1/crm/leads/{won}/convert", null));
         Task<Guid?> Owner(Guid id) => Db(db => db.Leads.Where(l => l.Id == id).Select(l => l.OwnerId).FirstAsync());
 
@@ -139,19 +139,19 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
         // The "hand to…" list is the rotation: marketers, not managers or the owner.
         var marketers = (await Ok(await admin.GetAsync("/api/v1/crm/marketers"))).EnumerateArray().Select(m => m.GetProperty("id").GetGuid()).ToList();
         marketers.Should().Contain(new[] { first, second });
-        marketers.Should().NotContain(await UserAsync("09000000001")).And.NotContain(await UserAsync("09000000007"));
+        marketers.Should().NotContain(await UserAsync("015100000001")).And.NotContain(await UserAsync("015100000007"));
     }
 
     [Fact]
     public async Task Call_result_follow_up_reminder_once_and_conversion_to_client()
     {
         var marketer = await As("marketer");
-        var lead = await Ok(await marketer.PostAsJsonAsync("/api/v1/crm/leads", new { name = "آقای تبدیلی", phone = "09383330001", business = "نانوایی تست", instagram = "@bakery_test" }));
+        var lead = await Ok(await marketer.PostAsJsonAsync("/api/v1/crm/leads", new { name = "Herr Wandel", phone = "015183330001", business = "Test-Bäckerei", instagram = "@bakery_test" }));
         var id = lead.GetProperty("lead").GetProperty("id").GetGuid();
         var newStage = lead.GetProperty("lead").GetProperty("stageId").GetGuid();
 
         var due = _f.Clock.GetUtcNow().AddMinutes(-1);
-        var called = await Ok(await marketer.PostAsJsonAsync($"/api/v1/crm/leads/{id}/calls", new { direction = "outgoing", durationSeconds = 180, outcome = "later", note = "عصر تماس بگیرید", nextFollowUpAt = due }));
+        var called = await Ok(await marketer.PostAsJsonAsync($"/api/v1/crm/leads/{id}/calls", new { direction = "outgoing", durationSeconds = 180, outcome = "later", note = "Am Nachmittag anrufen", nextFollowUpAt = due }));
         called.GetProperty("lead").GetProperty("stageId").GetGuid().Should().NotBe(newStage, "an answered call moves a new lead forward");
         called.GetProperty("activities").EnumerateArray().Should().Contain(a => a.GetProperty("kind").GetString() == "call" && a.GetProperty("durationSeconds").GetInt32() == 180);
         (await Ok(await marketer.GetAsync("/api/v1/crm/today"))).EnumerateArray().Should().Contain(l => l.GetProperty("id").GetGuid() == id);
@@ -173,8 +173,8 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
         var converted = await Ok(await marketer.PostAsync($"/api/v1/crm/leads/{id}/convert", null));
         var clientId = converted.GetProperty("clientId").GetGuid();
         var client = await Db(db => db.Clients.AsNoTracking().FirstAsync(c => c.Id == clientId));
-        client.BusinessName.Should().Be("نانوایی تست");
-        client.Mobile.Should().Be("09383330001");
+        client.BusinessName.Should().Be("Test-Bäckerei");
+        client.Mobile.Should().Be("015183330001");
         client.Accounts.Should().Contain(a => a.Handle == "bakery_test");
         var after = await Ok(await marketer.GetAsync($"/api/v1/crm/leads/{id}"));
         var won = stages.EnumerateArray().First(s => s.GetProperty("kind").GetString() == "won").GetProperty("id").GetGuid();
@@ -195,8 +195,8 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
         var range = $"from={DateTime.UtcNow.AddDays(-360):yyyy-MM-dd}&to={DateTime.UtcNow.AddDays(1):yyyy-MM-dd}";
         long Sales(JsonElement r) => r.GetProperty("marketers").EnumerateArray().Single().GetProperty("sales").GetInt64();
         var before = Sales(await Ok(await marketer.GetAsync($"/api/v1/crm/report?{range}")));
-        // The demo café (09000000004) already has a paid package.
-        var lead = await Ok(await marketer.PostAsJsonAsync("/api/v1/crm/leads", new { name = "کافه را می‌شناسم", phone = "09000000004" }));
+        // The demo café (015100000004) already has a paid package.
+        var lead = await Ok(await marketer.PostAsJsonAsync("/api/v1/crm/leads", new { name = "Ich kenne das Café", phone = "015100000004" }));
         var id = lead.GetProperty("lead").GetProperty("id").GetGuid();
         var converted = await Ok(await marketer.PostAsync($"/api/v1/crm/leads/{id}/convert", null));
         converted.GetProperty("existing").GetBoolean().Should().BeFalse("a marketer must not learn that the number is already a client");
@@ -207,26 +207,26 @@ public sealed class CrmTests(DemoAppFixture app) : IClassFixture<DemoAppFixture>
     public async Task Website_form_and_bot_messages_become_leads_without_duplicates()
     {
         var anon = _f.CreateClient();
-        await Ok(await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "فرم‌پرکن", phone = "09384440001", message = "پکیج طلایی", source = "/plans" }));
-        var lead = await Db(db => db.Leads.AsNoTracking().FirstAsync(l => l.Phone == "09384440001"));
+        await Ok(await anon.PostAsJsonAsync("/api/v1/public/site/leads", new { name = "Formularausfüller", phone = "015184440001", message = "Gold-Paket", source = "/plans" }));
+        var lead = await Db(db => db.Leads.AsNoTracking().FirstAsync(l => l.Phone == "015184440001"));
         lead.Origin.Should().Be("/plans");
 
         // A stranger writes to the Telegram bot: a lead; their number in a later message joins the same lead.
         async Task Bot(long updateId, string text)
         {
-            var body = JsonSerializer.Serialize(new { update_id = updateId, message = new { message_id = 1, chat = new { id = 777_888L, type = "private" }, from = new { id = 777_888L, first_name = "مریم", last_name = "تلگرامی" }, text } });
+            var body = JsonSerializer.Serialize(new { update_id = updateId, message = new { message_id = 1, chat = new { id = 777_888L, type = "private" }, from = new { id = 777_888L, first_name = "Marie", last_name = "Telegram" }, text } });
             var now = _f.Clock.GetUtcNow().ToUnixTimeSeconds();
             var r = new HttpRequestMessage(HttpMethod.Post, "/api/v1/bots/telegram") { Content = new StringContent(body, Encoding.UTF8, "application/json") };
             r.Headers.Add(GatewaySignature.TimestampHeader, now.ToString(System.Globalization.CultureInfo.InvariantCulture));
             r.Headers.Add(GatewaySignature.SignatureHeader, GatewaySignature.Compute(KarnamaFactory.GatewaySecret, now, body));
             (await anon.SendAsync(r)).StatusCode.Should().Be(HttpStatusCode.OK);
         }
-        await Bot(880_001, "سلام، قیمت مدیریت پیج چند است؟");
-        await Bot(880_002, "شماره‌ام ۰۹۳۸۴۴۴۰۰۰۲ است");
+        await Bot(880_001, "Hallo, was kostet die Seitenbetreuung?");
+        await Bot(880_002, "Meine Nummer ist 015144400002");
         var fromBot = await Db(db => db.Leads.AsNoTracking().Where(l => l.MessengerChatId == 777_888).ToListAsync());
         fromBot.Should().HaveCount(1);
-        fromBot[0].Name.Should().Be("مریم تلگرامی");
-        fromBot[0].Phone.Should().Be("09384440002");
-        _f.Messenger.Sent.Should().Contain(m => m.ChatId == 777_888 && m.Text.Contains("پیامتان رسید"));
+        fromBot[0].Name.Should().Be("Marie Telegram");
+        fromBot[0].Phone.Should().Be("015144400002");
+        _f.Messenger.Sent.Should().Contain(m => m.ChatId == 777_888 && m.Text.Contains("Ihre Nachricht ist angekommen"));
     }
 }

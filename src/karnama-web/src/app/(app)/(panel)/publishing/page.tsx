@@ -19,10 +19,10 @@ registerTexts(faM6);
 
 const PublishEditor = dynamic(() => import("@/components/publishing/publish-editor").then((m) => m.PublishEditor), { ssr: false });
 
-/** Saturday of the Tehran week that contains `day` (yyyy-mm-dd). */
+/** Monday of the week that contains `day` (yyyy-mm-dd). */
 function weekStart(day: string) {
   const d = new Date(day + "T12:00:00Z");
-  const back = (d.getUTCDay() + 1) % 7; // Sat=0 … Fri=6
+  const back = (d.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
   d.setUTCDate(d.getUTCDate() - back);
   return d.toISOString().slice(0, 10);
 }

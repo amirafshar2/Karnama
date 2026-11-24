@@ -61,7 +61,7 @@ export default function DashboardPage() {
           {t("dashboard.hello", { name: me.displayName })}
         </h1>
         {me.roles.length > 0 && (
-          <p className="mt-3 inline-flex rounded-full bg-[var(--brand-yellow)] px-3 py-1 text-xs font-bold text-[var(--primary-foreground)]">{t("dashboard.rolesLine", { roles: me.roles.join("، ") })}</p>
+          <p className="mt-3 inline-flex rounded-full bg-[var(--brand-yellow)] px-3 py-1 text-xs font-bold text-[var(--primary-foreground)]">{t("dashboard.rolesLine", { roles: me.roles.join(", ") })}</p>
         )}
         {shortcuts.length > 0 && (
           <ul className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">

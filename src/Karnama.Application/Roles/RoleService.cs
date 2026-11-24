@@ -57,7 +57,7 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<RoleDetailDto>> GetAsync(Guid id, CancellationToken ct)
     {
         var role = await db.Roles.IgnoreQueryFilters().AsNoTracking().Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id, ct);
-        return role is null ? Error.NotFound("roles.notFound", "نقش پیدا نشد.") : ToDetail(role);
+        return role is null ? Error.NotFound("roles.notFound", "Rolle nicht gefunden.") : ToDetail(role);
     }
 
     public async Task<Result<RoleDetailDto>> CreateAsync(UpsertRoleRequest request, CancellationToken ct)
@@ -77,8 +77,8 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<RoleDetailDto>> UpdateAsync(Guid id, UpsertRoleRequest request, CancellationToken ct)
     {
         var role = await db.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id, ct);
-        if (role is null) return Error.NotFound("roles.notFound", "نقش پیدا نشد.");
-        if (request.Version is not { } v) return Error.Validation("common.versionRequired", "نسخه‌ی رکورد لازم است؛ صفحه را تازه کنید.");
+        if (role is null) return Error.NotFound("roles.notFound", "Rolle nicht gefunden.");
+        if (request.Version is not { } v) return Error.Validation("common.versionRequired", "Die Datensatzversion fehlt; laden Sie die Seite neu.");
         db.SetOriginalVersion(role, v);
 
         var before = role.Permissions.Select(p => new GrantDto(p.Code, p.Scope)).ToList();
@@ -99,7 +99,7 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result> DeleteAsync(Guid id, uint? version, CancellationToken ct)
     {
         var role = await db.Roles.Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id, ct);
-        if (role is null) return Error.NotFound("roles.notFound", "نقش پیدا نشد.");
+        if (role is null) return Error.NotFound("roles.notFound", "Rolle nicht gefunden.");
         if (version is { } v) db.SetOriginalVersion(role, v);
         var guard = await GuardAsync(role.Id, role.Permissions.Select(p => new PermissionGrant(p.Code, p.Scope)), ct);
         if (guard.IsFailure) return guard;
@@ -116,7 +116,7 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
     public async Task<Result<RoleDetailDto>> RestoreAsync(Guid id, CancellationToken ct)
     {
         var role = await db.Roles.IgnoreQueryFilters().Include(r => r.Permissions).FirstOrDefaultAsync(r => r.Id == id, ct);
-        if (role is null) return Error.NotFound("roles.notFound", "نقش پیدا نشد.");
+        if (role is null) return Error.NotFound("roles.notFound", "Rolle nicht gefunden.");
         var guard = await GuardAsync(role.Id, role.Permissions.Select(p => new PermissionGrant(p.Code, p.Scope)), ct);
         if (guard.IsFailure) return guard.Error!;
         role.Restore();
@@ -136,10 +136,10 @@ public sealed class RoleService(IAppDbContext db, ICurrentUser me, IAuditWriter 
         var callerId = me.UserId ?? Guid.Empty;
         if (await PermissionLoader.IsOwnerAsync(db, callerId, ct)) return Result.Success();
         if (roleId is { } rid && await db.UserRoles.AnyAsync(ur => ur.UserId == callerId && ur.RoleId == rid, ct))
-            return Error.Forbidden("roles.ownRole", "نقشی را که خودتان دارید فقط مالک می‌تواند تغییر دهد.");
+            return Error.Forbidden("roles.ownRole", "Eine Rolle, die Sie selbst haben, kann nur der Inhaber ändern.");
         var mine = await PermissionLoader.LoadAsync(db, callerId, ct);
         if (grants.Any(g => !mine.TryGetValue(g.Code, out var scope) || scope < g.Scope))
-            return Error.Forbidden("roles.tooStrong", "این نقش دسترسی‌هایی دارد که خودتان ندارید؛ فقط مالک می‌تواند آن را بسازد یا تغییر دهد.");
+            return Error.Forbidden("roles.tooStrong", "Diese Rolle hat Berechtigungen, die Sie selbst nicht haben; nur der Inhaber kann sie anlegen oder ändern.");
         return Result.Success();
     }
 
