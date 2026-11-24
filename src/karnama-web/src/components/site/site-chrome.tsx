@@ -72,7 +72,17 @@ export function SiteFooter({ brand, t }: { brand: Brand | null; t: T }) {
           {name}
         </p>
       </div>
-      <p className="relative border-t border-white/10 py-5 text-center text-xs opacity-60">© {name}</p>
+      <p className="relative border-t border-white/10 py-5 text-center text-xs opacity-60">
+        © {name}
+        {brand?.demo && (
+          <>
+            {" · "}Demo-Projekt – fiktive Agentur, es werden keine persönlichen Daten erhoben{" · "}
+            <a href="https://amirrezaafshar.de/impressum" target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">Impressum</a>
+            {" · "}
+            <a href="https://amirrezaafshar.de/datenschutz" target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">Datenschutz</a>
+          </>
+        )}
+      </p>
     </footer>
   );
 }

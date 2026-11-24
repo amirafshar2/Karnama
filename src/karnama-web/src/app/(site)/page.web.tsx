@@ -379,13 +379,25 @@ export default async function Home() {
             </address>
           </div>
           <div className="glass" data-reveal>
-            <ConsultForm
+            {brand?.demo ? (
+              <div data-testid="consult-demo-off">
+                <p className="text-xl font-black">Demo-Projekt</p>
+                <p className="mt-3 leading-8 opacity-85">
+                  Das Beratungsformular ist in der Demo abgeschaltet – es werden keine persönlichen Daten erhoben. Anfragen und Leads sehen Sie im Panel über den Demo-Login.
+                </p>
+                <p className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm font-bold">
+                  <a href="/login" className="underline-offset-4 hover:underline">Zum Demo-Login</a>
+                  <a href="https://amirrezaafshar.de/impressum" target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">Impressum</a>
+                  <a href="https://amirrezaafshar.de/datenschutz" target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">Datenschutz</a>
+                </p>
+              </div>
+            ) : <ConsultForm
               source="/"
               texts={{
                 name: t("site.form.name"), phone: t("site.form.phone"), business: t("site.form.business"), message: t("site.form.message"),
                 send: t("site.form.send"), sending: t("site.form.sending"), sent: t("site.form.sent"), error: t("site.form.error"),
               }}
-            />
+            />}
           </div>
         </div>
       </section>
