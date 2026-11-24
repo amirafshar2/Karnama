@@ -33,7 +33,7 @@ export function setSessionLostHandler(handler: () => void) {
 
 function baseHeaders(): Record<string, string> {
   const h: Record<string, string> = { Accept: "application/json" };
-  if (typeof document !== "undefined") h["Accept-Language"] = document.documentElement.lang || "fa";
+  if (typeof document !== "undefined") h["Accept-Language"] = document.documentElement.lang || "de";
   if (CLIENT_KIND === "android") h["X-Client"] = "android";
   return h;
 }

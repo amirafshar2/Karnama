@@ -22,12 +22,12 @@ export function PackageCard({ p, t, highlight, delay = 0 }: { p: P; t: T; highli
         <small>{t("site.packages.toman", { n: "" }).trim()}</small>
         {was && was > price && <s className="ms-2 align-middle text-base font-semibold opacity-50">{toman(was)}</s>}
       </p>
-      <p className="tier__per">{p.period === "monthly" ? t("site.packages.perMonth") : t("site.packages.perPeriod", { n: p.validityDays.toLocaleString("fa-IR") })}</p>
+      <p className="tier__per">{p.period === "monthly" ? t("site.packages.perMonth") : t("site.packages.perPeriod", { n: p.validityDays.toLocaleString("de-DE") })}</p>
       <ul>
         {p.highlights.map((h) => (
           <li key={h}>
             <Check />
-            {h.replace(/\d+/g, (d) => Number(d).toLocaleString("fa-IR"))}
+            {h.replace(/\d+/g, (d) => Number(d).toLocaleString("de-DE"))}
           </li>
         ))}
       </ul>

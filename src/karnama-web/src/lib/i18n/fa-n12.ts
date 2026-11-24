@@ -94,7 +94,7 @@ export const faN12 = {
   "glossary.portal": "Kundenportal",
   "glossary.portalDef": "Ein einfacher Bereich, in dem der Kunde Arbeiten sieht, freigibt und bestellt.",
 
-  "tour.skip": "Ablehnung",
+  "tour.skip": "Überspringen",
   "tour.next": "Weiter",
   "tour.prev": "Vorherige",
   "tour.done": "Arbeitsbeginn",

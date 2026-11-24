@@ -75,7 +75,7 @@ export function DemoGuide() {
             {STEPS[role].map((href, i) => (
               <li key={i} className="flex items-start gap-3 rounded-2xl bg-muted/60 p-3">
                 <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--brand-yellow)] text-sm font-bold text-[var(--primary-foreground)]" aria-hidden="true">
-                  {(i + 1).toLocaleString("fa-IR")}
+                  {(i + 1).toLocaleString("de-DE")}
                 </span>
                 <span className="min-w-0 flex-1 leading-7">{t(k(`s${i + 1}`))}</span>
                 {href && (

@@ -61,7 +61,7 @@ export default function AppDownloadPage() {
           {steps.map((k, i) => (
             <li key={k} className="flex gap-3 rounded-xl border bg-card p-4">
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground" aria-hidden="true">
-                {(i + 1).toLocaleString("fa-IR")}
+                {(i + 1).toLocaleString("de-DE")}
               </span>
               <span className="leading-7">{t(k)}</span>
             </li>
