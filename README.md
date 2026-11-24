@@ -41,12 +41,31 @@ Was ich dabei gelernt habe: Mit KI wird man nicht schneller, wenn man weniger na
 | **Website & Blog** | Öffentliche, SEO-optimierte Website (SSR), Blog mit Redaktions-Workflow, Referenzen, Beratungsformular |
 | **Verwaltung** | Dynamische Rollen mit Berechtigungs-Umfang (eigene / zugewiesene / alle), Marke & Farben, alle Texte und Sprachen im Panel editierbar |
 
+## Screenshots
+
+Alle Bilder stammen aus der deutschen Live-Demo (fiktive Agentur, Beispieldaten).
+
+![Website der Agentur](docs/screenshots/01-home.jpg)
+
+| | |
+|---|---|
+| ![Pakete](docs/screenshots/02-plans.jpg) **Pakete auf der Website** | ![Demo-Login](docs/screenshots/03-login.jpg) **Demo-Login per Rolle** |
+| ![Dashboard](docs/screenshots/04-dashboard.jpg) **Dashboard der Agenturleitung** | ![Aufgabenboard](docs/screenshots/05-work.jpg) **Aufgaben im Live-Kanban** |
+| ![Aufträge](docs/screenshots/06-orders.jpg) **Aufträge mit Fortschritt** | ![Veröffentlichungskalender](docs/screenshots/07-publishing.jpg) **Veröffentlichungskalender** |
+| ![Vertrieb](docs/screenshots/08-crm.jpg) **Vertrieb & Leads (CRM)** | ![Anwesenheitskalender](docs/screenshots/09-calendar.jpg) **Anwesenheitskalender des Teams** |
+| ![Arbeitszeit](docs/screenshots/10-attendance.jpg) **Kommen und Gehen** | ![Arbeitsbericht](docs/screenshots/11-reports.jpg) **Arbeitsbericht & Punkte** |
+| ![Verkaufspakete](docs/screenshots/12-packages.jpg) **Verkaufspakete im Panel** | ![Kundenportal](docs/screenshots/13-client.jpg) **Kundenportal mit Freigabe** |
+
+**Auf dem Handy** (gleiche Oberfläche wie die Android-App):
+
+<img src="docs/screenshots/14-m-home.jpg" width="32%"> <img src="docs/screenshots/15-m-work.jpg" width="32%"> <img src="docs/screenshots/16-m-attendance.jpg" width="32%">
+
 ## Technik
 
 | Schicht | Technologien |
 |---|---|
 | Backend | **ASP.NET Core (.NET 10)**, Clean Architecture (Domain / Application / Infrastructure / Api), EF Core + **PostgreSQL 16**, HybridCache + Redis, SignalR (Live), Hangfire (geplante Jobs), FluentValidation, Serilog, OpenTelemetry |
-| Frontend | **Next.js 16**, React 19, TypeScript, Tailwind CSS 4, RTL, PWA; UI-Komponenten aus 21st.dev |
+| Frontend | **Next.js 16**, React 19, TypeScript, Tailwind CSS 4, mehrsprachig (LTR/RTL), PWA; UI-Komponenten aus 21st.dev |
 | Android | **Capacitor 8** – dieselbe Codebasis als statischer Export, sichere Token-Ablage im Android Keystore |
 | Betrieb | Docker Compose, Caddy (HTTPS, HTTP/3), tägliches Backup mit monatlichem Restore-Test; Demo-Blueprint für Render |
 
